@@ -1,0 +1,78 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  static:
+    name: Pint + PHPStan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      - name: Pint
+        run: vendor/bin/pint --test
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress
+
+  tests:
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }} · ${{ matrix.db }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+        laravel: ['12.*', '13.*']
+        db: ['sqlite', 'mysql', 'pgsql']
+        exclude:
+          - php: '8.3'
+            laravel: '13.*'
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: observer_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -proot" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: observer_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready" --health-interval=10s
+          --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
+          coverage: none
+      - name: Constrain Laravel version
+        run: >-
+          composer require
+          "illuminate/contracts:${{ matrix.laravel }}"
+          --no-update --no-interaction
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+      - name: Run tests
+        env:
+          DB_DRIVER: ${{ matrix.db }}
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: observer_test
+          DB_USERNAME: ${{ matrix.db == 'pgsql' && 'postgres' || 'root' }}
+          DB_PASSWORD: ${{ matrix.db == 'pgsql' && 'postgres' || 'root' }}
+          DB_PORT: ${{ matrix.db == 'pgsql' && '5432' || '3306' }}
+        run: vendor/bin/phpunit

@@ -1,0 +1,238 @@
+<?php
+
+namespace VictorStochero\Warden\Console;
+
+use Illuminate\Console\Command;
+use Illuminate\Mail\Message;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
+use Throwable;
+use VictorStochero\Warden\Console\Demo\DemoException;
+use VictorStochero\Warden\Console\Demo\DemoJob;
+use VictorStochero\Warden\Console\Demo\DemoNotification;
+use VictorStochero\Warden\Support\Cast;
+use VictorStochero\Warden\Warden;
+
+/**
+ * Developer aid: generates one of each capturable event type from a configured
+ * child, so the whole pipeline (capture -> outbox -> ship -> ingest -> aggregate)
+ * can be exercised end-to-end without waiting for organic traffic.
+ *
+ * Each run produces one or more synthetic "command" traces, each carrying a
+ * query, cache ops, logs, an exception, a mail, a notification, an outbound HTTP
+ * call and a job — every type the dashboard surfaces from a console entry point.
+ * Request and schedule events need real HTTP/scheduler traffic and are out of
+ * scope here (hit a route, or run `schedule:run`, to produce those).
+ */
+class DemoCommand extends Command
+{
+    protected $signature = 'warden:demo
+        {--count=1 : How many synthetic traces to generate}
+        {--only= : Comma-separated event types to emit (default: all)}
+        {--except= : Comma-separated event types to skip}
+        {--queue : Dispatch the demo job to the queue instead of running it inline}
+        {--http=https://example.com : URL for the outbound HTTP sample (empty to skip)}';
+
+    protected $description = 'Generate sample telemetry from a child to exercise the pipeline (dev/testing)';
+
+    /** Every type this command knows how to emit, in timeline order. */
+    protected const TYPES = ['query', 'cache', 'log', 'exception', 'mail', 'notification', 'http', 'job'];
+
+    public function handle(Warden $warden): int
+    {
+        if (! $warden->isChild()) {
+            $this->components->error('warden:demo only runs in child mode.');
+
+            return self::FAILURE;
+        }
+
+        if (! $warden->isChildConfigured()) {
+            $this->components->error('Child is not configured (set WARDEN_PARENT_URL and WARDEN_TOKEN). Nothing would be captured.');
+
+            return self::FAILURE;
+        }
+
+        $types = $this->selectedTypes();
+
+        if ($types === []) {
+            $this->components->error('No event types selected.');
+
+            return self::FAILURE;
+        }
+
+        $this->routeMailToMemory();
+
+        $count = max(1, Cast::int($this->option('count'), 1));
+
+        /** @var array<string, int> $emitted */
+        $emitted = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $warden->reset();
+            $warden->startTrace('command', name: 'warden:demo');
+            $warden->keep(); // force-collect regardless of sampling
+            $warden->setUser('demo-user');
+
+            foreach ($types as $type) {
+                $this->emit($type);
+            }
+
+            foreach ($warden->buffer()->all() as $event) {
+                $t = Cast::str($event['type'] ?? null);
+                $emitted[$t] = ($emitted[$t] ?? 0) + 1;
+            }
+
+            $warden->flush();
+        }
+
+        $this->summary($count, $emitted);
+
+        return self::SUCCESS;
+    }
+
+    protected function emit(string $type): void
+    {
+        match ($type) {
+            'query' => $this->emitQuery(),
+            'cache' => $this->emitCache(),
+            'log' => $this->emitLog(),
+            'exception' => $this->emitException(),
+            'mail' => $this->emitMail(),
+            'notification' => $this->emitNotification(),
+            'http' => $this->emitHttp(),
+            'job' => $this->emitJob(),
+            default => null,
+        };
+    }
+
+    protected function emitQuery(): void
+    {
+        // A harmless read on the app's default connection (never the obs one).
+        DB::select('select ? as demo', [1]);
+    }
+
+    protected function emitCache(): void
+    {
+        Cache::put('warden:demo', 'ok', 60);
+        Cache::get('warden:demo');        // hit
+        Cache::get('warden:demo:absent'); // miss
+        Cache::forget('warden:demo');     // write/forget
+    }
+
+    protected function emitLog(): void
+    {
+        // Plain context (no "warden" key) so the LogRecorder does not skip these.
+        Log::info('[warden] demo info log', ['demo' => true]);
+        Log::warning('[warden] demo warning log', ['demo' => true]);
+        Log::error('[warden] demo error log', ['demo' => true]);
+    }
+
+    protected function emitException(): void
+    {
+        report(new DemoException('Warden demo exception'));
+    }
+
+    protected function emitMail(): void
+    {
+        Mail::raw('This message was generated by warden:demo.', function (Message $message) {
+            $message->to('demo@example.com')->subject('Warden demo mail');
+        });
+    }
+
+    protected function emitNotification(): void
+    {
+        Notification::route('mail', 'demo@example.com')->notify(new DemoNotification);
+    }
+
+    protected function emitHttp(): void
+    {
+        $url = Cast::str($this->option('http'));
+
+        if ($url === '') {
+            return;
+        }
+
+        try {
+            Http::get($url);
+        } catch (Throwable) {
+            // A connection failure already recorded an http event (status 0);
+            // never let the demo blow up on a flaky/offline network.
+        }
+    }
+
+    protected function emitJob(): void
+    {
+        if ($this->option('queue')) {
+            DemoJob::dispatch();
+
+            return;
+        }
+
+        DemoJob::dispatchSync();
+    }
+
+    /**
+     * Force mail/notifications through the in-memory "array" transport so the
+     * demo never touches a real SMTP server, while still firing MessageSent.
+     */
+    protected function routeMailToMemory(): void
+    {
+        if (config('mail.mailers.array') === null) {
+            config(['mail.mailers.array' => ['transport' => 'array']]);
+        }
+
+        config(['mail.default' => 'array']);
+
+        if (Cast::str(config('mail.from.address')) === '') {
+            config(['mail.from.address' => 'demo@warden.test', 'mail.from.name' => 'Warden Demo']);
+        }
+    }
+
+    /** @return list<string> */
+    protected function selectedTypes(): array
+    {
+        $only = $this->csv($this->option('only'));
+        $except = $this->csv($this->option('except'));
+
+        $types = $only !== [] ? array_intersect(self::TYPES, $only) : self::TYPES;
+
+        return array_values(array_diff($types, $except));
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function csv(mixed $value): array
+    {
+        $str = Cast::str($value);
+
+        if ($str === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', $str))));
+    }
+
+    /** @param array<string, int> $emitted */
+    protected function summary(int $count, array $emitted): void
+    {
+        ksort($emitted);
+
+        $this->newLine();
+        $this->components->info("Generated {$count} demo trace(s) in child mode.");
+
+        foreach ($emitted as $type => $n) {
+            $this->components->twoColumnDetail($type, $n.' event'.($n === 1 ? '' : 's'));
+        }
+
+        $total = array_sum($emitted);
+
+        $this->newLine();
+        $this->line("  <fg=gray>{$total} events buffered and flushed to the outbox. Deliver them with</> <fg=yellow>php artisan warden:ship --once</><fg=gray>.</>");
+        $this->newLine();
+    }
+}

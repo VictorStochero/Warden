@@ -1,0 +1,11 @@
+/vendor/
+composer.lock
+.phpunit.result.cache
+.phpunit.cache/
+build/
+.idea/
+.vscode/
+*.log
+
+# Working notes — brainstorm specs, implementation plans (local only)
+/docs/superpowers/

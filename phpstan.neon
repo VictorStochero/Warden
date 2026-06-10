@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: max
+
+    paths:
+        - src
+
+    # Migrations are anonymous classes returning schema closures; analysing them
+    # adds noise without value. Everything else (including the dashboard read
+    # layer) is analysed at the maximum level.
+    excludePaths:
+        - database/migrations/*
