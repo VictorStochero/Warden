@@ -5,27 +5,27 @@
     $errs   = $series->pluck('errors')->all();
 @endphp
 
-<div class="grid gap-4 sm:grid-cols-3">
-    <div class="rounded-xl border border-ink-700 bg-ink-850 p-4">
-        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Throughput</p>
+<div class="grid gap-5 sm:grid-cols-3">
+    <div class="rounded-xl border border-ink-700/70 bg-ink-850 p-4">
+        <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('warden::project.requests.throughput') }}</p>
         @include('warden::partials.bars', ['values' => $counts, 'color' => '#6366f1', 'height' => 64])
     </div>
-    <div class="rounded-xl border border-ink-700 bg-ink-850 p-4">
-        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Errors</p>
+    <div class="rounded-xl border border-ink-700/70 bg-ink-850 p-4">
+        <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('warden::project.requests.errors') }}</p>
         @include('warden::partials.bars', ['values' => $errs, 'color' => '#f43f5e', 'height' => 64])
     </div>
-    <div class="rounded-xl border border-ink-700 bg-ink-850 p-4">
-        <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">p95 latency</p>
+    <div class="rounded-xl border border-ink-700/70 bg-ink-850 p-4">
+        <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('warden::project.requests.p95_latency') }}</p>
         @include('warden::partials.chart', ['values' => $p95s, 'color' => '#f59e0b', 'height' => 64])
     </div>
 </div>
 
-<div class="mt-5">
-    @include('warden::partials.card-open', ['title' => 'Routes', 'action' => null])
+<div class="mt-6">
+    @include('warden::partials.card-open', ['title' => __('warden::project.requests.routes_title'), 'action' => null])
         @include('warden::partials.route-table', ['routes' => $routes])
     @include('warden::partials.card-close')
 </div>
 
-<div class="mt-5">
-    @include('warden::partials.event-list', ['events' => $recent, 'type' => 'request', 'title' => 'Recent requests'])
+<div class="mt-6">
+    @include('warden::partials.event-list', ['events' => $recent, 'type' => 'request', 'title' => __('warden::project.requests.recent_title')])
 </div>

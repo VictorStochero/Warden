@@ -9,3 +9,8 @@ build/
 
 # Working notes — brainstorm specs, implementation plans (local only)
 /docs/superpowers/
+
+# Warden Design System handoff bundle (reference only, not shipped)
+/.warden-design/
+# Node modules from ad-hoc Tailwind builds (the compiled CSS is committed)
+/node_modules/

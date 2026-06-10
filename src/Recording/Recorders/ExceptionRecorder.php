@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Recording\Recorders;
 
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Routing\Route;
 use Throwable;
 use VictorStochero\Warden\Recording\AbstractRecorder;
 use VictorStochero\Warden\Support\Cast;
@@ -44,7 +45,7 @@ class ExceptionRecorder extends AbstractRecorder
             $this->observer->keep();
         }
 
-        $this->record([
+        $this->record(array_merge([
             'class' => get_class($e),
             'message' => $this->scrubMessage($this->truncate($e->getMessage(), 2000)),
             'code' => $e->getCode(),
@@ -52,7 +53,29 @@ class ExceptionRecorder extends AbstractRecorder
             'line' => $e->getLine(),
             'stack' => $this->stack($e),
             'user_id' => $this->observer->userId(),
-        ]);
+        ], $this->httpContext()));
+    }
+
+    /**
+     * Where the failure happened — the HTTP route/method/path, so the issue is
+     * legible without opening the trace. Empty in console/queue contexts.
+     *
+     * @return array<string, string|null>
+     */
+    protected function httpContext(): array
+    {
+        if (app()->runningInConsole()) {
+            return [];
+        }
+
+        $request = request();
+        $route = $request->route();
+
+        return [
+            'method' => $request->method(),
+            'path' => '/'.ltrim($request->path(), '/'),
+            'route' => $route instanceof Route ? $route->getName() : null,
+        ];
     }
 
     /** @return list<array{class: string|null, function: string|null, file: string|null, line: int|null}> */

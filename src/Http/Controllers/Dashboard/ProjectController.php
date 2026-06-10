@@ -33,6 +33,7 @@ class ProjectController
                 'series' => $repo->requestSeries($id, $range),
                 'routes' => $repo->topRoutes($id, $range, 50),
                 'recent' => $repo->recentErrors($id, 50),
+                'exceptions' => $repo->recentEvents($id, 'exception', 50),
             ],
             'queries' => [
                 'slow' => $repo->slowQueries($id, $range, 25),

@@ -36,7 +36,9 @@ use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Contracts\WardenRepository;
 use VictorStochero\Warden\Dashboard\DashboardAuth;
 use VictorStochero\Warden\Http\Controllers\Auth\DashboardLoginController;
+use VictorStochero\Warden\Http\Controllers\Dashboard\LocaleController;
 use VictorStochero\Warden\Http\Middleware\Authorize;
+use VictorStochero\Warden\Http\Middleware\SetLocale;
 use VictorStochero\Warden\Http\Middleware\TraceRequests;
 use VictorStochero\Warden\Ingestion\DatabaseIngestor;
 use VictorStochero\Warden\Ingestion\SelfDelivery;
@@ -87,6 +89,7 @@ class WardenServiceProvider extends ServiceProvider
         $this->registerPublishing();
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'warden');
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'warden');
         $this->registerCommands();
         $this->registerRateLimiter();
 
@@ -215,7 +218,7 @@ class WardenServiceProvider extends ServiceProvider
             'prefix' => $prefix,
             'middleware' => array_merge(
                 Cast::arr($this->config()->get('warden.dashboard.middleware', ['web'])),
-                [Authorize::class]
+                [SetLocale::class, Authorize::class]
             ),
         ], function () {
             $this->loadRoutesFrom(__DIR__.'/../routes/dashboard.php');
@@ -274,11 +277,18 @@ class WardenServiceProvider extends ServiceProvider
     {
         Route::group([
             'prefix' => $prefix,
-            'middleware' => Cast::arr($this->config()->get('warden.dashboard.middleware', ['web'])),
+            'middleware' => array_merge(
+                Cast::arr($this->config()->get('warden.dashboard.middleware', ['web'])),
+                [SetLocale::class]
+            ),
         ], function () {
             Route::get('/login', [DashboardLoginController::class, 'showLogin'])->name('warden.login');
             Route::post('/login', [DashboardLoginController::class, 'login']);
             Route::post('/logout', [DashboardLoginController::class, 'logout'])->name('warden.logout');
+
+            // Language switch lives here (not behind the viewWarden gate) so the
+            // picker works on the login screen too, before authentication.
+            Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('warden.locale');
         });
     }
 
@@ -391,12 +401,19 @@ class WardenServiceProvider extends ServiceProvider
             __DIR__.'/../resources/views' => $this->app->resourcePath('views/vendor/warden'),
         ], 'warden-views');
 
+        $this->publishes([
+            __DIR__.'/../lang' => $this->app->langPath('vendor/warden'),
+        ], 'warden-lang');
+
         // The dashboard stylesheet is served as a real static file from public/
         // so web servers hand it back directly — a PHP route ending in `.css` is
         // intercepted by common static-file rules and 404s. Parent install /
         // switch publish this; uninstall / switch-to-child remove it.
         $this->publishes([
             __DIR__.'/../resources/dist/warden.css' => $this->app->publicPath('vendor/warden/warden.css'),
+            __DIR__.'/../resources/dist/fonts' => $this->app->publicPath('vendor/warden/fonts'),
+            __DIR__.'/../resources/dist/warden-mark.svg' => $this->app->publicPath('vendor/warden/warden-mark.svg'),
+            __DIR__.'/../resources/dist/warden-mark-mono.svg' => $this->app->publicPath('vendor/warden/warden-mark-mono.svg'),
         ], 'warden-assets');
     }
 

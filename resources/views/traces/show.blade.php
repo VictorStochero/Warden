@@ -20,19 +20,19 @@
     $errored = $rows->contains(fn ($e) => $e['type'] === 'exception');
 @endphp
 
-@section('title', 'Trace')
-@section('heading', 'Trace timeline')
+@section('title', __('warden::traces.detail.title'))
+@section('heading', __('warden::traces.detail.heading'))
 @section('subheading', $trace_id)
 
 @section('content')
     <div class="mb-5 flex items-center gap-4">
-        <a href="{{ route('warden.traces', $project->slug) }}" class="text-[13px] text-brand-400 hover:text-brand-300">← Traces</a>
+        <a href="{{ route('warden.traces', $project->slug) }}" class="text-[13px] text-brand-400 hover:text-brand-300">{{ __('warden::traces.detail.back') }}</a>
         <span class="font-mono text-[12px] text-slate-500">{{ $trace_id }}</span>
-        <span class="ml-auto text-sm text-slate-400">{{ $rows->count() }} spans · {{ Format::dur((int) round($span * 1_000_000)) }} total</span>
-        @if($errored)<span class="rounded bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-400">errored</span>@endif
+        <span class="ml-auto text-sm text-slate-400">{{ __('warden::traces.detail.summary', ['count' => $rows->count(), 'duration' => Format::dur((int) round($span * 1_000_000))]) }}</span>
+        @if($errored)<span class="rounded bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-400">{{ __('warden::traces.badge.errored') }}</span>@endif
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-ink-700 bg-ink-850">
+    <div class="overflow-hidden rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10">
         <div class="divide-y divide-ink-700/60">
             @foreach($rows as $e)
                 @php
@@ -51,13 +51,13 @@
                         default => $e['type'],
                     };
                 @endphp
-                <div class="grid grid-cols-12 items-center gap-3 px-4 py-2 hover:bg-ink-800">
+                <div class="grid grid-cols-12 items-center gap-3 px-4 py-2 transition hover:bg-ink-850/50">
                     <div class="col-span-5 flex items-center gap-2 min-w-0">
                         <span class="h-2 w-2 shrink-0 rounded-sm" style="background: {{ $color }}"></span>
                         <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">{{ $e['type'] }}</span>
                         <span class="truncate font-mono text-[12px] {{ $e['type'] === 'exception' ? 'text-rose-400' : 'text-slate-300' }}">{{ trim($label) }}</span>
                         @if(!empty($e['n_plus_one']))
-                            <span class="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400" title="Repeated {{ $e['repeat_count'] ?? '' }}× in this trace">N+1 ×{{ $e['repeat_count'] ?? '' }}</span>
+                            <span class="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400" title="{{ __('warden::traces.detail.n_plus_one_title', ['count' => $e['repeat_count'] ?? '']) }}">{{ __('warden::traces.detail.n_plus_one_label', ['count' => $e['repeat_count'] ?? '']) }}</span>
                         @endif
                     </div>
                     <div class="col-span-6">

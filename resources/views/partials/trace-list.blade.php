@@ -4,14 +4,14 @@
 @endphp
 @forelse($traces as $t)
     <a href="{{ route('warden.trace', [$project->slug, $t['trace_id']]) }}"
-       class="flex items-center gap-3 border-t border-ink-700 px-4 py-2.5 text-sm first:border-0 hover:bg-ink-800">
+       class="flex items-center gap-3 border-t border-ink-700/70 px-4 py-2.5 text-sm first:border-0 transition hover:bg-ink-850/50">
         <span class="w-14 shrink-0 text-[10px] font-semibold uppercase tracking-wider {{ $typeColor[$t['type']] ?? 'text-slate-500' }}">{{ $t['type'] }}</span>
         <span class="min-w-0 flex-1 truncate {{ $t['errored'] ? 'text-rose-400' : 'text-slate-300' }}">{{ $t['label'] }}</span>
         @if($t['errored'])
-            <span class="shrink-0 rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-medium text-rose-400">err</span>
+            <span class="shrink-0 rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-medium text-rose-400">{{ __('warden::traces.badge.err') }}</span>
         @endif
         <span class="shrink-0 font-mono text-[11px] text-slate-500">{{ Format::dur($t['duration_us']) }}</span>
     </a>
 @empty
-    <p class="px-4 py-6 text-center text-sm text-slate-600">No traces captured</p>
+    <p class="px-4 py-8 text-center text-sm text-slate-600">{{ __('warden::traces.list.empty_short') }}</p>
 @endforelse

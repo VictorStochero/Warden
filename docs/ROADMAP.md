@@ -23,15 +23,21 @@ Esse é o nosso wedge. **Toda feature abaixo serve a essa tese** e respeita a ba
 
 ---
 
-## Backlog já planejado (issues abertas)
+## Backlog já planejado
 
-> **Entregues no 0.1.0:** #25 (uptime configurável), #26 (agendamento de audit intuitivo) e
-> #28 (e-mail no dashboard). Permanecem abaixo como referência histórica.
+### Entregue
 
-### #16 — Multilíngue (pt-BR, es, en)
-Tornar o dashboard/sistema multilingual com pt-BR, espanhol e inglês. Usar os arquivos de
-tradução do Laravel (`lang/`) + `__()` nas views, registrar o namespace de tradução no provider
-e adicionar um seletor de idioma. Cobrir todas as strings do dashboard.
+- **#16 — Multilíngue (pt-BR, es, en):** dashboard traduzido nos três idiomas via arquivos
+  `lang/` do Laravel + `__()` nas views, namespace de tradução `warden::` no provider,
+  middleware que resolve o locale (cookie `warden_locale` > `Accept-Language` > `config`) e
+  seletor de idioma no rodapé da sidebar.
+- **#25 — Periodicidade de uptime configurável** (0.1.0): janela por projeto (`uptime_window`).
+- **#26 — Agendamento de security audit intuitivo** (0.1.0): `audit_frequency`
+  (Off / Daily / Weekly / Monthly) + dia + hora, substituindo `audit_interval`.
+- **#28 — Notificação por e-mail no dashboard** (0.1.0): canal gerenciável por UI, com override
+  por projeto.
+
+### Abertas
 
 ### #24 — Security near-real-time (+ investigar "não retornou nada")
 A seção Security não exibiu dados. Hoje ela mostra o último evento `security`, que só existe
@@ -41,33 +47,10 @@ depois que `warden:audit` roda no child **e** é shippado (via `audit_due` no ci
   sem `package.json`? ship não disparou?).
 - Reduzir a latência para near-real-time (ex.: ship imediato após o audit, ou push direto).
 
-### #25 — Periodicidade de uptime configurável
-A janela do uptime é fixa hoje (24h/7d/30d e KPI de 30d). Permitir configurar a janela por
-projeto e/ou escolher no dashboard.
-
-### #26 — Agendamento de security audit intuitivo
-O agendamento atual (Off / Hourly / 6h / Daily / Weekly + hora avulsa) é confuso — "6h" não
-combina com diário/semanal. Reestruturar em níveis intuitivos num único fluxo de select:
-- **Mensal** → dia do mês → hora
-- **Diário** → hora
-- **Semanal** → dia(s) da semana → hora
-
-Substituir `audit_interval` / `audit_hour` por um modelo de agendamento mais expressivo
-(cron-like) com UI intuitiva.
-
 ### #27 — Dashboard em tempo real
 Dashboard do parent com atualização em tempo real (hoje é meta-refresh por intervalo). Avaliar
 polling leve via `fetch`/JSON, SSE ou WebSocket — mantendo o lema "no build step / zero deps"
 do pacote.
-
-### #28 — Configuração de notificação por e-mail no dashboard
-Hoje o alerta por e-mail é configurado só via config/env (`MailAlertChannel` opt-in +
-`WARDEN_ALERT_EMAILS`). Levar para o dashboard de forma amigável:
-- Habilitar/desabilitar o canal de e-mail.
-- Gerenciar destinatários (global e/ou por projeto).
-- Possivelmente severidade mínima e cooldown.
-- Persistir no banco, gerenciável por UI (Manage projects ou uma página de Settings/Alerts),
-  integrando com o `Evaluator` / `MailAlertChannel`.
 
 ---
 

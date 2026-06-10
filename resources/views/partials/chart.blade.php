@@ -21,5 +21,5 @@
                   stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline>
     </svg>
 @else
-    <div class="flex h-[{{ $h }}px] items-center text-xs text-slate-600">no data in range</div>
+    <div class="flex h-[{{ $h }}px] items-center rounded-lg bg-ink-850 px-3 text-xs text-slate-600">{{ __('warden::project.chart.no_data') }}</div>
 @endif

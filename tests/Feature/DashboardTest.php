@@ -66,7 +66,7 @@ class DashboardTest extends TestCase
 
         $this->get(route('warden.project', 'demo'))->assertOk()->assertSee('Throughput');
 
-        foreach (['requests', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host'] as $section) {
+        foreach (['requests', 'errors', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'] as $section) {
             $this->get(route('warden.project.section', ['project' => 'demo', 'section' => $section]))
                 ->assertOk();
         }
@@ -93,23 +93,23 @@ class DashboardTest extends TestCase
             ->assertSee('N+1');
     }
 
-    public function test_getting_started_shows_when_only_self_project_exists(): void
+    public function test_getting_started_lives_in_the_sidebar_hint(): void
     {
+        // The onboarding steps moved from an inline overview card to the always
+        // available "?" popover in the sidebar — present with or without a child.
         Project::create(['name' => 'My Parent', 'slug' => 'parent', 'token' => 't', 'secret' => 's', 'active' => true]);
+        Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't2', 'secret' => 's2', 'active' => true]);
 
         $this->get(route('warden.overview'))
             ->assertOk()
             ->assertSee('Getting started');
     }
 
-    public function test_getting_started_hidden_once_a_child_project_exists(): void
+    public function test_incidents_index_renders(): void
     {
-        Project::create(['name' => 'My Parent', 'slug' => 'parent', 'token' => 't1', 'secret' => 's1', 'active' => true]);
-        Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't2', 'secret' => 's2', 'active' => true]);
+        $this->seedData();
 
-        $this->get(route('warden.overview'))
-            ->assertOk()
-            ->assertDontSee('Getting started');
+        $this->get(route('warden.incidents', 'demo'))->assertOk();
     }
 
     public function test_dashboard_is_gated(): void

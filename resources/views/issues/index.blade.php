@@ -1,39 +1,38 @@
 @extends('warden::layout', ['active' => 'issues', 'showRanges' => false])
 @php use VictorStochero\Warden\Dashboard\Format; @endphp
 
-@section('title', 'Issues')
-@section('heading', $project->name . ' · Issues')
+@section('title', __('warden::issues.list.title'))
+@section('heading', $project->name . ' · ' . __('warden::issues.list.heading'))
 
 @section('content')
     <p class="mb-5 text-sm text-slate-500">
-        Issues are <span class="text-slate-300">unhandled exceptions</span> grouped by fingerprint. An empty list
-        means none were reported in this window — that's healthy, not a misconfiguration.
+        {!! __('warden::issues.list.description', ['unhandled' => '<span class="text-slate-300">' . __('warden::issues.list.description_unhandled') . '</span>']) !!}
     </p>
 
-    @php $tabs = ['open' => 'Open', 'resolved' => 'Resolved', 'ignored' => 'Ignored']; @endphp
-    <div class="mb-5 flex items-center gap-1 rounded-lg border border-ink-700 bg-ink-850 p-1 w-max">
+    @php $tabs = ['open' => __('warden::issues.list.tab_open'), 'resolved' => __('warden::issues.list.tab_resolved'), 'ignored' => __('warden::issues.list.tab_ignored')]; @endphp
+    <div class="mb-5 flex items-center gap-1 rounded-xl border border-ink-700/70 bg-ink-850 p-1 w-max">
         @foreach($tabs as $key => $label)
             <a href="{{ route('warden.issues', [$project->slug, 'status' => $key]) }}"
                class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $status === $key ? 'bg-ink-700 text-white' : 'text-slate-400 hover:text-white' }}">{{ $label }}</a>
         @endforeach
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-ink-700 bg-ink-850">
+    <div class="overflow-x-auto rounded-2xl border border-ink-700/70">
         @if($issues->isEmpty())
-            <p class="px-4 py-16 text-center text-sm text-slate-600">No {{ $status }} issues</p>
+            <p class="px-4 py-10 text-center text-sm text-slate-600">{{ __('warden::issues.list.empty', ['status' => $status]) }}</p>
         @else
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-ink-700 text-[11px] uppercase tracking-wider text-slate-500">
-                        <th class="px-4 py-2.5 text-left font-medium">Issue</th>
-                        <th class="px-4 py-2.5 text-right font-medium">Events</th>
-                        <th class="px-4 py-2.5 text-right font-medium">Users</th>
-                        <th class="px-4 py-2.5 text-right font-medium">Last seen</th>
+            <table class="min-w-full text-sm">
+                <thead class="bg-ink-850">
+                    <tr class="border-b border-ink-700/70 text-[11px] uppercase tracking-wider text-slate-500">
+                        <th class="px-4 py-3 text-left font-medium">{{ __('warden::issues.list.col_issue') }}</th>
+                        <th class="px-4 py-3 text-right font-medium">{{ __('warden::issues.list.col_events') }}</th>
+                        <th class="px-4 py-3 text-right font-medium">{{ __('warden::issues.list.col_users') }}</th>
+                        <th class="px-4 py-3 text-right font-medium">{{ __('warden::issues.list.col_last_seen') }}</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-ink-700/70">
                     @foreach($issues as $issue)
-                        <tr class="border-t border-ink-700/70 hover:bg-ink-800">
+                        <tr class="transition hover:bg-ink-850/50">
                             <td class="px-4 py-3">
                                 <a href="{{ route('warden.issue', [$project->slug, $issue->id]) }}" class="block">
                                     <div class="flex items-center gap-2">

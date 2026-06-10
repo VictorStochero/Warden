@@ -55,6 +55,59 @@ class DashboardAuthTest extends TestCase
         });
     }
 
+    public function test_login_is_throttled_after_too_many_failures(): void
+    {
+        $this->passwordEnv(function (): void {
+            config()->set('warden.dashboard.auth.throttle.max_attempts', 3);
+            config()->set('warden.dashboard.auth.throttle.decay', 60);
+            $this->project();
+
+            for ($i = 0; $i < 3; $i++) {
+                $this->post(route('warden.login'), ['password' => 'wrong'])
+                    ->assertRedirect(route('warden.login'));
+            }
+
+            // Locked out for the window — the correct password is refused too.
+            $this->post(route('warden.login'), ['password' => 'admin-secret'])
+                ->assertRedirect(route('warden.login'));
+
+            $this->assertNull(session('warden_auth'));
+            $this->assertStringContainsString('Too many attempts', (string) session('warden_error'));
+        });
+    }
+
+    public function test_successful_login_clears_the_throttle(): void
+    {
+        $this->passwordEnv(function (): void {
+            config()->set('warden.dashboard.auth.throttle.max_attempts', 3);
+            $this->project();
+
+            // Two misses stay under the limit; the correct password still works.
+            $this->post(route('warden.login'), ['password' => 'wrong']);
+            $this->post(route('warden.login'), ['password' => 'wrong']);
+
+            $this->post(route('warden.login'), ['password' => 'admin-secret'])
+                ->assertRedirect(route('warden.overview'));
+
+            $this->assertTrue((bool) session('warden_auth'));
+        });
+    }
+
+    public function test_throttle_is_disabled_when_max_attempts_is_zero(): void
+    {
+        $this->passwordEnv(function (): void {
+            config()->set('warden.dashboard.auth.throttle.max_attempts', 0);
+            $this->project();
+
+            for ($i = 0; $i < 8; $i++) {
+                $this->post(route('warden.login'), ['password' => 'wrong']);
+            }
+
+            $this->post(route('warden.login'), ['password' => 'admin-secret'])
+                ->assertRedirect(route('warden.overview'));
+        });
+    }
+
     public function test_admin_password_grants_manage_access(): void
     {
         $this->passwordEnv(function (): void {

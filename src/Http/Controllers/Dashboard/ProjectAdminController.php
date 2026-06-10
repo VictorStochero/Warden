@@ -215,6 +215,40 @@ class ProjectAdminController
         ]);
     }
 
+    /**
+     * Re-show the child credentials for an existing project — same token + secret
+     * (the secret is stored encrypted, so it can be decrypted and displayed again
+     * for the .env), without rotating. Lets an operator recover the setup snippet
+     * they only saw once at creation.
+     */
+    public function credentials(Project $project, ProjectManager $manager): RedirectResponse
+    {
+        $url = Cast::str(url('/'));
+
+        return redirect()->route('warden.admin.projects')->with('warden_credentials', [
+            'name' => $project->name,
+            'command' => $manager->installCommand($project->slug, $project->token, $project->secret, $url),
+            'env' => $manager->envSnippet($project->slug, $project->token, $project->secret, $url),
+        ]);
+    }
+
+    /** Permanently delete a project and all of its data. */
+    public function destroy(Project $project, ProjectManager $manager): RedirectResponse
+    {
+        $selfSlug = Cast::str(config('warden.parent.self_project'), 'parent');
+
+        if ($project->slug === $selfSlug) {
+            return redirect()->route('warden.admin.projects')
+                ->with('warden_error', Cast::str(__('warden::admin.projects.cannot_delete_self')));
+        }
+
+        $name = $project->name;
+        $manager->delete($project);
+
+        return redirect()->route('warden.admin.projects')
+            ->with('warden_status', Cast::str(__('warden::admin.projects.deleted', ['name' => $name])));
+    }
+
     public function toggle(Project $project, ProjectManager $manager): RedirectResponse
     {
         $active = ! $project->active;

@@ -6,6 +6,52 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-10
+
+### Added
+
+- **Multilingual dashboard (pt-BR / es / en).** Every screen is translated via the Laravel
+  translator (`lang/`, namespace `warden::`), with a `SetLocale` middleware resolving the locale
+  from a `warden_locale` cookie › `Accept-Language` › `config('warden.dashboard.locale')`, and a
+  language switcher in the sidebar (and on the login page). Config: `WARDEN_LOCALE`.
+- **Warden Design System.** Beacon Blue (`#2E7BFF`) accent, dark-first "night" slate-blue
+  surfaces, a disciplined status palette, the **Sentinel Shield** mark + **WARDEN** wordmark, and
+  **self-hosted** Archivo / JetBrains Mono fonts (no CDN — zero runtime dependencies). Data,
+  metrics and eyebrows render in mono.
+- **Rich per-event detail** (`warden.event`). Clicking any event opens a full detail view —
+  exceptions show class, message, **route / method / path / user** and stack; mail shows
+  from / to / cc / bcc / reply-to / mailer and the **rendered body**; logs show the full message
+  and context; queries show SQL + bindings — plus the complete raw payload, for debugging,
+  maintenance and root-cause analysis.
+- **Recent exceptions** list in the Errors section, each clickable to its detail.
+- **Recover credentials** for an existing project (re-shows the install command + `.env` without
+  rotating), and **delete a project** (with all its data; the self-monitoring project is guarded).
+- **Collapsible sidebar**: an icon rail on large screens (persisted) and an off-canvas drawer on
+  small screens, plus full responsive layout (tables scroll horizontally on mobile).
+- **Getting started** moved into an always-available **“?” hint** in the sidebar.
+- **Login brute-force throttle** (password mode): blocks after repeated wrong passwords per IP.
+  Config: `WARDEN_LOGIN_MAX_ATTEMPTS` (default 5), `WARDEN_LOGIN_DECAY` (default 60s).
+
+### Changed
+
+- The dashboard is recolored to Beacon Blue + night surfaces and re-typed to Archivo / JetBrains
+  Mono. Mail capture now also records from / bcc / reply-to and the (size-capped) HTML & text
+  body; exception capture now records the HTTP route / method / path.
+- The stylesheet is compiled from a dev-only Tailwind config to `resources/dist/warden.css`; the
+  `warden-assets` tag now also publishes the self-hosted fonts and the logo marks.
+  **Upgrade:** republish once — `php artisan vendor:publish --tag=warden-assets --force`.
+
+### Fixed
+
+- The language switcher had no effect on the **login page** — its route lived behind the
+  `viewWarden` gate; it now lives in the unauthenticated login group.
+- The **Getting started** popover was clipped by the sidebar's scroll container.
+
+### Security
+
+- **Open redirect** in the locale switch: the `referer` is now honored only when it points back to
+  the same host, otherwise it falls back to the overview.
+
 ## [0.1.2] - 2026-06-10
 
 ### Added

@@ -29,6 +29,15 @@ class ProjectAdminTest extends TestCase
         $this->get(route('warden.admin.projects'))->assertOk()->assertSee('Demo');
     }
 
+    public function test_admin_pages_render(): void
+    {
+        $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't', 'secret' => 's', 'active' => true]);
+
+        $this->get(route('warden.admin.projects.edit', $project->id))->assertOk()->assertSee('Demo');
+        $this->get(route('warden.admin.maintenance'))->assertOk();
+        $this->get(route('warden.admin.settings'))->assertOk();
+    }
+
     public function test_store_creates_project_and_shows_install_command_once(): void
     {
         $this->post(route('warden.admin.projects.store'), ['name' => 'My App'])
@@ -51,6 +60,52 @@ class ProjectAdminTest extends TestCase
             ->assertRedirect(route('warden.admin.projects'));
 
         $this->assertNotSame('old-token', $project->fresh()->token);
+    }
+
+    public function test_credentials_can_be_recovered_without_rotating(): void
+    {
+        $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 'fixed-token', 'secret' => 'fixed-secret', 'active' => true]);
+
+        $this->followingRedirects()
+            ->post(route('warden.admin.projects.credentials', $project->id))
+            ->assertOk()
+            ->assertSee('WARDEN_TOKEN=fixed-token')
+            ->assertSee('WARDEN_SECRET=fixed-secret');
+
+        // Unchanged — recovery re-displays, it does not rotate.
+        $fresh = $project->fresh();
+        $this->assertSame('fixed-token', $fresh->token);
+        $this->assertSame('fixed-secret', $fresh->secret);
+    }
+
+    public function test_project_can_be_deleted_with_all_its_data(): void
+    {
+        $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't', 'secret' => 's', 'active' => true]);
+
+        DB::table('wdn_aggregates')->insert([
+            'project_id' => $project->id, 'type' => 'request', 'bucket' => '2026-01-01 00:00:00',
+            'key' => '/x', 'count' => 5, 'sum_duration' => 100, 'max_duration' => 50,
+            'meta' => '{}', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->post(route('warden.admin.projects.delete', $project->id))
+            ->assertRedirect(route('warden.admin.projects'))
+            ->assertSessionHas('warden_status');
+
+        $this->assertDatabaseMissing('wdn_projects', ['id' => $project->id]);
+        $this->assertSame(0, DB::table('wdn_aggregates')->where('project_id', $project->id)->count());
+    }
+
+    public function test_self_monitoring_project_cannot_be_deleted(): void
+    {
+        // config('warden.parent.self_project') defaults to "parent".
+        $project = Project::create(['name' => 'Parent', 'slug' => 'parent', 'token' => 't', 'secret' => 's', 'active' => true]);
+
+        $this->post(route('warden.admin.projects.delete', $project->id))
+            ->assertRedirect(route('warden.admin.projects'))
+            ->assertSessionHas('warden_error');
+
+        $this->assertDatabaseHas('wdn_projects', ['id' => $project->id]);
     }
 
     public function test_toggle_deactivates(): void

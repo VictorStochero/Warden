@@ -10,24 +10,24 @@
 @endphp
 
 @if(empty($h))
-    <div class="rounded-xl border border-dashed border-ink-700 bg-ink-900 p-12 text-center text-slate-500">
-        No host metrics in range. The host recorder samples <code class="text-brand-400">/proc</code> on Linux.
+    <div class="rounded-2xl border border-dashed border-ink-700/70 bg-ink-900 p-12 text-center text-slate-500">
+        {!! __('warden::project.host.empty') !!}
     </div>
 @else
-    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        @include('warden::partials.kpi', ['label' => 'CPU', 'value' => isset($h['cpu']) && $h['cpu'] !== null ? $h['cpu'].'%' : '—', 'tone' => $gauge($h['cpu'] ?? null)])
-        @include('warden::partials.kpi', ['label' => 'Memory', 'value' => isset($h['mem']) && $h['mem'] !== null ? $h['mem'].'%' : '—', 'tone' => $gauge($h['mem'] ?? null)])
-        @include('warden::partials.kpi', ['label' => 'Load (1m)', 'value' => $h['load'] ?? '—'])
-        @include('warden::partials.kpi', ['label' => 'Disk', 'value' => isset($h['disk']) && $h['disk'] !== null ? $h['disk'].'%' : '—', 'tone' => $gauge($h['disk'] ?? null)])
+    <div class="grid grid-cols-2 gap-5 lg:grid-cols-4">
+        @include('warden::partials.kpi', ['label' => __('warden::project.host.cpu'), 'value' => isset($h['cpu']) && $h['cpu'] !== null ? $h['cpu'].'%' : '—', 'tone' => $gauge($h['cpu'] ?? null)])
+        @include('warden::partials.kpi', ['label' => __('warden::project.host.memory'), 'value' => isset($h['mem']) && $h['mem'] !== null ? $h['mem'].'%' : '—', 'tone' => $gauge($h['mem'] ?? null)])
+        @include('warden::partials.kpi', ['label' => __('warden::project.host.load_1m'), 'value' => $h['load'] ?? '—'])
+        @include('warden::partials.kpi', ['label' => __('warden::project.host.disk'), 'value' => isset($h['disk']) && $h['disk'] !== null ? $h['disk'].'%' : '—', 'tone' => $gauge($h['disk'] ?? null)])
     </div>
 
-    <div class="mt-5 grid gap-4 sm:grid-cols-2">
-        <div class="rounded-xl border border-ink-700 bg-ink-850 p-4">
-            <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">CPU %</p>
+    <div class="mt-6 grid gap-5 sm:grid-cols-2">
+        <div class="rounded-xl bg-ink-850 ring-1 ring-inset ring-ink-700/50 p-4">
+            <p class="mb-3 text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.host.cpu_chart') }}</p>
             @include('warden::partials.chart', ['values' => $cpuSeries, 'color' => '#6366f1', 'height' => 64])
         </div>
-        <div class="rounded-xl border border-ink-700 bg-ink-850 p-4">
-            <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Memory %</p>
+        <div class="rounded-xl bg-ink-850 ring-1 ring-inset ring-ink-700/50 p-4">
+            <p class="mb-3 text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.host.memory_chart') }}</p>
             @include('warden::partials.chart', ['values' => $memSeries, 'color' => '#10b981', 'height' => 64])
         </div>
     </div>

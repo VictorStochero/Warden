@@ -232,6 +232,13 @@ return [
         // Auto-refresh interval for live pages, in seconds (0 disables).
         'refresh' => env('WARDEN_DASHBOARD_REFRESH', 15),
 
+        // Dashboard UI language. `locale` is the instance default used when the
+        // viewer has no `warden_locale` cookie and the browser's Accept-Language
+        // matches none of `locales`. `locales` is the allow-list offered in the
+        // sidebar switcher (single source of truth for middleware + route + UI).
+        'locale' => env('WARDEN_LOCALE', 'en'),
+        'locales' => ['en', 'pt_BR', 'es'],
+
         /*
         |----------------------------------------------------------------------
         | Access
@@ -272,6 +279,23 @@ return [
                 'trim',
                 explode(',', (string) env('WARDEN_DASHBOARD_ADMIN_EMAILS', ''))
             ))),
+
+            /*
+            |------------------------------------------------------------------
+            | Brute-force throttle (password mode)
+            |------------------------------------------------------------------
+            |
+            | Built-in, zero-dependency rate limiting for the login form: after
+            | `max_attempts` failed passwords from one IP within `decay` seconds,
+            | further attempts are blocked until the window expires. A successful
+            | login clears the counter. Only the "password" mode has its own form;
+            | email/gate modes delegate auth to the host app.
+            |
+            */
+            'throttle' => [
+                'max_attempts' => (int) env('WARDEN_LOGIN_MAX_ATTEMPTS', 5),
+                'decay' => (int) env('WARDEN_LOGIN_DECAY', 60),
+            ],
         ],
     ],
 

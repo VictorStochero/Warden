@@ -187,6 +187,23 @@ class ProjectManager
         return $deleted;
     }
 
+    /**
+     * Permanently remove a project and everything scoped to it — raw events,
+     * rollups, issues, incidents, heartbeats, cursors and tag links — then the
+     * project row itself. Shared groups are left untouched.
+     *
+     * @return array<string, int> rows deleted per metric table (project row excluded)
+     */
+    public function delete(Project $project): array
+    {
+        $deleted = $this->resetMetrics($project);
+
+        $project->tags()->detach();
+        $project->delete();
+
+        return $deleted;
+    }
+
     public function installCommand(
         string $slug,
         string $token,

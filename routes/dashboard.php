@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use VictorStochero\Warden\Http\Controllers\Dashboard\EventController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\IncidentController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\IssueController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\MaintenanceController;
@@ -25,6 +26,9 @@ Route::get('/projects/{project}/{section}', [ProjectController::class, 'show'])
 Route::get('/projects/{project}/issues/list', [IssueController::class, 'index'])->name('warden.issues');
 Route::get('/projects/{project}/issues/{issue}', [IssueController::class, 'show'])->name('warden.issue');
 
+Route::get('/projects/{project}/events/{event}', [EventController::class, 'show'])
+    ->whereNumber('event')->name('warden.event');
+
 Route::get('/projects/{project}/traces/list', [TraceController::class, 'index'])->name('warden.traces');
 Route::get('/projects/{project}/traces/{traceId}', [TraceController::class, 'show'])->name('warden.trace');
 
@@ -37,6 +41,8 @@ Route::middleware(Authorize::class.':manageWarden')->group(function () {
     Route::get('/admin/projects/{project}/edit', [ProjectAdminController::class, 'edit'])->name('warden.admin.projects.edit');
     Route::post('/admin/projects/{project}', [ProjectAdminController::class, 'update'])->name('warden.admin.projects.update');
     Route::post('/admin/projects/{project}/rotate', [ProjectAdminController::class, 'rotate'])->name('warden.admin.projects.rotate');
+    Route::post('/admin/projects/{project}/credentials', [ProjectAdminController::class, 'credentials'])->name('warden.admin.projects.credentials');
+    Route::post('/admin/projects/{project}/delete', [ProjectAdminController::class, 'destroy'])->name('warden.admin.projects.delete');
     Route::post('/admin/projects/{project}/toggle', [ProjectAdminController::class, 'toggle'])->name('warden.admin.projects.toggle');
     Route::post('/admin/projects/{project}/reset', [ProjectAdminController::class, 'reset'])->name('warden.admin.projects.reset');
     Route::post('/admin/projects/{project}/audit-now', [ProjectAdminController::class, 'auditNow'])->name('warden.admin.projects.audit-now');

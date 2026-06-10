@@ -33,12 +33,36 @@ class MailRecorder extends AbstractRecorder
 
             $this->record([
                 'subject' => $email?->getSubject(),
+                'from' => $this->addresses($email?->getFrom() ?? []),
                 'to' => $this->addresses($email?->getTo() ?? []),
                 'cc' => $this->addresses($email?->getCc() ?? []),
+                'bcc' => $this->addresses($email?->getBcc() ?? []),
+                'reply_to' => $this->addresses($email?->getReplyTo() ?? []),
                 'mailer' => Cast::str($event->data['mailer'] ?? null) ?: null,
+                'html' => $this->body($email?->getHtmlBody()),
+                'text' => $this->body($email?->getTextBody()),
                 'status' => 'sent',
             ], durationUs: $duration);
         });
+    }
+
+    /**
+     * The rendered body (HTML or text), size-capped so a large newsletter can't
+     * bloat the buffer/outbox. Symfony returns string|resource|null.
+     */
+    protected function body(mixed $body): ?string
+    {
+        if (is_resource($body)) {
+            $body = stream_get_contents($body) ?: null;
+        }
+
+        if (! is_string($body) || $body === '') {
+            return null;
+        }
+
+        $max = 65_536;
+
+        return mb_strlen($body) > $max ? mb_substr($body, 0, $max).'…' : $body;
     }
 
     /**

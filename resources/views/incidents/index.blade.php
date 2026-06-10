@@ -1,24 +1,25 @@
 @extends('warden::layout', ['active' => 'incidents', 'showRanges' => false])
 @php use VictorStochero\Warden\Dashboard\Format; @endphp
 
-@section('title', 'Incidents')
-@section('heading', $project->name . ' · Incidents')
+@section('title', __('warden::incidents.list.title'))
+@section('heading', $project->name . ' · ' . __('warden::incidents.list.heading'))
 
 @section('content')
     <p class="mb-5 text-sm text-slate-500">
-        Incidents open automatically from <span class="text-slate-300">issues</span> (unhandled exceptions)
-        and <span class="text-slate-300">heartbeats</span> (a scheduled task that stopped reporting). They
-        resolve on their own when the underlying cause clears.
+        {!! __('warden::incidents.list.description', [
+            'issues'     => '<span class="text-slate-300">' . __('warden::incidents.list.description_issues') . '</span>',
+            'heartbeats' => '<span class="text-slate-300">' . __('warden::incidents.list.description_heartbeats') . '</span>',
+        ]) !!}
     </p>
 
-    <div class="overflow-hidden rounded-xl border border-ink-700 bg-ink-850">
+    <div class="overflow-x-auto rounded-2xl border border-ink-700/70">
         @if($incidents->isEmpty())
-            <p class="px-4 py-16 text-center text-sm text-slate-600">No incidents 🎉</p>
+            <p class="px-4 py-10 text-center text-sm text-slate-600">{{ __('warden::incidents.list.empty') }}</p>
         @else
-            <table class="w-full text-sm">
-                <tbody>
+            <table class="min-w-full text-sm">
+                <tbody class="divide-y divide-ink-700/70">
                     @foreach($incidents as $inc)
-                        <tr class="border-t border-ink-700/70 first:border-0 hover:bg-ink-800">
+                        <tr class="transition hover:bg-ink-850/50">
                             <td class="py-3 pl-4 pr-2 align-top">
                                 <span class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider
                                     {{ $inc->severity === 'critical' ? 'bg-rose-500/10 text-rose-400' : 'bg-amber-500/10 text-amber-400' }}">

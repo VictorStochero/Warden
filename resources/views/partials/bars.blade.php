@@ -5,13 +5,13 @@
     $color = $color ?? '#6366f1';
 @endphp
 @if($n > 0)
-    <div class="flex items-end gap-[2px]" style="height: {{ $height ?? 56 }}px">
+    <div class="flex items-end gap-[2px] rounded-lg bg-ink-850 p-1" style="height: {{ $height ?? 56 }}px">
         @foreach($values as $v)
-            <div class="flex-1 rounded-sm transition-all"
+            <div class="flex-1 rounded-full transition-all"
                  style="height: {{ max(2, (((float) $v) / $max) * 100) }}%; background: {{ $color }}; opacity: {{ $v > 0 ? 0.85 : 0.18 }}"
                  title="{{ $v }}"></div>
         @endforeach
     </div>
 @else
-    <div class="flex items-center text-xs text-slate-600" style="height: {{ $height ?? 56 }}px">no data in range</div>
+    <div class="flex items-center rounded-lg bg-ink-850 px-3 text-xs text-slate-600" style="height: {{ $height ?? 56 }}px">{{ __('warden::project.chart.no_data') }}</div>
 @endif

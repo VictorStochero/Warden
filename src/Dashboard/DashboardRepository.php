@@ -423,12 +423,33 @@ class DashboardRepository
             ->where('type', $type)
             ->orderByDesc('id')
             ->limit($limit)
-            ->get(['trace_id', 'occurred_at', 'duration_us', 'payload'])
+            ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload'])
             ->map(function (\stdClass $e): \stdClass {
                 $e->payload = Json::decode($e->payload ?? null);
 
                 return $e;
             });
+    }
+
+    /**
+     * One raw event by id, scoped to the project, for the rich per-event detail
+     * view. A second deliberate raw wdn_events read (alongside trace()); returns
+     * the full row so the detail can surface every captured field.
+     */
+    public function event(int $projectId, int $eventId): ?\stdClass
+    {
+        $event = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('id', $eventId)
+            ->first(['id', 'trace_id', 'span_id', 'parent_span_id', 'type', 'occurred_at', 'duration_us', 'payload']);
+
+        if ($event === null) {
+            return null;
+        }
+
+        $event->payload = Json::decode($event->payload ?? null);
+
+        return $event;
     }
 
     /** @return Collection<int, \stdClass> */

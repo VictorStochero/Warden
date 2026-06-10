@@ -5,6 +5,7 @@ namespace VictorStochero\Warden\Http\Controllers\Auth;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View as ViewFactory;
 use VictorStochero\Warden\Dashboard\DashboardAuth;
 use VictorStochero\Warden\Support\Cast;
@@ -35,6 +36,18 @@ class DashboardLoginController
             return redirect()->route('warden.overview');
         }
 
+        $key = $this->throttleKey($request);
+        $maxAttempts = Cast::int($this->config('max_attempts'), 5);
+
+        // Brute-force guard: block once too many wrong passwords come from this
+        // IP inside the decay window. A successful login clears the counter.
+        if ($maxAttempts > 0 && RateLimiter::tooManyAttempts($key, $maxAttempts)) {
+            return redirect()->route('warden.login')->with(
+                'warden_error',
+                Cast::str(__('warden::auth.throttled', ['seconds' => RateLimiter::availableIn($key)]))
+            );
+        }
+
         $input = Cast::str($request->input('password'));
         $password = $this->auth->password();
         $adminPassword = $this->auth->adminPassword();
@@ -48,15 +61,31 @@ class DashboardLoginController
         }
 
         if (! $isViewer && ! $isAdmin) {
+            if ($maxAttempts > 0) {
+                RateLimiter::hit($key, Cast::int($this->config('decay'), 60));
+            }
+
             return redirect()->route('warden.login')
-                ->with('warden_error', 'Incorrect password.');
+                ->with('warden_error', Cast::str(__('warden::auth.incorrect')));
         }
+
+        RateLimiter::clear($key);
 
         $request->session()->regenerate();
         $request->session()->put('warden_auth', true);
         $request->session()->put('warden_auth_admin', $isAdmin);
 
         return redirect()->route('warden.overview');
+    }
+
+    protected function throttleKey(Request $request): string
+    {
+        return 'warden-login|'.Cast::str($request->ip(), 'unknown');
+    }
+
+    protected function config(string $key): mixed
+    {
+        return config("warden.dashboard.auth.throttle.{$key}");
     }
 
     public function logout(Request $request): RedirectResponse
