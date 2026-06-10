@@ -93,6 +93,25 @@ class DashboardTest extends TestCase
             ->assertSee('N+1');
     }
 
+    public function test_getting_started_shows_when_only_self_project_exists(): void
+    {
+        Project::create(['name' => 'My Parent', 'slug' => 'parent', 'token' => 't', 'secret' => 's', 'active' => true]);
+
+        $this->get(route('warden.overview'))
+            ->assertOk()
+            ->assertSee('Getting started');
+    }
+
+    public function test_getting_started_hidden_once_a_child_project_exists(): void
+    {
+        Project::create(['name' => 'My Parent', 'slug' => 'parent', 'token' => 't1', 'secret' => 's1', 'active' => true]);
+        Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't2', 'secret' => 's2', 'active' => true]);
+
+        $this->get(route('warden.overview'))
+            ->assertOk()
+            ->assertDontSee('Getting started');
+    }
+
     public function test_dashboard_is_gated(): void
     {
         Gate::define('viewWarden', fn ($u = null) => false);

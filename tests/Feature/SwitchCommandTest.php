@@ -26,6 +26,8 @@ class SwitchCommandTest extends TestCase
     protected function tearDown(): void
     {
         @unlink($this->envPath);
+        @unlink(public_path('vendor/warden/warden.css'));
+        @rmdir(public_path('vendor/warden'));
         parent::tearDown();
     }
 
@@ -49,6 +51,9 @@ class SwitchCommandTest extends TestCase
 
         // Parent self project ensured.
         $this->assertTrue(DB::table('wdn_projects')->where('slug', 'parent')->exists());
+
+        // The dashboard stylesheet is published for the parent.
+        $this->assertFileExists(public_path('vendor/warden/warden.css'));
     }
 
     public function test_switch_to_child_writes_credentials(): void
@@ -70,6 +75,9 @@ class SwitchCommandTest extends TestCase
         $this->assertStringContainsString('WARDEN_PARENT_URL=https://apm.example.com', $env);
         $this->assertStringContainsString('WARDEN_TOKEN=tok123', $env);
         $this->assertTrue(Schema::hasTable('wdn_events'));
+
+        // Switching to child removes the parent-only dashboard stylesheet.
+        $this->assertFileDoesNotExist(public_path('vendor/warden/warden.css'));
     }
 
     public function test_switching_to_the_current_mode_is_a_noop(): void

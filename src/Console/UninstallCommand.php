@@ -3,19 +3,22 @@
 namespace VictorStochero\Warden\Console;
 
 use Illuminate\Console\Command;
+use VictorStochero\Warden\Console\Concerns\ManagesWardenAssets;
 use VictorStochero\Warden\Console\Concerns\ManagesWardenSchema;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\EnvWriter;
 
 /**
  * Remove every trace Warden left in the host app: drop all wdn_ tables, strip
- * the WARDEN_* keys from the .env and delete the published config. The package
+ * the WARDEN_* keys from the .env, delete the published config and the published
+ * dashboard assets (public/vendor/warden). The package
  * itself stays in composer.json — `composer remove victorstochero/warden`
  * finishes the job. Published migration files are intentionally left in place:
  * deleting versioned files the host committed is more surprising than helpful.
  */
 class UninstallCommand extends Command
 {
+    use ManagesWardenAssets;
     use ManagesWardenSchema;
 
     protected $signature = 'warden:uninstall {--force : Skip the destructive-action confirmation}';
@@ -37,6 +40,7 @@ class UninstallCommand extends Command
         $this->components->task('Removed WARDEN_* keys from .env');
 
         $this->deletePublishedConfig();
+        $this->removeWardenAssets();
 
         $this->callSilently('config:clear');
         $this->callSilently('route:clear');

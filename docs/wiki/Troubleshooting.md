@@ -50,10 +50,23 @@ TLS-terminating proxy forwards plain HTTP — configure Laravel's trusted proxie
 
 ## The dashboard looks unstyled
 
-The dashboard ships a **prebuilt** Tailwind stylesheet (`resources/dist/warden.css`) served
-locally — there is no build step. If you forked the views and added new utility classes, add
-them to the supplemental block in `resources/views/vendor/warden/layout.blade.php` (or
-regenerate the bundle), since the prebuilt file only contains classes present when it was built.
+The dashboard ships a **prebuilt** Tailwind stylesheet (`resources/dist/warden.css`) — there is
+no build step. It is published to `public/vendor/warden/warden.css` and served as a **static
+file**, so the parent must have the asset published. `warden:install --parent` (and
+`warden:switch parent`) do this automatically; if you set the parent up another way, publish it
+manually:
+
+```bash
+php artisan vendor:publish --tag=warden-assets --force
+```
+
+A `404` on `/vendor/warden/warden.css` means it was never published (or `public/` is not the
+document root). The CSS is **no longer** served through a PHP route — that was intercepted and
+404'd by the common web-server rule matching the `.css` extension.
+
+If you forked the views and added new utility classes, add them to
+`resources/views/vendor/warden/partials/supplemental-css.blade.php`, since the prebuilt file only
+contains classes present when it was built.
 
 ## `warden:audit` reports a tool as "skipped"
 

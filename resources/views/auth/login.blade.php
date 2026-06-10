@@ -4,8 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sign in · Warden</title>
-    <link rel="stylesheet" href="{{ route('warden.css') }}">
-    <style>body{background:#080a0f}</style>
+    @include('warden::partials.stylesheet')
+    <style>
+        body{background:#080a0f}
+        @include('warden::partials.supplemental-css')
+    </style>
 </head>
 <body class="font-sans text-slate-300 antialiased">
 <div class="flex min-h-screen items-center justify-center px-6">

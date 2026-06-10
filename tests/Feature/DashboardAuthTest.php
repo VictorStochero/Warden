@@ -92,6 +92,34 @@ class DashboardAuthTest extends TestCase
         $this->assertTrue((bool) session('warden_auth_admin'));
     }
 
+    public function test_viewer_sees_read_only_banner_and_account_block(): void
+    {
+        $this->passwordEnv(function (): void {
+            $this->project();
+            $this->withSession(['warden_auth' => true]);
+
+            $this->get(route('warden.overview'))
+                ->assertOk()
+                ->assertSee('Read-only access')
+                ->assertSee('Signed in as Viewer')
+                ->assertSee('Sign out');
+        });
+    }
+
+    public function test_admin_sees_account_block_but_no_read_only_banner(): void
+    {
+        $this->passwordEnv(function (): void {
+            $this->project();
+            $this->withSession(['warden_auth' => true, 'warden_auth_admin' => true]);
+
+            $this->get(route('warden.overview'))
+                ->assertOk()
+                ->assertDontSee('Read-only access')
+                ->assertSee('Signed in as Admin')
+                ->assertSee('Sign out');
+        });
+    }
+
     public function test_protected_route_redirects_to_login_when_logged_out(): void
     {
         $this->passwordEnv(function (): void {

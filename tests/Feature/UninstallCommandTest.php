@@ -25,6 +25,8 @@ class UninstallCommandTest extends TestCase
     protected function tearDown(): void
     {
         @unlink($this->envPath);
+        @unlink(public_path('vendor/warden/warden.css'));
+        @rmdir(public_path('vendor/warden'));
         parent::tearDown();
     }
 
@@ -43,6 +45,18 @@ class UninstallCommandTest extends TestCase
         $env = (string) file_get_contents($this->envPath);
         $this->assertStringNotContainsString('WARDEN_', $env);
         $this->assertStringContainsString('APP_NAME=Demo', $env);
+    }
+
+    public function test_uninstall_removes_the_published_stylesheet(): void
+    {
+        $css = public_path('vendor/warden/warden.css');
+        @mkdir(dirname($css), 0777, true);
+        file_put_contents($css, '/* warden */');
+        $this->assertFileExists($css);
+
+        $this->artisan('warden:uninstall', ['--force' => true])->assertSuccessful();
+
+        $this->assertFileDoesNotExist($css);
     }
 
     public function test_declining_the_confirmation_aborts(): void

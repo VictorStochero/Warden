@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use VictorStochero\Warden\Models\Group;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Models\Tag;
+use VictorStochero\Warden\Support\Cast;
 
 /**
  * Shared project lifecycle used by both the CLI (warden:project) and the
@@ -57,12 +58,24 @@ class ProjectManager
         return Project::query()->firstOrCreate(
             ['slug' => $slug],
             [
-                'name' => $name ?? Str::headline($slug),
+                'name' => $name ?? $this->defaultSelfName($slug),
                 'token' => Str::random(40),
                 'secret' => Str::random(64),
                 'active' => true,
             ],
         );
+    }
+
+    /**
+     * Default display name for the self-monitoring project: the host app's name
+     * (APP_NAME), falling back to a headline of the slug when it is unset. Only
+     * applied at creation — an operator's later rename is never clobbered.
+     */
+    private function defaultSelfName(string $slug): string
+    {
+        $appName = trim(Cast::str(config('app.name')));
+
+        return $appName !== '' ? $appName : Str::headline($slug);
     }
 
     /** @return array{token: string, secret: string} */

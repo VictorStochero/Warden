@@ -30,6 +30,7 @@ class OverviewController
             'overview' => $repo->overview($filters),
             'activeGroup' => $group !== '' ? $group : null,
             'activeTag' => $tag !== '' ? $tag : null,
+            'selfSlug' => Cast::str(config('warden.parent.self_project', 'parent'), 'parent'),
         ]));
     }
 }

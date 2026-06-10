@@ -33,7 +33,7 @@
         <meta http-equiv="refresh" content="{{ $refresh }}">
     @endif
     <title>@yield('title', 'Warden') · Warden</title>
-    <link rel="stylesheet" href="{{ route('warden.css') }}">
+    @include('warden::partials.stylesheet')
     <style>
         ::-webkit-scrollbar{width:10px;height:10px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -41,38 +41,7 @@
         body{background:#080a0f}
         .glass{background:linear-gradient(180deg,rgba(22,27,39,.6),rgba(12,15,23,.6));backdrop-filter:blur(8px)}
 
-        /* Supplemental utilities not in the purged bundle. The dashboard ships a
-           prebuilt CSS (no build step), so classes added after that build live
-           here, mirroring Tailwind's standard output. */
-        .z-50{z-index:50}
-        .inset-0{inset:0}
-        .justify-center{justify-content:center}
-        .-mx-1{margin-left:-.25rem;margin-right:-.25rem}
-        .p-6{padding:1.5rem}
-        .w-5{width:1.25rem}.h-5{height:1.25rem}
-        .max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}
-        .max-h-40{max-height:10rem}
-        .overflow-auto{overflow:auto}
-        .whitespace-pre-wrap{white-space:pre-wrap}
-        .leading-relaxed{line-height:1.625}
-        .shadow-xl{box-shadow:0 20px 25px -5px rgba(0,0,0,.25),0 8px 10px -6px rgba(0,0,0,.25)}
-        .bg-black\/60{background-color:rgba(0,0,0,.6)}
-        .bg-emerald-500\/10{background-color:rgba(16,185,129,.1)}
-        .text-emerald-200{color:#a7f3d0}
-        .text-rose-200{color:#fecdd3}
-        .border-emerald-500{border-color:#10b981}
-        .border-emerald-700\/60{border-color:rgba(4,120,87,.6)}
-        .border-rose-700\/60{border-color:rgba(190,18,60,.6)}
-        .hover\:bg-rose-500\/10:hover{background-color:rgba(244,63,94,.1)}
-        .hover\:border-emerald-500:hover{border-color:#10b981}
-        .hover\:border-rose-500:hover{border-color:#f43f5e}
-        .hover\:border-slate-500:hover{border-color:#64748b}
-        .hover\:text-emerald-200:hover{color:#a7f3d0}
-        .hover\:text-rose-200:hover{color:#fecdd3}
-        .hover\:text-brand-300:hover{color:#a5b4fc}
-        .hover\:text-slate-300:hover{color:#cbd5e1}
-        @media (min-width:640px){.sm\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}
-        @media (min-width:1280px){.xl\:grid-cols-8{grid-template-columns:repeat(8,minmax(0,1fr))}}
+        @include('warden::partials.supplemental-css')
     </style>
 </head>
 <body class="font-sans text-slate-300 antialiased">
@@ -158,9 +127,24 @@
             @endforelse
         </nav>
 
-        <div class="border-t border-ink-700 px-5 py-3 text-[11px] text-slate-600">
-            Self-hosted · zero deps
-        </div>
+        @if(session('warden_auth'))
+            <div class="border-t border-ink-700 px-5 py-3">
+                <p class="text-[11px] text-slate-500">Signed in as {{ session('warden_auth_admin') ? 'Admin' : 'Viewer' }}</p>
+                <div class="mt-1.5 flex items-center gap-3 text-[11px]">
+                    @unless(session('warden_auth_admin'))
+                        <a href="{{ route('warden.login') }}" class="text-amber-300 transition hover:text-amber-200">Sign in as admin</a>
+                    @endunless
+                    <form method="POST" action="{{ route('warden.logout') }}">
+                        @csrf
+                        <button type="submit" class="text-slate-400 transition hover:text-white">Sign out</button>
+                    </form>
+                </div>
+            </div>
+        @else
+            <div class="border-t border-ink-700 px-5 py-3 text-[11px] text-slate-600">
+                Self-hosted · zero deps
+            </div>
+        @endif
     </aside>
 
     {{-- Main --}}
@@ -192,6 +176,15 @@
         </header>
 
         <main class="px-7 py-7">
+            @if(session('warden_auth') && ! session('warden_auth_admin'))
+                <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-700/50 bg-amber-900/20 px-4 py-2.5 text-sm text-amber-200">
+                    <span>Read-only access — sign in as admin to manage projects, alerts and maintenance.</span>
+                    <a href="{{ route('warden.login') }}"
+                       class="shrink-0 rounded-md border border-amber-600/60 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-600/20">
+                        Sign in as admin
+                    </a>
+                </div>
+            @endif
             @yield('content')
         </main>
     </div>

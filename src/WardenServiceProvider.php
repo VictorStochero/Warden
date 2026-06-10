@@ -36,7 +36,6 @@ use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Contracts\WardenRepository;
 use VictorStochero\Warden\Dashboard\DashboardAuth;
 use VictorStochero\Warden\Http\Controllers\Auth\DashboardLoginController;
-use VictorStochero\Warden\Http\Controllers\Dashboard\AssetController;
 use VictorStochero\Warden\Http\Middleware\Authorize;
 use VictorStochero\Warden\Http\Middleware\TraceRequests;
 use VictorStochero\Warden\Ingestion\DatabaseIngestor;
@@ -208,9 +207,6 @@ class WardenServiceProvider extends ServiceProvider
         }
 
         $prefix = Cast::str($this->config()->get('warden.parent.route_prefix'), 'warden');
-
-        // Register the CSS route outside the Authorize middleware to ensure it always loads.
-        Route::get($prefix.'/warden.css', [AssetController::class, 'css'])->name('warden.css');
 
         $this->registerDashboardGates();
         $this->registerLoginRoutes($prefix);
@@ -394,6 +390,14 @@ class WardenServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views' => $this->app->resourcePath('views/vendor/warden'),
         ], 'warden-views');
+
+        // The dashboard stylesheet is served as a real static file from public/
+        // so web servers hand it back directly — a PHP route ending in `.css` is
+        // intercepted by common static-file rules and 404s. Parent install /
+        // switch publish this; uninstall / switch-to-child remove it.
+        $this->publishes([
+            __DIR__.'/../resources/dist/warden.css' => $this->app->publicPath('vendor/warden/warden.css'),
+        ], 'warden-assets');
     }
 
     protected function config(): Repository

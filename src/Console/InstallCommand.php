@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Console;
 
 use Illuminate\Console\Command;
+use VictorStochero\Warden\Console\Concerns\ManagesWardenAssets;
 use VictorStochero\Warden\Projects\ProjectManager;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\EnvWriter;
@@ -11,6 +12,8 @@ use function Laravel\Prompts\select;
 
 class InstallCommand extends Command
 {
+    use ManagesWardenAssets;
+
     protected $signature = 'warden:install
         {--parent : Configure this app as the parent (collector + dashboard)}
         {--child : Configure this app as a child (observed app)}
@@ -49,6 +52,7 @@ class InstallCommand extends Command
         }
 
         if ($mode === 'parent') {
+            $this->publishWardenAssets();
             $this->ensureSelfProject();
         }
 

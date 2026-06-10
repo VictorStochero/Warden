@@ -42,6 +42,25 @@ class ProjectManagerTest extends TestCase
         $this->assertSame(40, strlen($rotated['token']));
     }
 
+    public function test_ensure_self_project_names_from_app_name(): void
+    {
+        config()->set('app.name', 'Acme APM');
+
+        $project = (new ProjectManager)->ensureSelfProject('parent');
+
+        $this->assertSame('Acme APM', $project->name);
+        $this->assertSame('parent', $project->slug);
+    }
+
+    public function test_ensure_self_project_falls_back_to_headline_when_app_name_blank(): void
+    {
+        config()->set('app.name', '');
+
+        $project = (new ProjectManager)->ensureSelfProject('parent');
+
+        $this->assertSame('Parent', $project->name);
+    }
+
     public function test_install_command_includes_flags(): void
     {
         $cmd = (new ProjectManager)->installCommand('my-app', 'tok', 'sec', 'https://apm.example.com', 'daemon');

@@ -6,6 +6,40 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-10
+
+### Added
+
+- **Onboarding for a fresh parent.** The overview shows a **Getting started** panel (with an
+  "Add a project" button for managers) while the only project is the parent's own self-monitor,
+  so a freshly installed parent is never a blank dashboard.
+- **Account block in the sidebar** (password auth): shows the current tier (Admin / Viewer), a
+  **Sign out** action and, for a viewer, a **Sign in as admin** link — previously there was no
+  visible way to log out or switch tier.
+- **Read-only banner** for a viewer-tier session, pointing to the admin login, so the missing
+  "Manage projects" option is explained instead of silently absent.
+
+### Changed
+
+- The self-monitoring project's name now defaults to the host app's **`APP_NAME`** (falling back
+  to a headline of the slug) instead of a fixed "Parent". Only applied when the project is first
+  created; an existing self-project is never renamed.
+- **The dashboard stylesheet is now served as a static file** from
+  `public/vendor/warden/warden.css` (published via the new `warden-assets` tag) rather than
+  through a PHP route ending in `.css`. That route was intercepted and `404`'d by the common
+  web-server rule matching the `.css` extension, leaving the dashboard unstyled on some parents.
+  `warden:install --parent` and `warden:switch parent` publish it automatically;
+  `warden:uninstall` and `warden:switch child` remove it.
+  **Upgrade:** existing parents must publish the asset once —
+  `php artisan vendor:publish --tag=warden-assets --force`.
+
+### Fixed
+
+- The login page rendered full-width on large screens: the supplemental CSS that backfills purged
+  utility classes lived only in the dashboard layout, not the standalone login view. It now lives
+  in a shared `partials/supplemental-css` include used by both, so the login card is centred and
+  width-capped.
+
 ## [0.1.1] - 2026-06-10
 
 ### Added
@@ -108,6 +142,7 @@ Laravel events and ships batches to the parent).
 - CI matrix (Laravel 12/13, multiple databases), MIT license, packaging files, PHPUnit
   suite and PHPStan configuration.
 
-[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/VictorStochero/Warden/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/VictorStochero/Warden/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/VictorStochero/Warden/releases/tag/v0.1.0

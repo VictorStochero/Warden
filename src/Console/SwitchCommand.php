@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Console;
 
 use Illuminate\Console\Command;
+use VictorStochero\Warden\Console\Concerns\ManagesWardenAssets;
 use VictorStochero\Warden\Console\Concerns\ManagesWardenSchema;
 use VictorStochero\Warden\Projects\ProjectManager;
 use VictorStochero\Warden\Support\Cast;
@@ -16,6 +17,7 @@ use VictorStochero\Warden\Support\EnvWriter;
  */
 class SwitchCommand extends Command
 {
+    use ManagesWardenAssets;
     use ManagesWardenSchema;
 
     protected $signature = 'warden:switch
@@ -70,7 +72,10 @@ class SwitchCommand extends Command
         $this->components->task('Cleared config + route cache');
 
         if ($target === 'parent') {
+            $this->publishWardenAssets();
             $this->ensureSelfProject();
+        } else {
+            $this->removeWardenAssets();
         }
 
         $this->printNextSteps($target);
