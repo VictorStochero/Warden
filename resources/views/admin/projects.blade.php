@@ -5,7 +5,7 @@
 @section('subheading', __('warden::admin.projects.subheading'))
 
 @section('content')
-    @php $tzGroups = collect(\DateTimeZone::listIdentifiers())->groupBy(fn ($z) => str_contains($z, '/') ? explode('/', $z, 2)[0] : 'Other'); @endphp
+    @php $timezones = \DateTimeZone::listIdentifiers(); @endphp
     @if(session('warden_status'))
         <div class="mb-5 rounded-lg border border-emerald-700/50 bg-emerald-900/20 px-4 py-3 text-sm text-emerald-300">
             {{ session('warden_status') }}
@@ -34,11 +34,10 @@
     @endif
 
     <div class="mb-6 flex justify-end">
-        <button type="button" data-modal-open="wdn-add-project"
-            class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-500">
+        <x-warden::button type="button" data-modal-open="wdn-add-project">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/></svg>
             {{ __('warden::admin.projects.add_project') }}
-        </button>
+        </x-warden::button>
     </div>
 
     <div class="overflow-x-auto rounded-2xl border border-ink-700/70">
@@ -85,66 +84,71 @@
                                     </span>
                                     <form method="POST" action="{{ route('warden.admin.projects.audit-now', $project->id) }}">
                                         @csrf
-                                        <button class="rounded-md border border-ink-600 px-2 py-1 text-[11px] text-slate-300 transition hover:border-brand-500 hover:text-white">{{ __('warden::admin.projects.run_now') }}</button>
+                                        <x-warden::button type="submit" variant="secondary" size="sm">{{ __('warden::admin.projects.run_now') }}</x-warden::button>
                                     </form>
                                 </div>
                                 <form method="POST" action="{{ route('warden.admin.projects.timezone', $project->id) }}" class="flex items-center gap-1.5">
                                     @csrf
                                     <span class="w-12 text-[10px] uppercase tracking-wider text-slate-600">{{ __('warden::admin.projects.label_tz') }}</span>
-                                    <select name="timezone" onchange="this.form.submit()"
-                                        class="rounded-md border-ink-600 bg-ink-900 text-xs text-slate-300 focus:border-brand-500 focus:ring-brand-500">
-                                        <option value="" @selected(($project->timezone ?? '') === '')>{{ __('warden::admin.projects.parent_default') }}</option>
-                                        @foreach($tzGroups as $region => $zones)
-                                            <optgroup label="{{ $region }}">
-                                                @foreach($zones as $z)
-                                                    <option value="{{ $z }}" @selected((string) ($project->timezone ?? '') === $z)>{{ $z }}</option>
-                                                @endforeach
-                                            </optgroup>
-                                        @endforeach
-                                    </select>
+                                    {{-- Searchable select (zero-dep combobox) — same look as the form selects. --}}
+                                    <div class="relative w-48" data-tz>
+                                        <input type="hidden" name="timezone" value="{{ $project->timezone }}" data-tz-value>
+                                        <button type="button" data-tz-trigger
+                                            class="flex w-full items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-850 px-3 py-1.5 text-left font-mono text-xs text-slate-200 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            <span class="truncate {{ $project->timezone ? '' : 'font-sans text-slate-500' }}" data-tz-label>{{ $project->timezone ?: __('warden::admin.projects.parent_default') }}</span>
+                                            <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+                                        </button>
+                                        <div data-tz-panel class="fixed z-50 hidden w-64 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 shadow-2xl shadow-black/50">
+                                            <div class="border-b border-ink-700/70 p-2">
+                                                <input type="text" data-tz-search autocomplete="off" placeholder="{{ __('warden::admin.projects.tz_search') }}"
+                                                    class="w-full rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-xs text-white outline-none transition placeholder:text-slate-600 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                                            </div>
+                                            <ul data-tz-list class="max-h-56 overflow-auto p-1 font-mono text-xs"></ul>
+                                        </div>
+                                    </div>
                                 </form>
                             </div>
                         </td>
                         <td class="px-4 py-3">
-                            <div class="flex justify-end gap-2">
-                                <a href="{{ route('warden.admin.projects.edit', $project->id) }}"
-                                    class="rounded-md border border-ink-600 px-2.5 py-1 text-xs text-slate-300 transition hover:border-brand-500 hover:text-white">
+                            <div class="flex items-center justify-end gap-2">
+                                <x-warden::button :href="route('warden.admin.projects.edit', $project->id)" variant="secondary" size="sm">
                                     {{ __('warden::admin.projects.btn_edit') }}
-                                </a>
-                                <form method="POST" action="{{ route('warden.admin.projects.credentials', $project->id) }}">
-                                    @csrf
-                                    <button class="rounded-md border border-ink-600 px-2.5 py-1 text-xs text-slate-300 transition hover:border-brand-500 hover:text-white">
-                                        {{ __('warden::admin.projects.btn_credentials') }}
+                                </x-warden::button>
+
+                                {{-- Overflow menu (kebab) — secondary & destructive actions. --}}
+                                <div class="relative" data-menu>
+                                    <button type="button" data-menu-trigger aria-label="{{ __('warden::admin.projects.col_actions') }}"
+                                        class="flex h-7 w-7 items-center justify-center rounded-lg border border-ink-700 text-slate-400 transition hover:border-brand-500 hover:text-white">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
                                     </button>
-                                </form>
-                                <form method="POST" action="{{ route('warden.admin.projects.rotate', $project->id) }}"
-                                    data-confirm="{{ __('warden::admin.projects.confirm_rotate', ['name' => $project->name]) }}">
-                                    @csrf
-                                    <button class="rounded-md border border-ink-600 px-2.5 py-1 text-xs text-slate-300 transition hover:border-brand-500 hover:text-white">
-                                        {{ __('warden::admin.projects.btn_rotate') }}
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('warden.admin.projects.toggle', $project->id) }}"
-                                    data-confirm="{{ $project->active ? __('warden::admin.projects.confirm_deactivate', ['name' => $project->name]) : __('warden::admin.projects.confirm_activate', ['name' => $project->name]) }}">
-                                    @csrf
-                                    <button class="rounded-md border border-ink-600 px-2.5 py-1 text-xs text-slate-300 transition hover:border-brand-500 hover:text-white">
-                                        {{ $project->active ? __('warden::admin.projects.btn_deactivate') : __('warden::admin.projects.btn_activate') }}
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('warden.admin.projects.reset', $project->id) }}"
-                                    data-confirm="{{ __('warden::admin.projects.confirm_reset', ['name' => $project->name]) }}">
-                                    @csrf
-                                    <button class="rounded-md border border-rose-700/60 px-2.5 py-1 text-xs text-rose-300 transition hover:border-rose-500 hover:text-rose-200">
-                                        {{ __('warden::admin.projects.btn_reset_metrics') }}
-                                    </button>
-                                </form>
-                                <form method="POST" action="{{ route('warden.admin.projects.delete', $project->id) }}"
-                                    data-confirm="{{ __('warden::admin.projects.confirm_delete', ['name' => $project->name]) }}">
-                                    @csrf
-                                    <button class="rounded-md border border-rose-700/60 bg-rose-600/10 px-2.5 py-1 text-xs text-rose-300 transition hover:border-rose-500 hover:bg-rose-600/20 hover:text-rose-200">
-                                        {{ __('warden::admin.projects.btn_delete') }}
-                                    </button>
-                                </form>
+                                    <div data-menu-panel class="fixed z-50 hidden w-52 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 py-1 shadow-2xl shadow-black/50">
+                                        <form method="POST" action="{{ route('warden.admin.projects.credentials', $project->id) }}">
+                                            @csrf
+                                            <button class="block w-full px-3 py-2 text-left text-xs text-slate-300 transition hover:bg-ink-800 hover:text-white">{{ __('warden::admin.projects.btn_credentials') }}</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('warden.admin.projects.rotate', $project->id) }}"
+                                            data-confirm="{{ __('warden::admin.projects.confirm_rotate', ['name' => $project->name]) }}">
+                                            @csrf
+                                            <button class="block w-full px-3 py-2 text-left text-xs text-slate-300 transition hover:bg-ink-800 hover:text-white">{{ __('warden::admin.projects.btn_rotate') }}</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('warden.admin.projects.toggle', $project->id) }}"
+                                            data-confirm="{{ $project->active ? __('warden::admin.projects.confirm_deactivate', ['name' => $project->name]) : __('warden::admin.projects.confirm_activate', ['name' => $project->name]) }}">
+                                            @csrf
+                                            <button class="block w-full px-3 py-2 text-left text-xs text-slate-300 transition hover:bg-ink-800 hover:text-white">{{ $project->active ? __('warden::admin.projects.btn_deactivate') : __('warden::admin.projects.btn_activate') }}</button>
+                                        </form>
+                                        <div class="my-1 border-t border-ink-700/60"></div>
+                                        <form method="POST" action="{{ route('warden.admin.projects.reset', $project->id) }}"
+                                            data-confirm="{{ __('warden::admin.projects.confirm_reset', ['name' => $project->name]) }}">
+                                            @csrf
+                                            <button class="block w-full px-3 py-2 text-left text-xs text-rose-400 transition hover:bg-rose-500/10">{{ __('warden::admin.projects.btn_reset_metrics') }}</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('warden.admin.projects.delete', $project->id) }}"
+                                            data-confirm="{{ __('warden::admin.projects.confirm_delete', ['name' => $project->name]) }}">
+                                            @csrf
+                                            <button class="block w-full px-3 py-2 text-left text-xs text-rose-400 transition hover:bg-rose-500/10">{{ __('warden::admin.projects.btn_delete') }}</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -167,33 +171,119 @@
             </div>
             <form method="POST" action="{{ route('warden.admin.projects.store') }}" class="space-y-4">
                 @csrf
-                <div>
-                    <label class="block text-xs text-slate-500">{{ __('warden::admin.projects.modal_name_label') }}</label>
-                    <input name="name" required autofocus
-                        class="mt-1 w-full rounded-lg border-ink-600 bg-ink-900 text-sm text-white focus:border-brand-500 focus:ring-brand-500"
-                        placeholder="{{ __('warden::admin.projects.modal_name_placeholder') }}">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-500">{{ __('warden::admin.projects.modal_slug_label') }}</label>
-                    <input name="slug"
-                        class="mt-1 w-full rounded-lg border-ink-600 bg-ink-900 text-sm text-white focus:border-brand-500 focus:ring-brand-500"
-                        placeholder="my-app">
-                </div>
+                <x-warden::field :label="__('warden::admin.projects.modal_name_label')">
+                    <x-warden::input name="name" required autofocus placeholder="{{ __('warden::admin.projects.modal_name_placeholder') }}" />
+                </x-warden::field>
+                <x-warden::field :label="__('warden::admin.projects.modal_slug_label')">
+                    <x-warden::input name="slug" placeholder="my-app" />
+                </x-warden::field>
                 <div class="flex justify-end gap-2 pt-1">
-                    <button type="button" data-modal-close="wdn-add-project"
-                        class="rounded-lg border border-ink-600 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white">
+                    <x-warden::button type="button" variant="ghost" data-modal-close="wdn-add-project">
                         {{ __('warden::common.cancel') }}
-                    </button>
-                    <button type="submit"
-                        class="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-brand-500">
+                    </x-warden::button>
+                    <x-warden::button type="submit">
                         {{ __('warden::admin.projects.modal_create_btn') }}
-                    </button>
+                    </x-warden::button>
                 </div>
             </form>
         </div>
     </div>
 
     @include('warden::partials.confirm-modal')
+
+    {{-- Searchable timezone select — shared list + behaviour (zero-dep). --}}
+    <script>
+    window.__wdnTz = @json($timezones);
+    window.__wdnTzDefault = @json(__('warden::admin.projects.parent_default'));
+    (function () {
+        var list = window.__wdnTz || [];
+        var def = window.__wdnTzDefault || '';
+        document.querySelectorAll('[data-tz]').forEach(function (root) {
+            var trigger = root.querySelector('[data-tz-trigger]');
+            var panel = root.querySelector('[data-tz-panel]');
+            var search = root.querySelector('[data-tz-search]');
+            var ul = root.querySelector('[data-tz-list]');
+            var hidden = root.querySelector('[data-tz-value]');
+            var label = root.querySelector('[data-tz-label]');
+            var form = root.closest('form');
+
+            function choose(value, text) {
+                hidden.value = value;
+                label.textContent = text || def;
+                label.className = 'truncate' + (value ? '' : ' font-sans text-slate-500');
+                close();
+                if (form) { form.submit(); }
+            }
+            function render(q) {
+                q = (q || '').toLowerCase();
+                var items = [{ v: '', l: def }];
+                for (var i = 0; i < list.length; i++) { items.push({ v: list[i], l: list[i] }); }
+                if (q) { items = items.filter(function (it) { return it.l.toLowerCase().indexOf(q) > -1; }); }
+                ul.innerHTML = '';
+                items.slice(0, 250).forEach(function (it) {
+                    var b = document.createElement('button');
+                    b.type = 'button';
+                    b.textContent = it.l;
+                    b.className = 'block w-full truncate rounded-md px-2.5 py-1.5 text-left transition hover:bg-ink-800 ' + (it.v === hidden.value ? 'text-brand-400' : 'text-slate-300');
+                    b.addEventListener('click', function () { choose(it.v, it.l); });
+                    var li = document.createElement('li');
+                    li.appendChild(b);
+                    ul.appendChild(li);
+                });
+            }
+            function open() {
+                panel.classList.remove('hidden');
+                var r = trigger.getBoundingClientRect();
+                var w = panel.offsetWidth;
+                panel.style.top = (r.bottom + 6) + 'px';
+                panel.style.left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8) + 'px';
+                search.value = '';
+                render('');
+                search.focus();
+            }
+            function close() { panel.classList.add('hidden'); }
+
+            trigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                panel.classList.contains('hidden') ? open() : close();
+            });
+            search.addEventListener('input', function () { render(search.value); });
+            panel.addEventListener('click', function (e) { e.stopPropagation(); });
+            document.addEventListener('click', close);
+            document.addEventListener('scroll', close, true);
+            window.addEventListener('resize', close);
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { close(); } });
+        });
+    })();
+
+    // Kebab overflow menus on the project rows. The panel is position:fixed and
+    // placed by JS so the table's overflow never clips it.
+    (function () {
+        var open = null;
+        function closeAll() { if (open) { open.classList.add('hidden'); open = null; } }
+        document.querySelectorAll('[data-menu]').forEach(function (root) {
+            var trigger = root.querySelector('[data-menu-trigger]');
+            var panel = root.querySelector('[data-menu-panel]');
+            trigger.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var wasOpen = open === panel;
+                closeAll();
+                if (!wasOpen) {
+                    panel.classList.remove('hidden');
+                    var r = trigger.getBoundingClientRect();
+                    panel.style.top = (r.bottom + 6) + 'px';
+                    panel.style.left = Math.max(8, r.right - panel.offsetWidth) + 'px';
+                    open = panel;
+                }
+            });
+            panel.addEventListener('click', function (e) { e.stopPropagation(); });
+        });
+        document.addEventListener('click', closeAll);
+        window.addEventListener('resize', closeAll);
+        document.addEventListener('scroll', closeAll, true);
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeAll(); } });
+    })();
+    </script>
 
     <script>
     (function () {

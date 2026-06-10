@@ -57,11 +57,10 @@
                                    class="w-full rounded-xl border border-ink-700 bg-ink-850 py-2.5 pl-10 pr-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
                         </div>
                     </div>
-                    <button type="submit"
-                            class="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/25 transition hover:bg-brand-500 hover:shadow-brand-500/30">
+                    <x-warden::button type="submit" class="w-full">
                         {{ __('warden::auth.submit') }}
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-                    </button>
+                    </x-warden::button>
                 </form>
             </div>
 

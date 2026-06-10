@@ -6,6 +6,26 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-10
+
+### Added
+
+- **Standardized form components** — `<x-warden::input>`, `select`, `textarea`, `checkbox`,
+  `field` and a `<x-warden::button>` that implements the Design System button (primary with the
+  beacon glow, secondary, ghost, danger; sizes sm/md/lg). Buttons across the dashboard now share
+  one model instead of a handful of bespoke styles.
+- **Searchable timezone select** — a zero-dependency combobox (a styled trigger that matches the
+  other selects, opening a panel with an in-dropdown search box and a filtered list) replaces the
+  ~400-option native `<select>`.
+- **Overflow menu** (kebab “⋮”) on the project rows — `Edit` stays inline; credentials, rotate,
+  activate/deactivate, reset and delete move into the menu.
+
+### Fixed
+
+- The timezone search panel and the row overflow menu were clipped by the projects table's
+  horizontal scroll container; both are now `position: fixed` and placed by script, so they float
+  above the table.
+
 ## [0.2.0] - 2026-06-10
 
 ### Added

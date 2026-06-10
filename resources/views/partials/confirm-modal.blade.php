@@ -10,14 +10,12 @@
             <p id="obs-confirm-msg" class="pt-1 text-sm leading-relaxed text-slate-200">{{ __('warden::admin.confirm_modal.default_message') }}</p>
         </div>
         <div class="mt-6 flex justify-end gap-2">
-            <button type="button" data-confirm-cancel
-                class="rounded-lg border border-ink-600 px-3 py-1.5 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white">
+            <x-warden::button type="button" variant="ghost" data-confirm-cancel>
                 {{ __('warden::admin.confirm_modal.cancel') }}
-            </button>
-            <button type="button" data-confirm-ok
-                class="rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-rose-500">
+            </x-warden::button>
+            <x-warden::button type="button" variant="danger" data-confirm-ok>
                 {{ __('warden::admin.confirm_modal.confirm') }}
-            </button>
+            </x-warden::button>
         </div>
     </div>
 </div>

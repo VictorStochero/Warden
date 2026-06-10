@@ -37,9 +37,9 @@
                     <form method="POST" action="{{ route('warden.incident.resolve', [$project->slug, $incident->id]) }}"
                         data-confirm="{{ __('warden::incidents.show.resolve_confirm') }}">
                         @csrf
-                        <button class="shrink-0 rounded-xl border border-emerald-700/60 px-3 py-1.5 text-sm text-emerald-300 transition hover:border-emerald-500 hover:text-emerald-200">
+                        <x-warden::button type="submit" variant="secondary" size="sm" class="shrink-0">
                             {{ __('warden::incidents.show.resolve_button') }}
-                        </button>
+                        </x-warden::button>
                     </form>
                 @endif
             @endcan

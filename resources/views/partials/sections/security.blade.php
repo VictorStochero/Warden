@@ -18,7 +18,7 @@
     <div class="mb-4 flex justify-end">
         <form method="POST" action="{{ route('warden.admin.projects.audit-now', $project->id) }}">
             @csrf
-            <button class="rounded-lg border border-ink-600 px-3 py-1.5 text-sm text-slate-300 transition hover:border-brand-500 hover:text-white">{{ __('warden::project.security.run_audit_btn') }}</button>
+            <x-warden::button type="submit" variant="secondary" size="sm">{{ __('warden::project.security.run_audit_btn') }}</x-warden::button>
         </form>
     </div>
 @endcan

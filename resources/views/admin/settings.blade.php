@@ -60,12 +60,11 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            <button type="submit"
-                class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-500">
+        <div class="flex items-center gap-2">
+            <x-warden::button type="submit">
                 {{ __('warden::admin.settings.save_btn') }}
-            </button>
-            <a href="{{ route('warden.overview') }}" class="text-sm text-slate-400 transition hover:text-white">{{ __('warden::common.cancel') }}</a>
+            </x-warden::button>
+            <x-warden::button :href="route('warden.overview')" variant="ghost">{{ __('warden::common.cancel') }}</x-warden::button>
         </div>
     </form>
 @endsection

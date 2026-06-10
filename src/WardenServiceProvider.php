@@ -12,6 +12,7 @@ use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Contracts\Redis\Factory as RedisFactory;
 use Illuminate\Database\Connection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
@@ -90,6 +91,9 @@ class WardenServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'warden');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'warden');
+
+        // Standardized form primitives: <x-warden::input>, <x-warden::select>, etc.
+        Blade::anonymousComponentNamespace('components', 'warden');
         $this->registerCommands();
         $this->registerRateLimiter();
 

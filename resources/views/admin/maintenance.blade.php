@@ -57,10 +57,9 @@
                     @if($command === 'prune') data-confirm="{{ __('warden::admin.maintenance.confirm_prune') }}" @endif>
                     @csrf
                     <input type="hidden" name="command" value="{{ $command }}">
-                    <button type="submit"
-                        class="rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-500">
+                    <x-warden::button type="submit" variant="secondary" size="sm">
                         {{ __('warden::admin.maintenance.run_now') }}
-                    </button>
+                    </x-warden::button>
                 </form>
             </div>
         @endforeach

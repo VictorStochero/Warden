@@ -6,9 +6,8 @@
     <li><span class="mr-2 text-brand-400">3.</span>{!! __('warden::common.getting_started.step3', ['ship' => '<code class="text-brand-400">warden:ship</code>']) !!}</li>
 </ol>
 @can('manageWarden')
-    <a href="{{ route('warden.admin.projects') }}"
-       class="mt-5 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-500">
+    <x-warden::button :href="route('warden.admin.projects')" class="mt-5">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/></svg>
         {{ __('warden::common.getting_started.cta') }}
-    </a>
+    </x-warden::button>
 @endcan
