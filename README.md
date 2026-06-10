@@ -161,11 +161,93 @@ WARDEN_DELIVERY=scheduler        # scheduler (cron) or daemon (supervised warden
 Disable a noisy recorder entirely, or sample a category, in `config/warden.php`
 (`child.recorders` and `child.sample.type_gate`).
 
+## Environment variables
+
+`warden:install` / `warden:switch` write the **required** keys for you; the rest are optional
+overrides with sane defaults. This is the practical surface per role — see
+[`config/warden.php`](config/warden.php) for the exhaustive list and inline docs.
+
+### Shared (both roles)
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `WARDEN_MODE` | **yes** | `child` | `parent` or `child` — the one flag that decides the role |
+| `WARDEN_CONNECTION` | no | _(default)_ | Dedicated DB connection name for the `wdn_` tables (must point at the same database) |
+
+### Parent (collector + dashboard)
+
+A parent needs **only** `WARDEN_MODE=parent` to ingest and self-monitor. To reach the dashboard
+outside `local`, you must also pick an auth mode (it locks to `local` until you do):
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `WARDEN_MODE=parent` | **yes** | — | Run as the parent |
+| `WARDEN_DASHBOARD_AUTH` | for remote access | _(unset → `local`-only)_ | `password`, `email` or `gate` |
+| `WARDEN_DASHBOARD_PASSWORD` | `password` mode | — | Grants **view** access (built-in login) |
+| `WARDEN_DASHBOARD_ADMIN_PASSWORD` | no | — | Grants **manage** rights; if unset any login is admin |
+| `WARDEN_DASHBOARD_EMAILS` / `WARDEN_DASHBOARD_ADMIN_EMAILS` | `email` mode | — | Comma-separated allowlists of host-user e-mails |
+
+Common parent overrides (all optional): `WARDEN_ROUTE_PREFIX` (`warden`), `WARDEN_SELF_MONITOR`
+(`true`), `WARDEN_PARENT_SCHEDULE` (`true`), `WARDEN_REQUIRE_HTTPS` (`false`),
+`WARDEN_RAW_RETENTION_DAYS` (`7`), `WARDEN_AGG_RETENTION_DAYS` (`90`), `WARDEN_PARTITIONING`
+(`true`), `WARDEN_SLOW_REQUEST_MS` (`1000`), `WARDEN_SLOW_QUERY_MS` (`100`),
+`WARDEN_INGEST_RATE_LIMIT` (`300,1`), `WARDEN_MAX_BODY_BYTES` (`1048576`), `WARDEN_MAX_EVENTS`
+(`5000`), `WARDEN_ALERT_EMAILS`, `WARDEN_ALERT_COOLDOWN` (`300`).
+
+### Child (observed app)
+
+The four credentials are required for the child to ship anything (an unconfigured child stays
+fully inert — it never errors):
+
+| Variable | Required | Default | What it does |
+|---|---|---|---|
+| `WARDEN_MODE=child` | **yes** | `child` | Run as a child |
+| `WARDEN_PARENT_URL` | **yes** | — | Base URL of the parent (HTTPS) |
+| `WARDEN_PROJECT` | **yes** | — | Project slug minted on the parent |
+| `WARDEN_TOKEN` | **yes** | — | Per-project ingest token |
+| `WARDEN_SECRET` | **yes** | — | Per-project HMAC signing secret |
+| `WARDEN_DELIVERY` | no | `scheduler` | `scheduler` (cron) or `daemon` (supervised `warden:ship`) |
+
+Common child overrides (all optional): `WARDEN_CHILD_SCHEDULE` (`true`), `WARDEN_OUTBOX`
+(`database`/`redis`), `WARDEN_OUTBOX_HIGH_WATER` (`10000`), `WARDEN_OUTBOX_LOW_WATER` (`8000`),
+`WARDEN_SAMPLE_REQUEST` (`1.0`), `WARDEN_SAMPLE_JOB` (`1.0`), `WARDEN_ALWAYS_KEEP_MS` (`1000`),
+`WARDEN_HOST_INTERVAL` (`15`), `WARDEN_AUDIT_SCHEDULE` (`false`), `WARDEN_AUDIT_CRON`
+(`0 3 * * *`).
+
+## Switching modes & uninstalling
+
+Installed the wrong role, or want to tear Warden down? Two commands handle it without
+hand-editing files. **Both are destructive to the `wdn_` tables and prompt for confirmation
+unless you pass `--force`** (use `--force` in deploy scripts / non-interactive shells).
+
+**Switch an installed app between parent and child** — rewrites `WARDEN_MODE` (and, for a child,
+the credentials), drops the `wdn_` tables, rebuilds the schema from scratch and clears the
+config + route cache so the new mode takes effect immediately:
+
+```bash
+php artisan warden:switch parent          # become the collector + dashboard
+php artisan warden:switch child --parent-url=https://apm.example.com --token=… --secret=…
+```
+
+> A blank `/warden` (404) right after editing `WARDEN_MODE=parent` by hand almost always means
+> the **config cache** is stale — `warden:switch` clears it for you, or run
+> `php artisan config:clear` yourself.
+
+**Uninstall completely** — drops every `wdn_` table, strips all `WARDEN_*` keys from the `.env`
+and deletes the published `config/warden.php` (published migration files are left in place):
+
+```bash
+php artisan warden:uninstall
+composer remove victorstochero/warden    # then drop the package itself
+```
+
 ## Commands
 
 | Command | Mode | What it does |
 |---|---|---|
 | `warden:install --parent\|--child` | both | Write `.env`, publish config + migrations, migrate |
+| `warden:switch parent\|child` | both | Switch an installed app between modes, rebuilding the `wdn_` schema from scratch (`--force` to skip the prompt) |
+| `warden:uninstall` | both | Drop all `wdn_` tables, strip `WARDEN_*` from `.env` and delete the published config (`--force` to skip the prompt) |
 | `warden:project {name}` | parent | Create a project (mints token + secret); `--list` to list |
 | `warden:ship` | child | Drain the outbox and ship batches (daemon; `--once` for the scheduler) |
 | `warden:aggregate` | parent | Roll raw events into aggregates + group exceptions into issues |

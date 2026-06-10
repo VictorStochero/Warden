@@ -23,6 +23,29 @@ class EnvWriter
         file_put_contents($this->path, $contents);
     }
 
+    /**
+     * Remove the given keys from the .env, preserving every other line. Used by
+     * warden:uninstall to leave no WARDEN_* trace behind. A no-op for keys (or a
+     * file) that are not present.
+     *
+     * @param  list<string>  $keys
+     */
+    public function forget(array $keys): void
+    {
+        if (! is_file($this->path)) {
+            return;
+        }
+
+        $contents = (string) file_get_contents($this->path);
+
+        foreach ($keys as $key) {
+            $pattern = '/^'.preg_quote($key, '/').'=.*$\R?/m';
+            $contents = (string) preg_replace($pattern, '', $contents);
+        }
+
+        file_put_contents($this->path, $contents);
+    }
+
     private function setKey(string $contents, string $key, string $value): string
     {
         $line = $key.'='.$this->format($value);

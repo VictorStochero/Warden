@@ -28,6 +28,8 @@ use VictorStochero\Warden\Console\PartitionCommand;
 use VictorStochero\Warden\Console\ProjectCommand;
 use VictorStochero\Warden\Console\PruneCommand;
 use VictorStochero\Warden\Console\ShipCommand;
+use VictorStochero\Warden\Console\SwitchCommand;
+use VictorStochero\Warden\Console\UninstallCommand;
 use VictorStochero\Warden\Contracts\Aggregator;
 use VictorStochero\Warden\Contracts\Ingestor;
 use VictorStochero\Warden\Contracts\Transport;
@@ -362,6 +364,8 @@ class WardenServiceProvider extends ServiceProvider
 
         $this->commands([
             InstallCommand::class,
+            SwitchCommand::class,
+            UninstallCommand::class,
             ShipCommand::class,
             AggregateCommand::class,
             EvaluateCommand::class,

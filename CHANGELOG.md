@@ -6,6 +6,27 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-10
+
+### Added
+
+- **`warden:switch parent|child`** — convert an already-installed app between roles without
+  hand-editing files. Rewrites `WARDEN_MODE` (and the child credentials), drops the `wdn_`
+  tables and rebuilds the schema from scratch, then clears the config + route cache so the new
+  mode takes effect immediately. Destructive: prompts for confirmation unless `--force` is
+  passed (use it in non-interactive deploys).
+- **`warden:uninstall`** — remove every trace Warden left in the host: drop all `wdn_` tables,
+  strip `WARDEN_*` keys from the `.env` and delete the published `config/warden.php` (published
+  migration files are intentionally kept). Same confirmation/`--force` guard.
+- README: a per-role **environment-variables reference** (required vs optional, with defaults)
+  and a **Switching modes & uninstalling** section.
+
+### Internal
+
+- `Schema\WardenTables` — single source of truth for the package's table list, guarded by a
+  test that keeps it in sync with the `create_wdn_*` migrations.
+- `EnvWriter::forget()` to remove keys from the `.env`, complementing `upsert()`.
+
 ## [0.1.0] - 2026-06-10
 
 Initial release of **Warden** — a self-hosted APM for Laravel with zero external
@@ -87,5 +108,6 @@ Laravel events and ships batches to the parent).
 - CI matrix (Laravel 12/13, multiple databases), MIT license, packaging files, PHPUnit
   suite and PHPStan configuration.
 
-[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/VictorStochero/Warden/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/VictorStochero/Warden/releases/tag/v0.1.0
