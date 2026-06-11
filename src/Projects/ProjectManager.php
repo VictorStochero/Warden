@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Projects;
 
 use Illuminate\Support\Str;
+use VictorStochero\Warden\Facades\Warden;
 use VictorStochero\Warden\Models\Group;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Models\Tag;
@@ -31,13 +32,17 @@ class ProjectManager
         $token = Str::random(40);
         $secret = Str::random(64);
 
-        $project = Project::create([
+        // The mint writes the secret to the DB; suppress so a self-monitoring
+        // parent never records the credential INSERT (§18.3) — defense-in-depth
+        // on top of the column-correlated binding scrub.
+        /** @var Project $project */
+        $project = Warden::withoutRecording(fn () => Project::create([
             'name' => $name,
             'slug' => $slug,
             'token' => $token,
             'secret' => $secret,
             'active' => true,
-        ]);
+        ]));
 
         return ['project' => $project, 'token' => $token, 'secret' => $secret];
     }
@@ -55,7 +60,9 @@ class ProjectManager
             throw new \InvalidArgumentException('Self project slug is empty.');
         }
 
-        $project = Project::query()->firstOrCreate(
+        // Mints token/secret on first create — suppressed like create()/rotate().
+        /** @var Project $project */
+        $project = Warden::withoutRecording(fn () => Project::query()->firstOrCreate(
             ['slug' => $slug],
             [
                 'name' => $name ?? $this->defaultSelfName($slug),
@@ -63,7 +70,7 @@ class ProjectManager
                 'secret' => Str::random(64),
                 'active' => true,
             ],
-        );
+        ));
 
         $this->syncSelfTimezone($project);
 
@@ -105,7 +112,8 @@ class ProjectManager
         $token = Str::random(40);
         $secret = Str::random(64);
 
-        $project->update(['token' => $token, 'secret' => $secret]);
+        // Suppress the credential UPDATE from a self-monitoring parent (§18.3).
+        Warden::withoutRecording(fn () => $project->update(['token' => $token, 'secret' => $secret]));
 
         return ['token' => $token, 'secret' => $secret];
     }
