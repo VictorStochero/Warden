@@ -9,6 +9,7 @@ use Throwable;
 use VictorStochero\Warden\Config\ConfigCache;
 use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Support\Cast;
+use VictorStochero\Warden\Support\Compression;
 use VictorStochero\Warden\Warden;
 
 /**
@@ -58,13 +59,27 @@ class HttpTransport implements Transport
 
                 $signer = new Signer(Cast::str($this->config->get('warden.child.secret')));
 
+                // Sign the uncompressed JSON, then optionally gzip the wire body.
+                // The parent inflates before verifying, so the signature is the
+                // same either way and an old parent (no gzip) still accepts plain.
+                $headers = [
+                    'Content-Type' => 'application/json',
+                    'X-Warden-Token' => Cast::str($this->config->get('warden.child.token')),
+                    'X-Warden-Signature' => $signer->sign($body),
+                ];
+
+                $payload = $body;
+                if (Cast::bool($this->config->get('warden.child.compress', false))) {
+                    $gzip = Compression::deflate($body);
+                    if ($gzip !== null) {
+                        $payload = $gzip;
+                        $headers['Content-Encoding'] = 'gzip';
+                    }
+                }
+
                 $response = $this->http
-                    ->withHeaders([
-                        'Content-Type' => 'application/json',
-                        'X-Warden-Token' => Cast::str($this->config->get('warden.child.token')),
-                        'X-Warden-Signature' => $signer->sign($body),
-                    ])
-                    ->withBody($body, 'application/json')
+                    ->withHeaders($headers)
+                    ->withBody($payload, 'application/json')
                     ->timeout(10)
                     ->post($this->ingestUrl());
 

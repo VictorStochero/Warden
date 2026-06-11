@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use VictorStochero\Warden\Contracts\Ingestor;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Support\Cast;
+use VictorStochero\Warden\Support\Compression;
 use VictorStochero\Warden\Transport\Signer;
 use VictorStochero\Warden\Warden;
 
@@ -30,10 +31,22 @@ class IngestController
 
         $token = (string) $request->header('X-Warden-Token', '');
         $signature = (string) $request->header('X-Warden-Signature', '');
-        $body = $request->getContent();
+        $raw = (string) $request->getContent();
 
         $maxBytes = Cast::int(config('warden.parent.max_body_bytes', 1048576), 1048576);
-        if (strlen((string) $body) > $maxBytes) {
+
+        // The wire body (compressed or not) must itself fit before we inflate.
+        if (strlen($raw) > $maxBytes) {
+            return response()->json(['error' => 'payload_too_large'], 413);
+        }
+
+        // Inflate a gzip body before HMAC/JSON — the child signs the uncompressed
+        // JSON, so verification always runs against the decompressed bytes.
+        $body = strtolower((string) $request->header('Content-Encoding')) === 'gzip'
+            ? Compression::inflate($raw, $maxBytes)
+            : $raw;
+
+        if ($body === null) {
             return response()->json(['error' => 'payload_too_large'], 413);
         }
 

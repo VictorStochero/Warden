@@ -66,6 +66,11 @@ return [
             'composer_bin' => env('WARDEN_COMPOSER_BIN', ''),
         ],
 
+        // gzip the ship payload (the parent always accepts both, so this is safe
+        // to enable once the parent is on >= 0.3). Worth it for large batches over
+        // a WAN; off by default since the HMAC/decompress path must match.
+        'compress' => env('WARDEN_COMPRESS', false),
+
         // Where captured batches wait to be shipped. "database" needs no extra
         // infrastructure; "redis" is an optional accelerator.
         'outbox' => env('WARDEN_OUTBOX', 'database'),
