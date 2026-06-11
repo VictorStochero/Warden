@@ -6,8 +6,6 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Routing\Route;
 use Throwable;
 use VictorStochero\Warden\Recording\AbstractRecorder;
-use VictorStochero\Warden\Support\Cast;
-use VictorStochero\Warden\Support\Scrubber;
 
 /**
  * Captures reported exceptions. Laravel routes report() through the logger, so
@@ -47,7 +45,7 @@ class ExceptionRecorder extends AbstractRecorder
 
         $this->record(array_merge([
             'class' => get_class($e),
-            'message' => $this->scrubMessage($this->truncate($e->getMessage(), 2000)),
+            'message' => $this->scrubber()->scrubMessage($this->truncate($e->getMessage(), 2000)),
             'code' => $e->getCode(),
             'file' => $this->relativePath($e->getFile()),
             'line' => $e->getLine(),
@@ -101,55 +99,6 @@ class ExceptionRecorder extends AbstractRecorder
         ]);
 
         return $frames;
-    }
-
-    /** @return list<string> */
-    protected function scrubKeys(): array
-    {
-        $keys = [];
-        foreach (Cast::arr($this->config->get('warden.child.scrub', [])) as $key) {
-            $keys[] = Cast::str($key);
-        }
-
-        return $keys;
-    }
-
-    /**
-     * Mask sensitive data in an exception message while keeping it legible:
-     *  - `key=value` / `key: value` pairs whose key is sensitive;
-     *  - bare email addresses (PII);
-     *  - the value inside `Duplicate entry '...'` (MySQL/Postgres unique
-     *    violations frequently leak the offending email/value).
-     */
-    protected function scrubMessage(string $message): string
-    {
-        foreach ($this->scrubKeys() as $key) {
-            if ($key === '') {
-                continue;
-            }
-
-            $message = (string) preg_replace(
-                '/('.preg_quote($key, '/').'\s*[=:]\s*)\S+/i',
-                '${1}'.Scrubber::MASK,
-                $message
-            );
-        }
-
-        // Duplicate entry 'value' — mask only the captured value.
-        $message = (string) preg_replace(
-            "/(Duplicate entry ')[^']*(')/i",
-            '${1}'.Scrubber::MASK.'${2}',
-            $message
-        );
-
-        // Bare email addresses anywhere in the message.
-        $message = (string) preg_replace(
-            '/[^\s\'"<>()]+@[^\s\'"<>()]+\.[^\s\'"<>()]{2,}/',
-            Scrubber::MASK,
-            $message
-        );
-
-        return $message;
     }
 
     protected function relativePath(string $path): string

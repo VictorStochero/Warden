@@ -29,7 +29,10 @@ class LogRecorder extends AbstractRecorder
 
             $this->record([
                 'level' => $event->level,
-                'message' => $this->scrubber()->scrub(['m' => $event->message])['m'],
+                // The body is author-written debug text — kept legible, but
+                // literal credentials are masked and incidental PII follows the
+                // capture.pii knob (same treatment as exception messages).
+                'message' => $this->scrubber()->scrubMessage($event->message),
                 'context' => $this->scrubber()->scrub($this->safeContext($event->context)),
             ]);
         });
