@@ -96,6 +96,7 @@ class HttpTransport implements Transport
                     'batch_id' => $batchId,
                     'reason' => $reason,
                     'attempts' => $attempts,
+                    'sent_at' => time(),
                 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
                 if ($body === false) {

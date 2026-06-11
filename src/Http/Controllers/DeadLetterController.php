@@ -50,13 +50,34 @@ class DeadLetterController
             return response()->json(['error' => 'malformed'], 422);
         }
 
-        DeadLetter::create([
-            'project_id' => $project->id,
-            'batch_id' => isset($data['batch_id']) ? Cast::str($data['batch_id']) : null,
+        // Anti-replay: reject reports whose timestamp is outside the skew window,
+        // same guard as ingest — a captured dead-letter body can't be replayed.
+        $skew = Cast::int(config('warden.parent.max_skew', 300), 300);
+        $sentAt = Cast::int($data['sent_at'] ?? 0);
+
+        if ($sentAt === 0 || abs(Carbon::now()->getTimestamp() - $sentAt) > $skew) {
+            return response()->json(['error' => 'stale'], 422);
+        }
+
+        $batchId = isset($data['batch_id']) ? Cast::str($data['batch_id']) : null;
+
+        $attributes = [
             'reason' => isset($data['reason']) ? mb_substr(Cast::str($data['reason']), 0, 255) : null,
             'attempts' => Cast::int($data['attempts'] ?? 0),
             'reported_at' => Carbon::now(),
-        ]);
+        ];
+
+        // Idempotent on (project_id, batch_id): a retried report for the same
+        // batch refreshes the row instead of piling up duplicates. Reports with
+        // no batch_id are appended (nothing to dedupe on).
+        if ($batchId !== null && $batchId !== '') {
+            DeadLetter::query()->updateOrCreate(
+                ['project_id' => $project->id, 'batch_id' => $batchId],
+                $attributes,
+            );
+        } else {
+            DeadLetter::create(['project_id' => $project->id, 'batch_id' => null] + $attributes);
+        }
 
         return response()->json(['recorded' => true], 202);
     }

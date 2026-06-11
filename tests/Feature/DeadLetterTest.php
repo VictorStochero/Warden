@@ -34,11 +34,44 @@ class DeadLetterTest extends TestCase
     public function test_endpoint_records_a_dead_letter(): void
     {
         $project = $this->project();
-        $body = (string) json_encode(['batch_id' => 'b-123', 'reason' => 'poison', 'attempts' => 10]);
+        $body = (string) json_encode(['batch_id' => 'b-123', 'reason' => 'poison', 'attempts' => 10, 'sent_at' => time()]);
 
         $this->deadLetterPost($body, (new Signer('psecret'))->sign($body))->assertStatus(202);
 
         $this->assertSame(1, DeadLetter::where('project_id', $project->id)->where('batch_id', 'b-123')->count());
+    }
+
+    public function test_stale_report_is_rejected(): void
+    {
+        $this->project();
+        $body = (string) json_encode(['batch_id' => 'b-old', 'attempts' => 1, 'sent_at' => time() - 999]);
+
+        $this->deadLetterPost($body, (new Signer('psecret'))->sign($body))->assertStatus(422);
+
+        $this->assertSame(0, DeadLetter::count());
+    }
+
+    public function test_report_without_sent_at_is_rejected(): void
+    {
+        $this->project();
+        $body = (string) json_encode(['batch_id' => 'b-nostamp', 'attempts' => 1]);
+
+        $this->deadLetterPost($body, (new Signer('psecret'))->sign($body))->assertStatus(422);
+    }
+
+    public function test_same_batch_is_deduplicated(): void
+    {
+        $project = $this->project();
+
+        $first = (string) json_encode(['batch_id' => 'b-dup', 'reason' => 'first', 'attempts' => 3, 'sent_at' => time()]);
+        $this->deadLetterPost($first, (new Signer('psecret'))->sign($first))->assertStatus(202);
+
+        $second = (string) json_encode(['batch_id' => 'b-dup', 'reason' => 'retry', 'attempts' => 5, 'sent_at' => time()]);
+        $this->deadLetterPost($second, (new Signer('psecret'))->sign($second))->assertStatus(202);
+
+        $this->assertSame(1, DeadLetter::where('batch_id', 'b-dup')->count());
+        $this->assertSame(5, (int) DeadLetter::where('batch_id', 'b-dup')->value('attempts'));
+        $this->assertSame('retry', DeadLetter::where('batch_id', 'b-dup')->value('reason'));
     }
 
     public function test_endpoint_rejects_bad_signature(): void
