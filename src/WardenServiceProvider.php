@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use VictorStochero\Warden\Aggregation\DatabaseAggregator;
 use VictorStochero\Warden\Config\RemoteConfig;
+use VictorStochero\Warden\Config\SelfMonitorConfig;
 use VictorStochero\Warden\Console\AggregateCommand;
 use VictorStochero\Warden\Console\AuditCommand;
 use VictorStochero\Warden\Console\DemoCommand;
@@ -177,6 +178,12 @@ class WardenServiceProvider extends ServiceProvider
         $slug = Cast::str($this->config()->get('warden.parent.self_project', 'parent'), 'parent');
 
         $this->ensureSelfProject($slug);
+
+        // Apply the parent's own sparse config (set via the UI) to
+        // config('warden.child.*') with the same .env > parent > default
+        // precedence as a remote child — read through the dedicated wdn
+        // connection and suppressed so it never self-observes (§18.3).
+        $observer->withoutRecording(fn () => (new SelfMonitorConfig)->apply($this->config()));
 
         $observer->setSelfDelivery(new SelfDelivery($this->app->make(Ingestor::class), $slug));
 
