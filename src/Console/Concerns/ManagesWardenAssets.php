@@ -3,39 +3,29 @@
 namespace VictorStochero\Warden\Console\Concerns;
 
 use Illuminate\Console\Command;
+use Illuminate\Filesystem\Filesystem;
 
 /**
- * Publishing and cleanup of the dashboard's static stylesheet
- * (public/vendor/warden/warden.css). Shared by warden:install and warden:switch
- * (publish on the parent side) and warden:uninstall / warden:switch --child
- * (remove). Serving the CSS as a real static file — rather than a PHP route
- * ending in `.css` — keeps it from being intercepted and 404'd by the common
- * web-server static-file rules that match on extension.
+ * Cleanup of the dashboard's old published assets (public/vendor/warden). The CSS
+ * is no longer published — it is served from the package by AssetController — so
+ * this only removes a stale directory left behind by pre-route installs. Called by
+ * warden:uninstall and warden:switch --child.
  *
  * @phpstan-require-extends Command
  */
 trait ManagesWardenAssets
 {
-    protected function publishWardenAssets(): void
-    {
-        $this->callSilently('vendor:publish', ['--tag' => 'warden-assets', '--force' => true]);
-        $this->components->task('Published dashboard assets (public/vendor/warden)');
-    }
-
     protected function removeWardenAssets(): void
     {
-        $file = $this->laravel->publicPath('vendor/warden/warden.css');
-
-        if (is_file($file)) {
-            @unlink($file);
-            $this->components->task('Removed dashboard assets (public/vendor/warden)');
-        }
-
-        // Drop the directory too, but only when nothing else lives in it.
         $dir = $this->laravel->publicPath('vendor/warden');
 
-        if (is_dir($dir) && (glob($dir.'/*') ?: []) === []) {
-            @rmdir($dir);
+        if (! is_dir($dir)) {
+            return;
         }
+
+        // Pre-route installs published the CSS, fonts and brand marks here. The
+        // package-served build replaces all of it, so the whole directory goes.
+        (new Filesystem)->deleteDirectory($dir);
+        $this->components->task('Removed legacy dashboard assets (public/vendor/warden)');
     }
 }

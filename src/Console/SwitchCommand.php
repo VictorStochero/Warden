@@ -72,7 +72,6 @@ class SwitchCommand extends Command
         $this->components->task('Cleared config + route cache');
 
         if ($target === 'parent') {
-            $this->publishWardenAssets();
             $this->ensureSelfProject();
         } else {
             $this->removeWardenAssets();

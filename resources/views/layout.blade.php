@@ -1,7 +1,11 @@
 @php
     use VictorStochero\Warden\Dashboard\Format;
     $navProjects = \VictorStochero\Warden\Models\Project::query()->orderBy('name')->get(['id', 'name', 'slug']);
-    $activeProject = $project ?? null;
+    // Only the project pages (which carry a {project} route parameter) highlight a
+    // sidebar project. Admin views @extends this layout and loop `@foreach($projects
+    // as $project)`, so the loop variable leaks in via @extends' get_defined_vars()
+    // and would otherwise mark the last looped project active. Gate on the route.
+    $activeProject = request()->route('project') ? ($project ?? null) : null;
     $activeSection = $section ?? ($active ?? null);
     $refresh = $refresh ?? 0;
     $ranges = $ranges ?? [];
@@ -33,7 +37,7 @@
         <meta http-equiv="refresh" content="{{ $refresh }}">
     @endif
     <title>@yield('title', 'Warden') · Warden</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('vendor/warden/warden-mark.svg') }}">
+    @include('warden::partials.favicon')
     @include('warden::partials.stylesheet')
     <style>
         ::-webkit-scrollbar{width:10px;height:10px}
@@ -95,7 +99,7 @@
             </div>
 
             <div class="wdn-railhide flex items-center gap-0.5 text-[11px] font-medium" aria-label="{{ __('warden::nav.language') }}">
-                @foreach(\VictorStochero\Warden\Support\Cast::arr(config('warden.dashboard.locales')) as $loc)
+                @foreach(\VictorStochero\Warden\Support\Locales::all() as $loc)
                     @php $code = ['en' => 'EN', 'pt_BR' => 'PT', 'es' => 'ES'][$loc] ?? strtoupper((string) $loc); @endphp
                     <a href="{{ route('warden.locale', $loc) }}"
                        class="rounded px-1.5 py-0.5 transition {{ app()->getLocale() === $loc ? 'bg-ink-700 text-white' : 'text-slate-500 hover:text-white' }}">{{ $code }}</a>

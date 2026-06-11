@@ -122,6 +122,19 @@ class LocaleTest extends TestCase
             ->assertSee(route('warden.locale', 'es'), false);
     }
 
+    public function test_language_switcher_survives_a_stale_config_without_locales(): void
+    {
+        // A stale published config/warden.php whose `dashboard` block predates the
+        // `locales` key shallow-merges to an empty list. The switcher must still
+        // offer the package defaults rather than disappear.
+        config()->set('warden.dashboard.locales', []);
+
+        $this->get(route('warden.overview'))
+            ->assertOk()
+            ->assertSee(route('warden.locale', 'pt_BR'), false)
+            ->assertSee(route('warden.locale', 'es'), false);
+    }
+
     public function test_getting_started_hint_is_always_in_sidebar(): void
     {
         // Present even once a child project exists — it lives in the sidebar "?",

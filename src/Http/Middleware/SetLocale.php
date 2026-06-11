@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Symfony\Component\HttpFoundation\Response;
 use VictorStochero\Warden\Support\Cast;
+use VictorStochero\Warden\Support\Locales;
 
 /**
  * Resolves the dashboard UI language for the current request and applies it via
@@ -79,11 +80,6 @@ class SetLocale
     /** @return list<string> */
     protected function allowed(): array
     {
-        $locales = array_values(array_filter(
-            Cast::arr(config('warden.dashboard.locales')),
-            'is_string'
-        ));
-
-        return $locales === [] ? ['en'] : $locales;
+        return Locales::all();
     }
 }

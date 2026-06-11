@@ -51,9 +51,6 @@ class SwitchCommandTest extends TestCase
 
         // Parent self project ensured.
         $this->assertTrue(DB::table('wdn_projects')->where('slug', 'parent')->exists());
-
-        // The dashboard stylesheet is published for the parent.
-        $this->assertFileExists(public_path('vendor/warden/warden.css'));
     }
 
     public function test_switch_to_child_writes_credentials(): void
@@ -61,6 +58,10 @@ class SwitchCommandTest extends TestCase
         // Booted as child; switch to parent first so child is a real transition.
         $this->artisan('warden:switch', ['mode' => 'parent', '--force' => true])->assertSuccessful();
         $this->app['config']->set('warden.mode', 'parent');
+
+        // Simulate a pre-route install that left published assets in public/.
+        @mkdir(public_path('vendor/warden'), 0777, true);
+        file_put_contents(public_path('vendor/warden/warden.css'), '/* legacy */');
 
         $this->artisan('warden:switch', [
             'mode' => 'child',
@@ -76,7 +77,7 @@ class SwitchCommandTest extends TestCase
         $this->assertStringContainsString('WARDEN_TOKEN=tok123', $env);
         $this->assertTrue(Schema::hasTable('wdn_events'));
 
-        // Switching to child removes the parent-only dashboard stylesheet.
+        // Switching to child removes any legacy published assets.
         $this->assertFileDoesNotExist(public_path('vendor/warden/warden.css'));
     }
 

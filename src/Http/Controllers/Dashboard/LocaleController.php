@@ -5,6 +5,7 @@ namespace VictorStochero\Warden\Http\Controllers\Dashboard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use VictorStochero\Warden\Support\Cast;
+use VictorStochero\Warden\Support\Locales;
 
 /**
  * Persists the viewer's dashboard language choice in the `warden_locale` cookie
@@ -45,9 +46,6 @@ class LocaleController
     /** @return list<string> */
     protected function allowed(): array
     {
-        return array_values(array_filter(
-            Cast::arr(config('warden.dashboard.locales')),
-            'is_string'
-        ));
+        return Locales::all();
     }
 }

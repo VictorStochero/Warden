@@ -54,16 +54,6 @@ class InstallCommandTest extends TestCase
         $this->assertStringContainsString('WARDEN_MODE=parent', (string) file_get_contents($this->envPath));
     }
 
-    public function test_parent_install_publishes_the_dashboard_stylesheet(): void
-    {
-        @unlink(public_path('vendor/warden/warden.css'));
-
-        $this->artisan('warden:install', ['--parent' => true, '--no-migrate' => true])
-            ->assertSuccessful();
-
-        $this->assertFileExists(public_path('vendor/warden/warden.css'));
-    }
-
     public function test_passing_both_flags_fails(): void
     {
         $this->artisan('warden:install', ['--parent' => true, '--child' => true, '--no-migrate' => true])

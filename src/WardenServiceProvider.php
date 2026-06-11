@@ -37,6 +37,7 @@ use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Contracts\WardenRepository;
 use VictorStochero\Warden\Dashboard\DashboardAuth;
 use VictorStochero\Warden\Http\Controllers\Auth\DashboardLoginController;
+use VictorStochero\Warden\Http\Controllers\Dashboard\AssetController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\LocaleController;
 use VictorStochero\Warden\Http\Middleware\Authorize;
 use VictorStochero\Warden\Http\Middleware\SetLocale;
@@ -216,6 +217,7 @@ class WardenServiceProvider extends ServiceProvider
         $prefix = Cast::str($this->config()->get('warden.parent.route_prefix'), 'warden');
 
         $this->registerDashboardGates();
+        $this->registerAssetRoutes($prefix);
         $this->registerLoginRoutes($prefix);
 
         Route::group([
@@ -270,6 +272,19 @@ class WardenServiceProvider extends ServiceProvider
         $email = data_get($user, 'email');
 
         return is_string($email) ? $email : null;
+    }
+
+    /**
+     * The dashboard stylesheet, served from the package by AssetController. It sits
+     * under the dashboard prefix but carries no `web`/session middleware and stays
+     * outside Authorize: it must be cacheable and reachable on the login screen too.
+     * The URL is extension-less so `*.css` web-server rules don't intercept it.
+     */
+    protected function registerAssetRoutes(string $prefix): void
+    {
+        Route::group(['prefix' => $prefix], function () {
+            Route::get('/asset/css', [AssetController::class, 'css'])->name('warden.asset.css');
+        });
     }
 
     /**
@@ -409,16 +424,9 @@ class WardenServiceProvider extends ServiceProvider
             __DIR__.'/../lang' => $this->app->langPath('vendor/warden'),
         ], 'warden-lang');
 
-        // The dashboard stylesheet is served as a real static file from public/
-        // so web servers hand it back directly — a PHP route ending in `.css` is
-        // intercepted by common static-file rules and 404s. Parent install /
-        // switch publish this; uninstall / switch-to-child remove it.
-        $this->publishes([
-            __DIR__.'/../resources/dist/warden.css' => $this->app->publicPath('vendor/warden/warden.css'),
-            __DIR__.'/../resources/dist/fonts' => $this->app->publicPath('vendor/warden/fonts'),
-            __DIR__.'/../resources/dist/warden-mark.svg' => $this->app->publicPath('vendor/warden/warden-mark.svg'),
-            __DIR__.'/../resources/dist/warden-mark-mono.svg' => $this->app->publicPath('vendor/warden/warden-mark-mono.svg'),
-        ], 'warden-assets');
+        // The dashboard stylesheet is served from the package by AssetController
+        // (fonts inlined), so there is no asset to publish — it can never go stale
+        // and the host needs no writable public/ directory. See Support\Asset.
     }
 
     protected function config(): Repository

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('warden::auth.title') }}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('vendor/warden/warden-mark.svg') }}">
+    @include('warden::partials.favicon')
     @include('warden::partials.stylesheet')
     <style>body{background:#070A12}</style>
 </head>
@@ -66,7 +66,7 @@
 
             {{-- Language switcher --}}
             <div class="mt-6 flex items-center justify-center gap-1 text-[11px] font-medium" aria-label="{{ __('warden::nav.language') }}">
-                @foreach(\VictorStochero\Warden\Support\Cast::arr(config('warden.dashboard.locales')) as $loc)
+                @foreach(\VictorStochero\Warden\Support\Locales::all() as $loc)
                     @php $code = ['en' => 'EN', 'pt_BR' => 'PT', 'es' => 'ES'][$loc] ?? strtoupper((string) $loc); @endphp
                     <a href="{{ route('warden.locale', $loc) }}"
                        class="rounded-md px-2 py-1 transition {{ app()->getLocale() === $loc ? 'bg-ink-800 text-white' : 'text-slate-500 hover:text-white' }}">{{ $code }}</a>
