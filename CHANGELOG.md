@@ -6,6 +6,38 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-06-11
+
+### Added
+
+- **Portable composer security audit — works on any host.** `warden:audit` previously
+  shelled out to a `composer` binary and silently reported "skipped" when it wasn't on the
+  process PATH — the common case for a Forge/Supervisor daemon or a multi-stage Docker
+  runtime. It now resolves composer in three tiers: (0) **robust binary discovery**
+  (`ExecutableFinder`, curated absolute paths, and a `./composer.phar` run with the *current*
+  PHP, so it works even when `php` isn't on the daemon PATH either); (1) a **binary-free
+  fallback** that audits straight from `composer.lock` against the **Packagist advisories
+  API** — the same source `composer audit` consults — over the existing zero-dependency HTTP,
+  so a composer-less runtime is still covered; and (2) a **diagnosed skip** that records *why*
+  it couldn't run (`composer_not_found`, `network_error`, …) and surfaces it on the Security
+  tab instead of a bare "skipped". Knobs: `WARDEN_COMPOSER_BIN`, `WARDEN_ADVISORIES_URL`
+  (set `''` to disable the fallback), `WARDEN_AUDIT_TIMEOUT`. Only public package names are
+  sent to Packagist (no secrets) — the same exposure as `composer audit` itself.
+
+### Fixed
+
+- **Logs and exceptions emitted outside an entry-point trace are no longer dropped.**
+  A log/exception raised with no open request/command/job/schedule trace — during
+  boot, inside a long-running custom daemon, or after the request terminated — was
+  silently discarded at capture, so a custom log channel could hold lines that
+  never reached the dashboard. Warden now rescues these into a synthetic *ambient*
+  trace, shipped at process shutdown and whenever the ambient buffer crosses
+  `WARDEN_AMBIENT_FLUSH` (default 100), so a daemon's memory stays flat. Only
+  logs and exceptions are rescued; trace-less queries/cache (boot noise) stay
+  dropped. Toggle with `WARDEN_AMBIENT` (default on); set `false` to keep the
+  strict trace-only behaviour. No migration and no config republish required —
+  the knobs default on even against a previously-published `config/warden.php`.
+
 ## [0.2.2] - 2026-06-11
 
 ### Added
@@ -343,7 +375,8 @@ Laravel events and ships batches to the parent).
 - CI matrix (Laravel 12/13, multiple databases), MIT license, packaging files, PHPUnit
   suite and PHPStan configuration.
 
-[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/VictorStochero/Warden/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/VictorStochero/Warden/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/VictorStochero/Warden/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/VictorStochero/Warden/compare/v0.1.2...v0.2.0

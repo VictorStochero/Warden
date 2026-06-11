@@ -60,10 +60,21 @@ return [
             'schedule' => env('WARDEN_AUDIT_SCHEDULE', false),
             'cron' => env('WARDEN_AUDIT_CRON', '0 3 * * *'), // daily at 03:00
 
-            // Composer binary used by warden:audit. Empty = auto-detect (composer in PATH,
-            // then ./composer.phar). Set when the daemon's PATH lacks composer, e.g.
-            // '/usr/local/bin/composer' or 'php /var/www/app/composer.phar'.
+            // Composer binary used by warden:audit. Empty = auto-detect (a robust
+            // search: PATH via ExecutableFinder, common absolute paths, then a
+            // ./composer.phar run with the current PHP). Set when you want to pin it,
+            // e.g. '/usr/local/bin/composer' or 'php /var/www/app/composer.phar'.
             'composer_bin' => env('WARDEN_COMPOSER_BIN', ''),
+
+            // When no composer binary is reachable (a composer-less Docker runtime,
+            // a PATH-stripped daemon), warden:audit falls back to a binary-free
+            // audit straight from composer.lock + the Packagist advisories API.
+            // This endpoint is what composer audit itself consults; only package
+            // names are sent (no secrets). Set to '' to disable the fallback.
+            'advisories_url' => env('WARDEN_ADVISORIES_URL', 'https://packagist.org/api/security-advisories/'),
+
+            // Timeout (seconds) for the Packagist advisories request.
+            'timeout' => (int) env('WARDEN_AUDIT_TIMEOUT', 20),
         ],
 
         // gzip the ship payload (the parent always accepts both, so this is safe

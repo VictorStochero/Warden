@@ -78,7 +78,8 @@ class AuditCommandTest extends TestCase
 
         $payload = OutboxEntry::first()->batch['events'][0]['payload'];
 
-        $this->assertTrue($payload['tools']['composer'], 'composer audit ran via fallback bin');
+        $this->assertTrue($payload['tools']['composer']['ran'], 'composer audit ran via fallback bin');
+        $this->assertSame('binary', $payload['tools']['composer']['method']);
 
         $composer = array_values(array_filter(
             $payload['advisories'],

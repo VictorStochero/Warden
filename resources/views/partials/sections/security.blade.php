@@ -31,8 +31,26 @@
 @else
     <div class="mb-5 flex flex-wrap items-center gap-3 text-sm">
         <span class="text-slate-400">{{ __('warden::project.security.last_audit', ['ago' => Format::ago($audit->occurred_at)]) }}</span>
-        @foreach($tools as $tool => $ran)
-            <span class="rounded px-1.5 py-0.5 text-[11px] {{ $ran ? 'bg-ink-700 text-slate-300' : 'bg-amber-500/10 text-amber-400' }}">{{ $tool }}: {{ $ran ? __('warden::project.security.tool_ran') : __('warden::project.security.tool_skipped') }}</span>
+        @foreach($tools as $tool => $status)
+            @php
+                // New snapshots carry a status array {ran, method, reason}; older
+                // ones a bare bool — handle both.
+                $ran = is_array($status) ? (bool) ($status['ran'] ?? false) : (bool) $status;
+                $method = is_array($status) ? ($status['method'] ?? null) : null;
+                $reason = is_array($status) ? ($status['reason'] ?? null) : null;
+
+                if ($ran) {
+                    $label = __('warden::project.security.tool_'.($method === 'packagist' ? 'ran_packagist' : 'ran'));
+                } else {
+                    $label = __('warden::project.security.tool_skipped');
+                    $reasonKey = 'warden::project.security.reason_'.$reason;
+                    $reasonText = $reason ? __($reasonKey) : null;
+                    if ($reasonText && $reasonText !== $reasonKey) {
+                        $label .= ' ('.$reasonText.')';
+                    }
+                }
+            @endphp
+            <span class="rounded px-1.5 py-0.5 text-[11px] {{ $ran ? 'bg-ink-700 text-slate-300' : 'bg-amber-500/10 text-amber-400' }}">{{ $tool }}: {{ $label }}</span>
         @endforeach
     </div>
 

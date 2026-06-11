@@ -4,18 +4,22 @@ namespace VictorStochero\Warden\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Support\Str;
+use VictorStochero\Warden\Console\Audit\AdvisoryFormat;
+use VictorStochero\Warden\Console\Audit\ComposerAudit;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\Json;
 use VictorStochero\Warden\Warden;
 
 /**
- * Child-side dependency audit: runs `composer audit` and `npm audit`, normalizes
- * the advisories and ships a single `security` snapshot event through the normal
- * pipeline (outbox -> ship -> ingest) so the parent can display vulnerabilities.
+ * Child-side dependency audit: audits composer + npm dependencies and ships a
+ * single `security` snapshot event through the normal pipeline (outbox -> ship
+ * -> ingest) so the parent can display vulnerabilities.
  *
- * One event per run (a snapshot, not a stream); the parent shows the latest.
- * Run it from cron/scheduler for continuous coverage, e.g. daily.
+ * Composer auditing is portable across hosts (see {@see ComposerAudit}): it
+ * uses the native binary when reachable and falls back to a binary-free audit
+ * via the Packagist advisories API otherwise, recording a reason when it can't
+ * run at all. One event per run (a snapshot, not a stream); the parent shows
+ * the latest. Run it from cron/scheduler for continuous coverage.
  */
 class AuditCommand extends Command
 {
@@ -44,18 +48,20 @@ class AuditCommand extends Command
 
         /** @var list<array<string, mixed>> $advisories */
         $advisories = [];
+
+        /** @var array<string, array{ran: bool, method: string|null, reason: string|null}> $tools */
         $tools = [];
 
         if (! $onlyNpm) {
-            [$found, $ran] = $this->composerAudit();
-            $advisories = array_merge($advisories, $found);
-            $tools['composer'] = $ran;
+            $composer = (new ComposerAudit($warden, base_path()))->run();
+            $advisories = array_merge($advisories, $composer['advisories']);
+            $tools['composer'] = $composer['status'];
         }
 
         if (! $onlyComposer) {
-            [$found, $ran] = $this->npmAudit();
-            $advisories = array_merge($advisories, $found);
-            $tools['npm'] = $ran;
+            $npm = $this->npmAudit();
+            $advisories = array_merge($advisories, $npm['advisories']);
+            $tools['npm'] = $npm['status'];
         }
 
         $counts = $this->countBySeverity($advisories);
@@ -78,85 +84,19 @@ class AuditCommand extends Command
     }
 
     /**
-     * Run `composer audit`, trying a list of candidate composer binaries and
-     * using the first that yields parseable JSON. Daemons frequently run with a
-     * PATH that lacks `composer`, so falling back to `./composer.phar` (or a
-     * configured `composer_bin`) keeps composer auditing working in production.
-     *
-     * @return array{0: list<array<string, mixed>>, 1: bool}
+     * @return array{advisories: list<array<string, mixed>>, status: array{ran: bool, method: string|null, reason: string|null}}
      */
-    protected function composerAudit(): array
-    {
-        foreach ($this->composerCommands() as $cmd) {
-            $result = Process::path(base_path())->run($cmd.' audit --format=json --no-interaction');
-            $json = Json::decode($result->output());
-
-            if (! isset($json['advisories']) || ! is_array($json['advisories'])) {
-                continue;
-            }
-
-            $out = [];
-            foreach ($json['advisories'] as $package => $list) {
-                foreach (Cast::arr($list) as $a) {
-                    $a = Cast::arr($a);
-                    $out[] = [
-                        'ecosystem' => 'composer',
-                        'package' => Cast::str($a['packageName'] ?? $package),
-                        'severity' => $this->normalizeSeverity(Cast::str($a['severity'] ?? 'unknown')),
-                        'title' => Cast::str($a['title'] ?? ''),
-                        'cve' => Cast::str($a['cve'] ?? '') ?: null,
-                        'link' => $this->safeLink($a['link'] ?? null),
-                        'affected' => Cast::str($a['affectedVersions'] ?? ''),
-                    ];
-                }
-            }
-
-            return [$out, true];
-        }
-
-        return [[], false];
-    }
-
-    /**
-     * Composer invocation candidates, in priority order: a configured binary,
-     * `composer` on PATH, a local `composer.phar` (only if present), then a
-     * bare `composer.phar`.
-     *
-     * @return list<string>
-     */
-    protected function composerCommands(): array
-    {
-        $cmds = [];
-
-        $bin = Cast::str(config('warden.child.audit.composer_bin'));
-        if ($bin !== '') {
-            $cmds[] = $bin;
-        }
-
-        $cmds[] = 'composer';
-
-        $phar = base_path('composer.phar');
-        if (is_file($phar)) {
-            $cmds[] = 'php '.escapeshellarg($phar);
-        }
-
-        $cmds[] = 'composer.phar';
-
-        return $cmds;
-    }
-
-    /** @return array{0: list<array<string, mixed>>, 1: bool} */
     protected function npmAudit(): array
     {
         if (! file_exists(base_path('package.json'))) {
-            return [[], false];
+            return ['advisories' => [], 'status' => $this->status(false, null, 'no_package_json')];
         }
 
         $result = Process::path(base_path())->run('npm audit --json');
         $json = Json::decode($result->output());
 
         if (! isset($json['vulnerabilities']) || ! is_array($json['vulnerabilities'])) {
-            return [[], false];
+            return ['advisories' => [], 'status' => $this->status(false, null, 'npm_not_found')];
         }
 
         $out = [];
@@ -167,7 +107,7 @@ class AuditCommand extends Command
             foreach (Cast::arr($vuln['via'] ?? null) as $via) {
                 if (is_array($via)) {
                     $title = Cast::str($via['title'] ?? '');
-                    $link = $this->safeLink($via['url'] ?? null);
+                    $link = AdvisoryFormat::link($via['url'] ?? null);
                     break;
                 }
             }
@@ -175,7 +115,7 @@ class AuditCommand extends Command
             $out[] = [
                 'ecosystem' => 'npm',
                 'package' => Cast::str($vuln['name'] ?? $name),
-                'severity' => $this->normalizeSeverity(Cast::str($vuln['severity'] ?? 'unknown')),
+                'severity' => AdvisoryFormat::severity(Cast::str($vuln['severity'] ?? 'unknown')),
                 'title' => $title,
                 'cve' => null,
                 'link' => $link,
@@ -183,38 +123,13 @@ class AuditCommand extends Command
             ];
         }
 
-        return [$out, true];
+        return ['advisories' => $out, 'status' => $this->status(true, 'binary', null)];
     }
 
-    /**
-     * Keep an advisory link only when it is a real http(s) URL. Audit tooling
-     * output is untrusted (a compromised child could craft it); a `javascript:`
-     * or `data:` scheme rendered into the parent dashboard would be a stored
-     * XSS, so anything that is not http(s) is dropped to null at ingestion.
-     */
-    protected function safeLink(mixed $link): ?string
+    /** @return array{ran: bool, method: string|null, reason: string|null} */
+    protected function status(bool $ran, ?string $method, ?string $reason): array
     {
-        $link = Cast::str($link);
-
-        if ($link === '' || ! Str::startsWith(strtolower($link), ['http://', 'https://'])) {
-            return null;
-        }
-
-        return $link;
-    }
-
-    protected function normalizeSeverity(string $severity): string
-    {
-        $severity = strtolower(trim($severity));
-
-        return match ($severity) {
-            'critical' => 'critical',
-            'high' => 'high',
-            'moderate', 'medium' => 'moderate',
-            'low' => 'low',
-            'info', 'none' => 'info',
-            default => 'unknown',
-        };
+        return ['ran' => $ran, 'method' => $method, 'reason' => $reason];
     }
 
     /**
@@ -233,14 +148,19 @@ class AuditCommand extends Command
     }
 
     /**
-     * @param  array<string, bool>  $tools
+     * @param  array<string, array{ran: bool, method: string|null, reason: string|null}>  $tools
      * @param  array<string, int>  $counts
      */
     protected function summary(array $tools, array $counts, int $total): void
     {
         $this->newLine();
-        foreach ($tools as $tool => $ran) {
-            $this->components->twoColumnDetail($tool, $ran ? 'ran' : '<fg=yellow>skipped / unavailable</>');
+        foreach ($tools as $tool => $status) {
+            if ($status['ran']) {
+                $detail = $status['method'] === 'packagist' ? 'ran (packagist API)' : 'ran';
+            } else {
+                $detail = '<fg=yellow>skipped: '.($status['reason'] ?? 'unavailable').'</>';
+            }
+            $this->components->twoColumnDetail($tool, $detail);
         }
         $this->components->twoColumnDetail('Vulnerabilities', (string) $total);
         foreach ($counts as $sev => $n) {
