@@ -4,6 +4,7 @@ namespace VictorStochero\Warden\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\Json;
 use VictorStochero\Warden\Warden;
@@ -104,7 +105,7 @@ class AuditCommand extends Command
                         'severity' => $this->normalizeSeverity(Cast::str($a['severity'] ?? 'unknown')),
                         'title' => Cast::str($a['title'] ?? ''),
                         'cve' => Cast::str($a['cve'] ?? '') ?: null,
-                        'link' => Cast::str($a['link'] ?? '') ?: null,
+                        'link' => $this->safeLink($a['link'] ?? null),
                         'affected' => Cast::str($a['affectedVersions'] ?? ''),
                     ];
                 }
@@ -166,7 +167,7 @@ class AuditCommand extends Command
             foreach (Cast::arr($vuln['via'] ?? null) as $via) {
                 if (is_array($via)) {
                     $title = Cast::str($via['title'] ?? '');
-                    $link = Cast::str($via['url'] ?? '') ?: null;
+                    $link = $this->safeLink($via['url'] ?? null);
                     break;
                 }
             }
@@ -183,6 +184,23 @@ class AuditCommand extends Command
         }
 
         return [$out, true];
+    }
+
+    /**
+     * Keep an advisory link only when it is a real http(s) URL. Audit tooling
+     * output is untrusted (a compromised child could craft it); a `javascript:`
+     * or `data:` scheme rendered into the parent dashboard would be a stored
+     * XSS, so anything that is not http(s) is dropped to null at ingestion.
+     */
+    protected function safeLink(mixed $link): ?string
+    {
+        $link = Cast::str($link);
+
+        if ($link === '' || ! Str::startsWith(strtolower($link), ['http://', 'https://'])) {
+            return null;
+        }
+
+        return $link;
     }
 
     protected function normalizeSeverity(string $severity): string

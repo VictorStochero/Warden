@@ -214,13 +214,17 @@ class DatabaseAggregator implements Aggregator
 
             case 'host':
                 // Keep the latest sampled gauges so the overview can show them.
+                // Force numeric coercion: these gauges come straight from a child
+                // (untrusted), are rendered into the parent dashboard, and a
+                // non-numeric value (e.g. a string carrying markup) must never
+                // survive — it becomes null here so the view shows "—" instead.
                 $memory = Cast::arr($payload['memory'] ?? null);
                 $load = Cast::arr($payload['load'] ?? null);
                 $disk = Cast::arr($payload['disk'] ?? null);
-                $meta['cpu'] = $payload['cpu'] ?? ($meta['cpu'] ?? null);
-                $meta['mem'] = $memory['used_percent'] ?? ($meta['mem'] ?? null);
-                $meta['load'] = $load[1] ?? ($meta['load'] ?? null);
-                $meta['disk'] = $disk['used_percent'] ?? ($meta['disk'] ?? null);
+                $meta['cpu'] = $this->gauge($payload['cpu'] ?? null) ?? ($meta['cpu'] ?? null);
+                $meta['mem'] = $this->gauge($memory['used_percent'] ?? null) ?? ($meta['mem'] ?? null);
+                $meta['load'] = $this->gauge($load[1] ?? null) ?? ($meta['load'] ?? null);
+                $meta['disk'] = $this->gauge($disk['used_percent'] ?? null) ?? ($meta['disk'] ?? null);
                 break;
         }
     }
@@ -241,6 +245,20 @@ class DatabaseAggregator implements Aggregator
         }
 
         return $existing;
+    }
+
+    /**
+     * Normalise an untrusted host gauge to a numeric value. Returns null when
+     * the value is absent or not numeric so a malicious child cannot smuggle a
+     * string (e.g. HTML/script markup) into the dashboard via host metrics.
+     */
+    protected function gauge(mixed $value): float|int|null
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return is_numeric($value) ? Cast::float($value) : null;
     }
 
     protected function histogramBucket(float $ms): string

@@ -70,8 +70,11 @@
                                 <span class="ml-1 rounded bg-ink-700 px-1 py-0.5 text-[9px] uppercase tracking-wider text-slate-400">{{ $a['ecosystem'] ?? '' }}</span>
                             </td>
                             <td class="px-4 py-3">
-                                @if(! empty($a['link']))
-                                    <a href="{{ $a['link'] }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-brand-400">{{ Str::limit($a['title'] ?? ($a['cve'] ?? 'advisory'), 90) }}</a>
+                                @php
+                                    $safeLink = (is_string($a['link'] ?? null) && Str::startsWith(strtolower($a['link']), ['http://', 'https://'])) ? $a['link'] : null;
+                                @endphp
+                                @if($safeLink)
+                                    <a href="{{ $safeLink }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-brand-400">{{ Str::limit($a['title'] ?? ($a['cve'] ?? 'advisory'), 90) }}</a>
                                 @else
                                     <span class="text-slate-300">{{ Str::limit($a['title'] ?? ($a['cve'] ?? 'advisory'), 90) }}</span>
                                 @endif
