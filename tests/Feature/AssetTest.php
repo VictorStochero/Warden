@@ -43,6 +43,13 @@ class AssetTest extends TestCase
         $this->assertNotEmpty($res->headers->get('ETag'));
     }
 
+    public function test_css_route_sends_nosniff(): void
+    {
+        $res = $this->get(route('warden.asset.css'));
+
+        $this->assertSame('nosniff', $res->headers->get('X-Content-Type-Options'));
+    }
+
     public function test_css_route_honours_if_none_match(): void
     {
         $etag = '"'.Asset::version().'"';

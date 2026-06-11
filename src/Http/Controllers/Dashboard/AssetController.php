@@ -20,6 +20,10 @@ class AssetController
     {
         $response = new Response(Asset::css(), 200, [
             'Content-Type' => 'text/css; charset=UTF-8',
+            // The asset route lives outside the SecurityHeaders middleware group;
+            // set nosniff here so the stylesheet can't be MIME-sniffed into a
+            // different content type.
+            'X-Content-Type-Options' => 'nosniff',
         ]);
 
         $response->setPublic();
