@@ -49,6 +49,45 @@ class AuditCommandTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $payload['counts']['high'] ?? 0);
     }
 
+    public function test_composer_audit_falls_back_when_composer_not_on_path(): void
+    {
+        Process::fake([
+            // Primary candidate (configured bin) is what should be used.
+            'php composer.phar audit*' => Process::result((string) json_encode([
+                'advisories' => [
+                    'vendor/pkg' => [[
+                        'packageName' => 'vendor/pkg',
+                        'title' => 'RCE in vendor/pkg',
+                        'cve' => 'CVE-2024-9999',
+                        'link' => 'https://example.test/advisory',
+                        'severity' => 'high',
+                        'affectedVersions' => '<1.0',
+                    ]],
+                ],
+            ])),
+            // Bare `composer` is not on PATH: command-not-found style failure.
+            'composer audit*' => Process::result('', 'composer: not found', 127),
+            'npm audit*' => Process::result((string) json_encode(['vulnerabilities' => []])),
+        ]);
+
+        config()->set('warden.child.audit.composer_bin', 'php composer.phar');
+
+        $this->artisan('warden:audit')->assertSuccessful();
+
+        $this->assertSame(1, OutboxEntry::count());
+
+        $payload = OutboxEntry::first()->batch['events'][0]['payload'];
+
+        $this->assertTrue($payload['tools']['composer'], 'composer audit ran via fallback bin');
+
+        $composer = array_values(array_filter(
+            $payload['advisories'],
+            fn ($a) => $a['ecosystem'] === 'composer',
+        ));
+        $this->assertCount(1, $composer);
+        $this->assertSame('vendor/pkg', $composer[0]['package']);
+    }
+
     public function test_it_fails_when_the_child_is_not_configured(): void
     {
         $this->app['config']->set('warden.child.parent_url', '');

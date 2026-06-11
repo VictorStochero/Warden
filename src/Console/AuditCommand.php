@@ -76,33 +76,72 @@ class AuditCommand extends Command
         return self::SUCCESS;
     }
 
-    /** @return array{0: list<array<string, mixed>>, 1: bool} */
+    /**
+     * Run `composer audit`, trying a list of candidate composer binaries and
+     * using the first that yields parseable JSON. Daemons frequently run with a
+     * PATH that lacks `composer`, so falling back to `./composer.phar` (or a
+     * configured `composer_bin`) keeps composer auditing working in production.
+     *
+     * @return array{0: list<array<string, mixed>>, 1: bool}
+     */
     protected function composerAudit(): array
     {
-        $result = Process::path(base_path())->run('composer audit --format=json --no-interaction');
-        $json = Json::decode($result->output());
+        foreach ($this->composerCommands() as $cmd) {
+            $result = Process::path(base_path())->run($cmd.' audit --format=json --no-interaction');
+            $json = Json::decode($result->output());
 
-        if (! isset($json['advisories']) || ! is_array($json['advisories'])) {
-            return [[], false];
-        }
-
-        $out = [];
-        foreach ($json['advisories'] as $package => $list) {
-            foreach (Cast::arr($list) as $a) {
-                $a = Cast::arr($a);
-                $out[] = [
-                    'ecosystem' => 'composer',
-                    'package' => Cast::str($a['packageName'] ?? $package),
-                    'severity' => $this->normalizeSeverity(Cast::str($a['severity'] ?? 'unknown')),
-                    'title' => Cast::str($a['title'] ?? ''),
-                    'cve' => Cast::str($a['cve'] ?? '') ?: null,
-                    'link' => Cast::str($a['link'] ?? '') ?: null,
-                    'affected' => Cast::str($a['affectedVersions'] ?? ''),
-                ];
+            if (! isset($json['advisories']) || ! is_array($json['advisories'])) {
+                continue;
             }
+
+            $out = [];
+            foreach ($json['advisories'] as $package => $list) {
+                foreach (Cast::arr($list) as $a) {
+                    $a = Cast::arr($a);
+                    $out[] = [
+                        'ecosystem' => 'composer',
+                        'package' => Cast::str($a['packageName'] ?? $package),
+                        'severity' => $this->normalizeSeverity(Cast::str($a['severity'] ?? 'unknown')),
+                        'title' => Cast::str($a['title'] ?? ''),
+                        'cve' => Cast::str($a['cve'] ?? '') ?: null,
+                        'link' => Cast::str($a['link'] ?? '') ?: null,
+                        'affected' => Cast::str($a['affectedVersions'] ?? ''),
+                    ];
+                }
+            }
+
+            return [$out, true];
         }
 
-        return [$out, true];
+        return [[], false];
+    }
+
+    /**
+     * Composer invocation candidates, in priority order: a configured binary,
+     * `composer` on PATH, a local `composer.phar` (only if present), then a
+     * bare `composer.phar`.
+     *
+     * @return list<string>
+     */
+    protected function composerCommands(): array
+    {
+        $cmds = [];
+
+        $bin = Cast::str(config('warden.child.audit.composer_bin'));
+        if ($bin !== '') {
+            $cmds[] = $bin;
+        }
+
+        $cmds[] = 'composer';
+
+        $phar = base_path('composer.phar');
+        if (is_file($phar)) {
+            $cmds[] = 'php '.escapeshellarg($phar);
+        }
+
+        $cmds[] = 'composer.phar';
+
+        return $cmds;
     }
 
     /** @return array{0: list<array<string, mixed>>, 1: bool} */

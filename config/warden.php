@@ -59,6 +59,11 @@ return [
         'audit' => [
             'schedule' => env('WARDEN_AUDIT_SCHEDULE', false),
             'cron' => env('WARDEN_AUDIT_CRON', '0 3 * * *'), // daily at 03:00
+
+            // Composer binary used by warden:audit. Empty = auto-detect (composer in PATH,
+            // then ./composer.phar). Set when the daemon's PATH lacks composer, e.g.
+            // '/usr/local/bin/composer' or 'php /var/www/app/composer.phar'.
+            'composer_bin' => env('WARDEN_COMPOSER_BIN', ''),
         ],
 
         // Where captured batches wait to be shipped. "database" needs no extra
