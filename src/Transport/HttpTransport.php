@@ -6,6 +6,7 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use VictorStochero\Warden\Config\ConfigCache;
 use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Warden;
@@ -46,6 +47,7 @@ class HttpTransport implements Transport
                     'schema_version' => 2,
                     'project' => $this->config->get('warden.child.project'),
                     'sent_at' => time(),
+                    'config_version' => ConfigCache::version(),
                     'batches' => array_values($batch),
                 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 

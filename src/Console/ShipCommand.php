@@ -5,6 +5,7 @@ namespace VictorStochero\Warden\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use VictorStochero\Warden\Config\ConfigCache;
 use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Outbox\Outbox;
 use VictorStochero\Warden\Outbox\OutboxBatch;
@@ -60,6 +61,7 @@ class ShipCommand extends Command
 
             $this->shipBatches($outbox, $transport, $batches);
             $this->maybeRunAudit($transport);
+            $this->persistPushedConfig($transport);
         } while (! $this->shouldStop && ! $this->option('once'));
 
         $this->components->info('Warden shipper stopped.');
@@ -142,6 +144,32 @@ class ShipCommand extends Command
 
         $this->components->info('Parent requested a dependency audit — running warden:audit.');
         Artisan::call('warden:audit');
+    }
+
+    /**
+     * Persist a parent-pushed config document when the version advances, so the
+     * next boot/worker applies it. Best-effort; never throws into the loop.
+     */
+    public function persistPushedConfig(Transport $transport): void
+    {
+        $directives = $transport->lastDirectives();
+
+        if (! array_key_exists('config', $directives) || ! is_array($directives['config'])) {
+            return;
+        }
+
+        $version = Cast::int($directives['config_version'] ?? 0);
+
+        if ($version === ConfigCache::version()) {
+            return;
+        }
+
+        $config = [];
+        foreach ($directives['config'] as $key => $value) {
+            $config[(string) $key] = $value;
+        }
+
+        ConfigCache::write($version, $config);
     }
 
     protected function trapSignals(): void

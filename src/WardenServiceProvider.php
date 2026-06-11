@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use VictorStochero\Warden\Aggregation\DatabaseAggregator;
+use VictorStochero\Warden\Config\RemoteConfig;
 use VictorStochero\Warden\Console\AggregateCommand;
 use VictorStochero\Warden\Console\AuditCommand;
 use VictorStochero\Warden\Console\DemoCommand;
@@ -121,6 +122,10 @@ class WardenServiceProvider extends ServiceProvider
 
     protected function bootChild(Warden $observer): void
     {
+        // Apply the parent-pushed config (cached locally) before recorders read
+        // their knobs, with .env still winning over the parent (RNF-2: never throws).
+        (new RemoteConfig)->apply($this->config());
+
         $this->registerRecorders();
 
         // Cross-process trace propagation: stamp the sampling decision and ids

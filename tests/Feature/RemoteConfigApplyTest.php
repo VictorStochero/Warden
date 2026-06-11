@@ -4,6 +4,8 @@ namespace VictorStochero\Warden\Tests\Feature;
 
 use VictorStochero\Warden\Config\ConfigCache;
 use VictorStochero\Warden\Config\RemoteConfig;
+use VictorStochero\Warden\Console\ShipCommand;
+use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Tests\TestCase;
 
 class RemoteConfigApplyTest extends TestCase
@@ -60,5 +62,31 @@ class RemoteConfigApplyTest extends TestCase
         (new RemoteConfig)->apply($this->app['config']);
 
         $this->assertFalse(config('warden.child.sample.type_gate.query'));
+    }
+
+    public function test_ship_persists_pushed_config_from_directives(): void
+    {
+        $transport = new class implements Transport
+        {
+            public function ship(array $shipments): bool
+            {
+                return true;
+            }
+
+            public function reportDeadLetter(string $b, string $r, int $a): bool
+            {
+                return true;
+            }
+
+            public function lastDirectives(): array
+            {
+                return ['config_version' => 3, 'config' => ['host_interval' => 99]];
+            }
+        };
+
+        (new ShipCommand)->persistPushedConfig($transport);
+
+        $this->assertSame(3, ConfigCache::version());
+        $this->assertSame(99, ConfigCache::read()['host_interval']);
     }
 }
