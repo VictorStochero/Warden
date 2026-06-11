@@ -6,6 +6,38 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-10
+
+### Added
+
+- **Parent control plane.** Per-project capture behaviour (recorders, trace sampling, type gate,
+  always-keep, scrub keys, host interval) is now stored on the parent and pushed to each child
+  through a version handshake on the existing ingest round-trip — no new endpoint, no polling. The
+  child caches the document locally and applies it at boot. Edit it under **Manage projects → Edit
+  ("Behaviour")**. Storage: new `config` / `config_version` columns on `wdn_projects`.
+- **`.env` precedence (never breaks an existing install).** Precedence is **child `.env` › parent
+  › package default**: the parent only controls knobs a child has not fixed in its own `.env`, and
+  the pushed document is *sparse* (only admin-overridden knobs). With no overrides, behaviour is
+  byte-for-byte identical to before.
+- **Automatic project timezone.** Each child reports its `app.timezone`; the parent records it per
+  project automatically. The manual timezone selector was removed.
+
+### Changed
+
+- **CSS served from the package** by `AssetController` (with `@font-face` sources inlined and a
+  content-hash cache-bust) instead of being published to `public/vendor/warden`. A package update
+  can no longer leave a stale stylesheet against new markup, and the host needs no writable
+  `public/` directory.
+- **Canonical UTC time.** `occurred_at` / `received_at` are stored as UTC instants (each child
+  converts from its own local timezone); the dashboard renders every timestamp in its own
+  `config('app.timezone')`. Timestamps are no longer skewed by a child's UTC offset.
+- **Default `WARDEN_MODE` is `child`** — only the parent needs to set the mode.
+
+### Fixed
+
+- "Logs by level" could read empty while "Recent logs" still listed older entries: the recent-logs
+  list now honours the selected time range, so the breakdown card and the list always agree.
+
 ## [0.2.1] - 2026-06-10
 
 ### Added
