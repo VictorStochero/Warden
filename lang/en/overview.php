@@ -14,6 +14,12 @@ return [
     'projects_heading' => 'Projects',
     'ungrouped' => 'Ungrouped',
 
+    'filter' => [
+        'group' => 'Group',
+        'tag' => 'Tag',
+        'all' => 'All',
+    ],
+
     'empty' => [
         'no_match' => 'No projects match this filter.',
         'none_registered' => 'No projects registered yet.',

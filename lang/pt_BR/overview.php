@@ -14,6 +14,12 @@ return [
     'projects_heading' => 'Projetos',
     'ungrouped' => 'Sem grupo',
 
+    'filter' => [
+        'group' => 'Grupo',
+        'tag' => 'Tag',
+        'all' => 'Todos',
+    ],
+
     'empty' => [
         'no_match' => 'Nenhum projeto corresponde a este filtro.',
         'none_registered' => 'Nenhum projeto cadastrado ainda.',

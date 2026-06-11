@@ -33,9 +33,9 @@
         <div class="mt-9 space-y-3">
             @if($o['groups']->isNotEmpty())
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="w-12 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Group</span>
+                    <span class="w-12 text-[10px] font-semibold uppercase tracking-widest text-slate-600">{{ __('warden::overview.filter.group') }}</span>
                     <a href="{{ route('warden.overview', array_filter(['tag' => $activeTag])) }}"
-                       class="rounded-full border px-3 py-1 text-xs transition {{ $activeGroup === null ? 'border-brand-500 bg-brand-600/15 text-brand-300' : 'border-ink-700 text-slate-400 hover:border-brand-500/50 hover:text-white' }}">All</a>
+                       class="rounded-full border px-3 py-1 text-xs transition {{ $activeGroup === null ? 'border-brand-500 bg-brand-600/15 text-brand-300' : 'border-ink-700 text-slate-400 hover:border-brand-500/50 hover:text-white' }}">{{ __('warden::overview.filter.all') }}</a>
                     @foreach($o['groups'] as $g)
                         <a href="{{ route('warden.overview', array_filter(['group' => $g->slug, 'tag' => $activeTag])) }}"
                            class="rounded-full border px-3 py-1 text-xs transition {{ $activeGroup === $g->slug ? 'border-brand-500 bg-brand-600/15 text-brand-300' : 'border-ink-700 text-slate-400 hover:border-brand-500/50 hover:text-white' }}">{{ $g->name }}</a>
@@ -44,9 +44,9 @@
             @endif
             @if($o['tags']->isNotEmpty())
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="w-12 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Tag</span>
+                    <span class="w-12 text-[10px] font-semibold uppercase tracking-widest text-slate-600">{{ __('warden::overview.filter.tag') }}</span>
                     <a href="{{ route('warden.overview', array_filter(['group' => $activeGroup])) }}"
-                       class="rounded-full border px-3 py-1 text-xs transition {{ $activeTag === null ? 'border-brand-500 bg-brand-600/15 text-brand-300' : 'border-ink-700 text-slate-400 hover:border-brand-500/50 hover:text-white' }}">All</a>
+                       class="rounded-full border px-3 py-1 text-xs transition {{ $activeTag === null ? 'border-brand-500 bg-brand-600/15 text-brand-300' : 'border-ink-700 text-slate-400 hover:border-brand-500/50 hover:text-white' }}">{{ __('warden::overview.filter.all') }}</a>
                     @foreach($o['tags'] as $t)
                         <a href="{{ route('warden.overview', array_filter(['tag' => $t->slug, 'group' => $activeGroup])) }}"
                            class="rounded-full border px-3 py-1 text-xs transition {{ $activeTag === $t->slug ? 'border-brand-500 bg-brand-600/15 text-brand-300' : 'border-ink-700 text-slate-400 hover:border-brand-500/50 hover:text-white' }}">{{ $t->name }}</a>
