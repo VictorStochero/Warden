@@ -35,7 +35,12 @@ final class ConfigCache
         }
 
         $data = Json::decode((string) @file_get_contents($file));
-        $config = isset($data['config']) && is_array($data['config']) ? $data['config'] : [];
+        $raw = isset($data['config']) && is_array($data['config']) ? $data['config'] : [];
+
+        $config = [];
+        foreach ($raw as $key => $value) {
+            $config[(string) $key] = $value;
+        }
 
         return self::$memo = ['version' => Cast::int($data['version'] ?? 0), 'config' => $config];
     }

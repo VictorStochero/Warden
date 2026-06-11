@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Tests\Feature;
 
 use VictorStochero\Warden\Config\ConfigCache;
+use VictorStochero\Warden\Config\RemoteConfig;
 use VictorStochero\Warden\Tests\TestCase;
 
 class RemoteConfigApplyTest extends TestCase
@@ -27,5 +28,37 @@ class RemoteConfigApplyTest extends TestCase
 
         $this->assertSame(0, ConfigCache::version());
         $this->assertSame([], ConfigCache::read());
+    }
+
+    public function test_remote_config_applies_knob_when_env_absent(): void
+    {
+        ConfigCache::write(1, ['host_interval' => 42]);
+        config()->set('warden.child.host_interval', 15);
+
+        (new RemoteConfig)->apply($this->app['config']);
+
+        $this->assertSame(42, config('warden.child.host_interval'));
+    }
+
+    public function test_remote_config_yields_to_explicit_env(): void
+    {
+        putenv('WARDEN_HOST_INTERVAL=9');
+        ConfigCache::write(1, ['host_interval' => 42]);
+        config()->set('warden.child.host_interval', 9);
+
+        (new RemoteConfig)->apply($this->app['config']);
+
+        $this->assertSame(9, config('warden.child.host_interval'));
+        putenv('WARDEN_HOST_INTERVAL');
+    }
+
+    public function test_remote_config_applies_envless_knob_freely(): void
+    {
+        ConfigCache::write(1, ['sample' => ['type_gate' => ['query' => false]]]);
+        config()->set('warden.child.sample.type_gate.query', true);
+
+        (new RemoteConfig)->apply($this->app['config']);
+
+        $this->assertFalse(config('warden.child.sample.type_gate.query'));
     }
 }
