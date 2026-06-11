@@ -88,11 +88,23 @@ class IngestController
         $accepted = $ingestor->ingest($project->slug, $batches);
 
         // Control channel: tell the child to run a dependency audit when the
-        // parent-configured interval has elapsed (M: parent-driven scheduling).
-        return response()->json([
+        // parent-configured interval has elapsed (M: parent-driven scheduling),
+        // plus the sparse config push via a version handshake.
+        $childVersion = Cast::int($data['config_version'] ?? 0);
+        $projectVersion = Cast::int($project->config_version, 0);
+
+        $payload = [
             'accepted' => $accepted,
             'audit_due' => $this->auditDue($project),
-        ], 202);
+            'config_version' => $projectVersion,
+        ];
+
+        // Only resend the document when the child is stale — saves payload.
+        if ($childVersion !== $projectVersion) {
+            $payload['config'] = is_array($project->config) ? $project->config : [];
+        }
+
+        return response()->json($payload, 202);
     }
 
     /**
