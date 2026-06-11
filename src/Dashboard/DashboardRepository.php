@@ -416,12 +416,17 @@ class DashboardRepository
      *
      * @return Collection<int, \stdClass>
      */
-    public function recentEvents(int $projectId, string $type, int $limit = 50): Collection
+    public function recentEvents(int $projectId, string $type, int $limit = 50, ?string $range = null): Collection
     {
-        return $this->db->table('wdn_events')
+        $query = $this->db->table('wdn_events')
             ->where('project_id', $projectId)
-            ->where('type', $type)
-            ->orderByDesc('id')
+            ->where('type', $type);
+
+        if ($range !== null) {
+            $query->where('occurred_at', '>=', $this->rangeStart($range));
+        }
+
+        return $query->orderByDesc('id')
             ->limit($limit)
             ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload'])
             ->map(function (\stdClass $e): \stdClass {
@@ -584,22 +589,7 @@ class DashboardRepository
      */
     public function recentLogs(int $projectId, ?string $level, int $limit = 100, ?string $range = null): Collection
     {
-        $query = $this->db->table('wdn_events')
-            ->where('project_id', $projectId)
-            ->where('type', 'log');
-
-        if ($range !== null) {
-            $query->where('occurred_at', '>=', $this->rangeStart($range));
-        }
-
-        $events = $query->orderByDesc('id')
-            ->limit($level !== null ? 500 : $limit)
-            ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload'])
-            ->map(function (\stdClass $e): \stdClass {
-                $e->payload = Json::decode($e->payload ?? null);
-
-                return $e;
-            });
+        $events = $this->recentEvents($projectId, 'log', $level !== null ? 500 : $limit, $range);
 
         if ($level !== null) {
             $events = $events
