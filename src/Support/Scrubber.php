@@ -42,12 +42,14 @@ class Scrubber
     protected array $keys;
 
     /**
-     * Raw effective key spellings (deduped), used to mask `key=value` pairs in
-     * free-text messages where the original spelling matters.
+     * Regex fragments (deduped) for masking sensitive `key=value` pairs in
+     * free-text messages. Each effective key is turned into a separator-tolerant
+     * fragment so `api_key`, `api-key` and `apikey` all match the same way the
+     * key-based path collapses them via normalize().
      *
      * @var list<string>
      */
-    protected array $messageKeys;
+    protected array $messageKeyPatterns;
 
     protected bool $capturePii;
 
@@ -73,10 +75,19 @@ class Scrubber
 
         $this->keys = array_keys($normalized);
 
-        $this->messageKeys = array_values(array_unique(array_filter(
-            $effective,
-            static fn (string $k): bool => trim($k) !== ''
-        )));
+        $patterns = [];
+        foreach ($effective as $key) {
+            $key = trim($key);
+            if ($key === '') {
+                continue;
+            }
+
+            // Quote the literal key, then make every `_`/`-` an optional
+            // `[-_]?` so separator variants (api_key / api-key / apikey) collide.
+            $fragment = str_replace(['_', '\-'], '[-_]?', preg_quote($key, '/'));
+            $patterns[$fragment] = true;
+        }
+        $this->messageKeyPatterns = array_keys($patterns);
 
         $this->capturePii = $capturePii;
         $this->captureCredentials = $captureCredentials;
@@ -110,8 +121,10 @@ class Scrubber
 
     /**
      * Mask sensitive data in a free-text message while keeping it legible:
-     *  - `key=value` / `key: value` whose key is in the effective floor/host set
-     *    (no-op when credential capture is enabled — the set is then empty);
+     *  - credential shapes anywhere (Bearer/Basic schemes, bare JWT, bcrypt)
+     *    — these never need an opt-out unless credential capture is enabled;
+     *  - `key=value` / `key: value` / `"key":"value"` whose key is sensitive,
+     *    tolerating separators, quotes (JSON) and multi-word quoted values;
      *  - when PII capture is OFF: bare emails and the value inside
      *    `Duplicate entry '...'` (unique-violation leaks).
      *
@@ -119,12 +132,46 @@ class Scrubber
      */
     public function scrubMessage(string $message): string
     {
-        foreach ($this->messageKeys as $key) {
+        if (! $this->captureCredentials) {
+            // Shape-based: a credential after an auth scheme, or a bare JWT /
+            // bcrypt hash dropped straight into the text (value heuristics, the
+            // message-level equivalent of valueLooksSensitive on bindings).
             $message = (string) preg_replace(
-                '/('.preg_quote($key, '/').'\s*[=:]\s*)\S+/i',
-                '${1}'.self::MASK,
+                '/\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/=-]+/i',
+                '${1} '.self::MASK,
                 $message
             );
+            $message = (string) preg_replace(
+                '/\beyJ[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+){2}/',
+                self::MASK,
+                $message
+            );
+            $message = (string) preg_replace(
+                '/\$2[aby]\$\d{2}\$[.\/A-Za-z0-9]{53}/',
+                self::MASK,
+                $message
+            );
+
+            if ($this->messageKeyPatterns !== []) {
+                // One alternation over every sensitive key, applied in a single
+                // pass so a freshly-masked value is never re-scanned/re-masked.
+                $keys = '(?:'.implode('|', $this->messageKeyPatterns).')';
+
+                // Optionally-quoted key, then a quoted (possibly multi-word)
+                // value: "password": "secret value".
+                $message = (string) preg_replace(
+                    '/(["\']?'.$keys.'["\']?\s*[=:]\s*)(["\'])(?:.*?)\2/i',
+                    '${1}${2}'.self::MASK.'${2}',
+                    $message
+                );
+                // Or an unquoted value: api-key=SECRET — up to the next
+                // whitespace or structural delimiter.
+                $message = (string) preg_replace(
+                    '/(["\']?'.$keys.'["\']?\s*[=:]\s*)[^\s"\',;}\)\]&]+/i',
+                    '${1}'.self::MASK,
+                    $message
+                );
+            }
         }
 
         if (! $this->capturePii) {
@@ -188,11 +235,13 @@ class Scrubber
      */
     public function scrubSql(string $sql): string
     {
+        // The column may be quoted as a grammar identifier (`col` / [col] /
+        // "col"); preserve the quoting and the operator, mask only the literal.
         return (string) preg_replace_callback(
-            '/([A-Za-z_][A-Za-z0-9_]*)(\s*(?:=|LIKE)\s*)(\'[^\']*\'|"[^"]*")/i',
+            '/([`"\[]?)([A-Za-z_][A-Za-z0-9_]*)([`"\]]?)(\s*(?:=|LIKE)\s*)(\'[^\']*\')/i',
             function (array $m): string {
-                if ($this->shouldScrub($m[1])) {
-                    return $m[1].$m[2].self::MASK;
+                if ($this->shouldScrub($m[2])) {
+                    return $m[1].$m[2].$m[3].$m[4].self::MASK;
                 }
 
                 return $m[0];
@@ -244,30 +293,47 @@ class Scrubber
     }
 
     /**
-     * Map INSERT column lists to their VALUES placeholders by position.
+     * Map INSERT column lists to their VALUES placeholders by position. Handles
+     * a multi-row insert: the same column map applies to every `(…)` tuple, and
+     * a running offset keeps placeholder indexes aligned across all rows.
      *
      * @return list<int>
      */
     protected function insertSensitivePositions(string $sql): array
     {
-        if (! preg_match('/insert\s+into\s+\S+\s*\(([^)]*)\)\s*values\s*\(([^)]*)\)/i', $sql, $m)) {
+        if (! preg_match('/insert\s+into\s+\S+\s*\(([^)]*)\)\s*values\s*(.+)$/is', $sql, $m)) {
             return [];
         }
 
-        $columns = array_map('trim', explode(',', $m[1]));
-        $values = array_map('trim', explode(',', $m[2]));
+        $columns = array_map(fn (string $c): string => trim($c, ' `"[]'), explode(',', $m[1]));
+
+        $sensitiveColumns = [];
+        foreach ($columns as $index => $column) {
+            if ($column !== '' && $this->shouldScrub($column)) {
+                $sensitiveColumns[$index] = true;
+            }
+        }
+
+        if ($sensitiveColumns === []) {
+            return [];
+        }
 
         $positions = [];
+        $offset = 0;
 
-        foreach ($values as $index => $value) {
-            if ($value !== '?') {
-                continue;
-            }
+        if (preg_match_all('/\(([^)]*)\)/', $m[2], $tuples)) {
+            foreach ($tuples[1] as $tuple) {
+                foreach (array_map('trim', explode(',', $tuple)) as $index => $value) {
+                    if ($value !== '?') {
+                        continue;
+                    }
 
-            $column = trim($columns[$index] ?? '', ' `"[]');
+                    if (isset($sensitiveColumns[$index])) {
+                        $positions[] = $offset;
+                    }
 
-            if ($column !== '' && $this->shouldScrub($column)) {
-                $positions[] = $index;
+                    $offset++;
+                }
             }
         }
 
