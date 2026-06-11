@@ -28,4 +28,19 @@ class PruneBatchesTest extends TestCase
         $remaining = Schema::db()->table('wdn_ingested_batches')->pluck('batch_id')->all();
         $this->assertSame(['fresh'], $remaining);
     }
+
+    public function test_prune_removes_only_expired_dead_letters(): void
+    {
+        $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't', 'secret' => 's', 'active' => true]);
+
+        Schema::db()->table('wdn_dead_letter')->insert([
+            ['project_id' => $project->id, 'batch_id' => 'old', 'attempts' => 1, 'reported_at' => Carbon::now()->subDays(45)],
+            ['project_id' => $project->id, 'batch_id' => 'fresh', 'attempts' => 1, 'reported_at' => Carbon::now()],
+        ]);
+
+        $this->artisan('warden:prune')->assertSuccessful();
+
+        $remaining = Schema::db()->table('wdn_dead_letter')->pluck('batch_id')->all();
+        $this->assertSame(['fresh'], $remaining);
+    }
 }

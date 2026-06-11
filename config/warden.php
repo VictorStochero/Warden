@@ -199,6 +199,10 @@ return [
         'raw_retention_days' => env('WARDEN_RAW_RETENTION_DAYS', 7),
         'aggregate_retention_days' => env('WARDEN_AGG_RETENTION_DAYS', 90),
 
+        // Dead-letter reports are operational breadcrumbs; reclaim old rows so a
+        // misbehaving child can't grow the table unbounded.
+        'dead_letter_retention_days' => env('WARDEN_DEAD_LETTER_RETENTION_DAYS', 30),
+
         // Partitioning of wdn_events by date (§18.5). Disabled on SQLite, which
         // falls back to a single table pruned with DELETE.
         'partitioning' => env('WARDEN_PARTITIONING', true),

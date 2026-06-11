@@ -52,6 +52,12 @@ class PruneCommand extends Command
                 ->where('received_at', '<', $rawCutoff)
                 ->delete();
             $this->components->twoColumnDetail('Ingested batches deleted', (string) $batchesRemoved);
+
+            $deadLetterCutoff = Carbon::now()->subDays(Cast::int(config('warden.parent.dead_letter_retention_days', 30), 30));
+            $deadLettersRemoved = Schema::db()->table('wdn_dead_letter')
+                ->where('reported_at', '<', $deadLetterCutoff)
+                ->delete();
+            $this->components->twoColumnDetail('Dead letters deleted', (string) $deadLettersRemoved);
         });
 
         return self::SUCCESS;
