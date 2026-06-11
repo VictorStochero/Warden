@@ -187,6 +187,10 @@ return [
 
         // Ingestion route protection.
         'rate_limit' => env('WARDEN_INGEST_RATE_LIMIT', '300,1'), // attempts,perMinutes
+        // Dead-letter is low-volume (only when a child drops a batch after
+        // exhausting retries) — a much tighter cap than ingest, so a misbehaving
+        // child can't pour rows into wdn_dead_letter on the generous ingest bucket.
+        'dead_letter_rate_limit' => env('WARDEN_DEAD_LETTER_RATE_LIMIT', '60,1'),
         'max_skew' => env('WARDEN_MAX_SKEW', 300), // anti-replay window, seconds
 
         // Ingest payload guards (DoS protection). A body or event count beyond
@@ -347,6 +351,13 @@ return [
             | further attempts are blocked until the window expires. A successful
             | login clears the counter. Only the "password" mode has its own form;
             | email/gate modes delegate auth to the host app.
+            |
+            | NOTE: the per-IP key uses $request->ip(), which is only trustworthy
+            | when the host's TrustProxies is configured correctly (no wildcard /
+            | only your real proxy trusted). Under a permissive proxy config a
+            | client can rotate X-Forwarded-For to mint fresh per-IP buckets — the
+            | IP-independent `login_global_max` cap below is the control that still
+            | holds in that case.
             |
             */
             'throttle' => [

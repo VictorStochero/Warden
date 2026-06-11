@@ -14,5 +14,5 @@ Route::post('ingest', IngestController::class)
     ->name('warden.ingest');
 
 Route::post('dead-letter', DeadLetterController::class)
-    ->middleware('throttle:warden-ingest')
+    ->middleware('throttle:warden-deadletter')
     ->name('warden.deadletter');

@@ -418,6 +418,19 @@ class WardenServiceProvider extends ServiceProvider
             return Limit::perMinutes((int) $minutes, (int) $attempts)
                 ->by(Cast::str($request->ip()));
         });
+
+        RateLimiter::for('warden-deadletter', function (Request $request) {
+            [$attempts, $minutes] = array_pad(
+                explode(',', Cast::str($this->config()->get('warden.parent.dead_letter_rate_limit'), '60,1')),
+                2,
+                '1'
+            );
+
+            // Dedicated, tighter bucket than ingest (low legitimate volume),
+            // keyed by IP like ingest.
+            return Limit::perMinutes((int) $minutes, (int) $attempts)
+                ->by(Cast::str($request->ip()));
+        });
     }
 
     // -------------------------------------------------------- lifecycle
