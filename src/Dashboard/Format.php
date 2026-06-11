@@ -3,29 +3,37 @@
 namespace VictorStochero\Warden\Dashboard;
 
 use Illuminate\Support\Carbon;
+use VictorStochero\Warden\Support\Cast;
 
 /** Tiny presentation helpers for the dashboard views (no Blade extension needed). */
 class Format
 {
-    /** Display timezone for absolute timestamps; null = the app default. */
+    /** Display timezone override for absolute timestamps; null = the app default. */
     protected static ?string $tz = null;
 
-    /** Set the per-request display timezone (e.g. the current project's). */
+    /** Set the per-request display timezone override (e.g. the current project's). */
     public static function tz(?string $timezone): void
     {
         self::$tz = ($timezone !== null && $timezone !== '') ? $timezone : null;
     }
 
-    /** Absolute timestamp rendered in the configured display timezone. */
+    /** The timezone to render absolute timestamps in: explicit override, else the app default. */
+    protected static function displayTz(): string
+    {
+        return self::$tz ?? Cast::str(config('app.timezone'), 'UTC');
+    }
+
+    /**
+     * Absolute timestamp rendered in the display timezone. Stored wdn timestamps
+     * are canonical UTC, so naive strings are parsed as UTC then converted.
+     */
     public static function at(\DateTimeInterface|string|int|null $time, string $format = 'Y-m-d H:i:s'): string
     {
         if (! $time) {
             return '—';
         }
 
-        $carbon = Carbon::parse($time);
-
-        return (self::$tz !== null ? $carbon->setTimezone(self::$tz) : $carbon)->format($format);
+        return Carbon::parse($time, 'UTC')->setTimezone(self::displayTz())->format($format);
     }
 
     /** Microseconds -> human duration. */
@@ -87,7 +95,7 @@ class Format
             return 'never';
         }
 
-        return Carbon::parse($time)->diffForHumans(['short' => true]);
+        return Carbon::parse($time, 'UTC')->diffForHumans(['short' => true]);
     }
 
     public static function time(\DateTimeInterface|string|int|null $time): string

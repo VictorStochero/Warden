@@ -1,5 +1,5 @@
 @extends('warden::layout', ['active' => 'incidents', 'showRanges' => false])
-@php use VictorStochero\Warden\Dashboard\Format; Format::tz($project->timezone ?? null); @endphp
+@php use VictorStochero\Warden\Dashboard\Format; @endphp
 
 @section('title', __('warden::incidents.show.title'))
 @section('heading', $project->name . ' · ' . __('warden::incidents.show.heading'))

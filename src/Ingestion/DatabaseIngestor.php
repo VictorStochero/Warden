@@ -33,7 +33,7 @@ class DatabaseIngestor implements Ingestor
         }
 
         return $this->observer->withoutRecording(function () use ($projectModel, $batches): int {
-            $now = Carbon::now();
+            $now = Carbon::now('UTC');
             $accepted = 0;
 
             foreach ($batches as $batch) {
@@ -114,7 +114,9 @@ class DatabaseIngestor implements Ingestor
         }
 
         try {
-            return Carbon::parse($value);
+            // Children stamp occurred_at as a naive UTC instant (Warden::microNow);
+            // parse it as UTC so it is stored and compared consistently (§timezone).
+            return Carbon::parse($value, 'UTC');
         } catch (\Throwable) {
             return null;
         }

@@ -323,7 +323,7 @@ class DashboardRepository
             ->map(function (\stdClass $hb): array {
                 $lastSeen = isset($hb->last_seen_at) ? Cast::str($hb->last_seen_at) : null;
                 $deadline = $lastSeen !== null
-                    ? Carbon::parse($lastSeen)->addSeconds(Cast::int($hb->expected_interval) + Cast::int($hb->grace))
+                    ? Carbon::parse($lastSeen, 'UTC')->addSeconds(Cast::int($hb->expected_interval) + Cast::int($hb->grace))
                     : null;
 
                 return [

@@ -6,7 +6,7 @@
 @section('subheading', __('warden::project.subheading', ['section' => ucfirst($section), 'ago' => Format::ago($project->last_seen_at)]))
 
 @section('content')
-    @php Format::tz($project->timezone ?? null); $k = $kpis; @endphp
+    @php $k = $kpis; @endphp
 
     {{-- KPI strip --}}
     @php

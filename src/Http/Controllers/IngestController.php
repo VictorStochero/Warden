@@ -147,7 +147,7 @@ class IngestController
             ->where('project_id', $project->id)
             ->where('type', 'security')
             ->max('received_at');
-        $lastTs = $last !== null ? Carbon::parse(Cast::str($last)) : null;
+        $lastTs = $last !== null ? Carbon::parse(Cast::str($last), 'UTC') : null;
 
         // Instant request: due until a snapshot newer than the request arrives.
         $requested = $project->audit_requested_at;

@@ -345,6 +345,6 @@ class Warden
 
     protected function microNow(): string
     {
-        return now()->format('Y-m-d H:i:s.u');
+        return now()->utc()->format('Y-m-d H:i:s.u');
     }
 }
