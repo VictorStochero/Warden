@@ -27,6 +27,8 @@ use Illuminate\Support\Carbon;
  * @property bool|null $alert_email_enabled
  * @property array<int, string>|null $alert_recipients
  * @property string|null $alert_min_severity
+ * @property array<string, mixed>|null $config
+ * @property int $config_version
  */
 class Project extends WardenModel
 {
@@ -35,6 +37,11 @@ class Project extends WardenModel
     protected $guarded = [];
 
     protected $hidden = ['secret'];
+
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'config_version' => 0,
+    ];
 
     protected $casts = [
         'secret' => 'encrypted',
@@ -48,6 +55,8 @@ class Project extends WardenModel
         'alert_email_enabled' => 'boolean',
         'alert_recipients' => 'array',
         'alert_min_severity' => 'string',
+        'config' => 'array',
+        'config_version' => 'integer',
     ];
 
     /** @return HasMany<Event, $this> */
