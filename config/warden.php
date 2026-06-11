@@ -245,6 +245,20 @@ return [
 
     'dashboard' => [
         'enabled' => env('WARDEN_DASHBOARD', true),
+
+        // The middleware group wrapping the dashboard AND the built-in login
+        // routes. In the "password" auth mode below this MUST include session +
+        // CSRF protection — i.e. StartSession + VerifyCsrfToken, normally bundled
+        // in Laravel's `web` group. Stripping them silently disables CSRF on the
+        // login/admin POSTs; Warden logs a boot warning if it detects this.
+        //
+        // SECURITY (#11): when an operator creates / rotates / recovers a child's
+        // credentials, the decrypted child SECRET is flashed to the session once
+        // so the setup snippet can be shown a single time on the next page. With
+        // SESSION_DRIVER=cookie that one-shot value is written into the (signed,
+        // but client-held) session cookie. For this parent prefer a server-side
+        // session store (SESSION_DRIVER=database/redis/file) so the secret never
+        // leaves the server, and run the dashboard over HTTPS.
         'middleware' => ['web'],
         // Auto-refresh interval for live pages, in seconds (0 disables).
         'refresh' => env('WARDEN_DASHBOARD_REFRESH', 15),

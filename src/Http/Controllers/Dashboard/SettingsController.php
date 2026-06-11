@@ -59,7 +59,8 @@ class SettingsController
         $out = [];
         foreach ($raw === false ? [] : $raw as $address) {
             $address = trim($address);
-            if ($address !== '') {
+            // #16 — drop anything that isn't a valid e-mail before persisting.
+            if ($address !== '' && filter_var($address, FILTER_VALIDATE_EMAIL) !== false) {
                 $out[] = $address;
             }
         }

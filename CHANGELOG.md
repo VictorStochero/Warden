@@ -23,6 +23,25 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   100 per window) blocks the login form once total failed attempts cross the ceiling, closing the
   distributed brute-force gap where a pool of IPs multiplied the per-IP budget. The per-IP throttle
   is unchanged.
+- **Security headers on the dashboard.** Every dashboard and login response now carries
+  `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`
+  and a Content-Security-Policy (`frame-ancestors 'self'`, `default-src 'self'`, …) tuned for the
+  self-contained UI — mitigating clickjacking and content-sniffing. Headers are best-effort and a
+  host that sets its own always wins.
+- **Ingest rate limit keyed by IP.** The `warden-ingest` limiter is now keyed by the request IP
+  instead of the attacker-controllable `X-Warden-Token` header, so randomising the token no longer
+  mints a fresh bucket to evade the limit.
+- **Dead-letter payload guard.** The dead-letter endpoint now applies the same `max_body_bytes` guard
+  as ingest, rejecting oversized bodies with `413` before any signature/JSON work.
+- **Alert recipient validation.** Alert e-mail recipients (global settings and per-project overrides)
+  are now validated with `FILTER_VALIDATE_EMAIL`; malformed entries are discarded before persisting.
+- **Issue ordering allowlist.** The `order` filter on the issues query is validated against an
+  allowlist (`last_seen_at`, `first_seen_at`, `count`) inside the repository, removing a latent
+  injection path through the non-parameterised `orderBy` identifier.
+- **CSRF/session boot warning.** In `password` auth mode Warden now logs a boot warning when the
+  dashboard middleware stack carries no session/CSRF protection (no `web`, `StartSession` or
+  `VerifyCsrfToken`). Documented that the stack must keep these in `password` mode, and that the
+  parent should use a server-side `SESSION_DRIVER` because child credentials are flashed once.
 
 ## [0.3.0] - 2026-06-10
 

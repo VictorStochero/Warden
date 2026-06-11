@@ -424,6 +424,21 @@ from the `.env` with **`WARDEN_DASHBOARD_AUTH`** — no code required:
 When `WARDEN_DASHBOARD_AUTH` is unset it resolves to `password` if a dashboard
 password is configured, otherwise `gate` (local-only) — the historical default.
 
+Every dashboard and login response carries hardening headers
+(`X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: same-origin` and a Content-Security-Policy with
+`frame-ancestors 'self'`) to blunt clickjacking and content-sniffing.
+
+> **Session & CSRF.** The dashboard middleware stack (`warden.dashboard.middleware`,
+> default `['web']`) must keep session + CSRF protection in `password` mode — the
+> login and admin forms are stateful POSTs that depend on `StartSession` +
+> `VerifyCsrfToken`. If you customise the stack and drop them, Warden logs a boot
+> warning. When you create / rotate / recover a child's credentials, the decrypted
+> **secret** is flashed to the session once so the setup snippet can be shown a
+> single time; prefer a **server-side session store** (`SESSION_DRIVER=database`,
+> `redis` or `file`, not `cookie`) on the parent so that secret never travels in a
+> client-held cookie, and serve the dashboard over HTTPS.
+
 ## Privacy & data minimisation
 
 Warden is built to observe *how your app behaves in operation*, not *what your

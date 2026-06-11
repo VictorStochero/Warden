@@ -88,6 +88,38 @@ class AlertEmailConfigTest extends TestCase
         $this->assertSame(600, $settings->cooldown);
     }
 
+    public function test_global_settings_discard_invalid_email_recipients(): void
+    {
+        // #16 — entries that are not valid e-mail addresses are filtered out
+        // before persisting, while valid addresses keep their order.
+        $this->post(route('warden.admin.settings.update'), [
+            'email_enabled' => '1',
+            'recipients' => 'a@b.com, naoeumemail, foo@, second@example.com',
+            'min_severity' => 'warning',
+            'cooldown' => 300,
+        ])->assertRedirect(route('warden.admin.settings'));
+
+        $this->assertSame(['a@b.com', 'second@example.com'], AlertSetting::current()->recipients);
+    }
+
+    public function test_project_override_discards_invalid_email_recipients(): void
+    {
+        // #16 — the per-project override applies the same e-mail validation.
+        $project = $this->project();
+
+        $this->post(route('warden.admin.projects.update', $project->id), [
+            'name' => 'Demo',
+            'audit_frequency' => 'off',
+            'uptime_window' => '30d',
+            'alert_override' => '1',
+            'alert_email_enabled' => '1',
+            'alert_recipients' => 'ops@example.com, bogus, @nope',
+            'alert_min_severity' => 'info',
+        ])->assertRedirect(route('warden.admin.projects'));
+
+        $this->assertSame(['ops@example.com'], $project->fresh()->alert_recipients);
+    }
+
     public function test_project_override_persists_from_the_edit_form(): void
     {
         $project = $this->project();

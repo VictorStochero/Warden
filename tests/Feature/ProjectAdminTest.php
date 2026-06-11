@@ -78,6 +78,29 @@ class ProjectAdminTest extends TestCase
         $this->assertSame('fixed-secret', $fresh->secret);
     }
 
+    public function test_credentials_are_shown_only_once_and_not_retained_in_session(): void
+    {
+        // #11 — the secret is flashed for a single render. A subsequent plain
+        // GET of the index must not re-expose it (flash does not persist).
+        $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 'fixed-token', 'secret' => 'fixed-secret', 'active' => true]);
+
+        $this->post(route('warden.admin.projects.credentials', $project->id))
+            ->assertRedirect(route('warden.admin.projects'))
+            ->assertSessionHas('warden_credentials');
+
+        // The redirect target shows it once...
+        $this->get(route('warden.admin.projects'))
+            ->assertOk()
+            ->assertSee('WARDEN_SECRET=fixed-secret');
+
+        // ...and a fresh request no longer carries the secret nor the flash key.
+        $this->get(route('warden.admin.projects'))
+            ->assertOk()
+            ->assertDontSee('WARDEN_SECRET=fixed-secret');
+
+        $this->assertNull(session('warden_credentials'));
+    }
+
     public function test_project_can_be_deleted_with_all_its_data(): void
     {
         $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't', 'secret' => 's', 'active' => true]);

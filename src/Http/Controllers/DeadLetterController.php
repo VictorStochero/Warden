@@ -27,6 +27,13 @@ class DeadLetterController
         $signature = (string) $request->header('X-Warden-Signature', '');
         $body = (string) $request->getContent();
 
+        // Same payload guard as ingest (#7): refuse oversized bodies before any
+        // signature/JSON work so a child can't exhaust memory with a giant report.
+        $maxBytes = Cast::int(config('warden.parent.max_body_bytes', 1048576), 1048576);
+        if (strlen($body) > $maxBytes) {
+            return response()->json(['error' => 'payload_too_large'], 413);
+        }
+
         $project = Project::query()->where('token', $token)->where('active', true)->first();
 
         if ($project === null || $token === '') {

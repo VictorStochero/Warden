@@ -43,6 +43,7 @@ use VictorStochero\Warden\Http\Controllers\Auth\DashboardLoginController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\AssetController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\LocaleController;
 use VictorStochero\Warden\Http\Middleware\Authorize;
+use VictorStochero\Warden\Http\Middleware\SecurityHeaders;
 use VictorStochero\Warden\Http\Middleware\SetLocale;
 use VictorStochero\Warden\Http\Middleware\TraceRequests;
 use VictorStochero\Warden\Ingestion\DatabaseIngestor;
@@ -231,6 +232,7 @@ class WardenServiceProvider extends ServiceProvider
 
         $this->registerDashboardGates();
         $this->warnIfDashboardUnauthenticated();
+        $this->warnIfCsrfDisabled();
         $this->registerAssetRoutes($prefix);
         $this->registerLoginRoutes($prefix);
 
@@ -238,7 +240,7 @@ class WardenServiceProvider extends ServiceProvider
             'prefix' => $prefix,
             'middleware' => array_merge(
                 Cast::arr($this->config()->get('warden.dashboard.middleware', ['web'])),
-                [SetLocale::class, Authorize::class]
+                [SecurityHeaders::class, SetLocale::class, Authorize::class]
             ),
         ], function () {
             $this->loadRoutesFrom(__DIR__.'/../routes/dashboard.php');
@@ -307,6 +309,50 @@ class WardenServiceProvider extends ServiceProvider
         }
     }
 
+    /**
+     * Best-effort boot warning when the built-in "password" login is in use but
+     * the dashboard middleware stack carries no session/CSRF protection. The
+     * password form is a stateful POST that depends on StartSession +
+     * VerifyCsrfToken (normally provided by the `web` group); stripping them
+     * silently disables CSRF and session-backed auth. We surface it loudly so a
+     * mis-configured stack is visible. Never throws (RNF-2, #15).
+     */
+    protected function warnIfCsrfDisabled(): void
+    {
+        try {
+            if ($this->app->make(DashboardAuth::class)->mode() !== 'password') {
+                return;
+            }
+
+            $stack = array_map(
+                fn (mixed $m): string => Cast::str($m),
+                Cast::arr($this->config()->get('warden.dashboard.middleware', ['web']))
+            );
+
+            $hasSession = false;
+            foreach ($stack as $middleware) {
+                if ($middleware === 'web'
+                    || str_contains($middleware, 'StartSession')
+                    || str_contains($middleware, 'VerifyCsrfToken')
+                ) {
+                    $hasSession = true;
+                    break;
+                }
+            }
+
+            if (! $hasSession) {
+                Log::warning(
+                    'Warden: the dashboard is in "password" auth mode but warden.dashboard.middleware '
+                    .'contains no session/CSRF middleware (no "web", StartSession or VerifyCsrfToken). '
+                    .'The login form depends on sessions and CSRF protection — add the "web" group (or '
+                    .'StartSession + VerifyCsrfToken) to the dashboard middleware stack.'
+                );
+            }
+        } catch (\Throwable) {
+            // Logging is best-effort; never break the host boot.
+        }
+    }
+
     /** Best-effort read of an authenticated user's e-mail for the "email" mode. */
     protected function userEmail(?Authenticatable $user): ?string
     {
@@ -343,7 +389,7 @@ class WardenServiceProvider extends ServiceProvider
             'prefix' => $prefix,
             'middleware' => array_merge(
                 Cast::arr($this->config()->get('warden.dashboard.middleware', ['web'])),
-                [SetLocale::class]
+                [SecurityHeaders::class, SetLocale::class]
             ),
         ], function () {
             Route::get('/login', [DashboardLoginController::class, 'showLogin'])->name('warden.login');
@@ -365,8 +411,12 @@ class WardenServiceProvider extends ServiceProvider
                 '1'
             );
 
+            // Key by IP, not by the attacker-controllable X-Warden-Token header:
+            // randomizing the token must not let a single source evade the limit
+            // (#8). The IP isn't client-controllable behind a correctly-configured
+            // proxy, so it can't be rotated per request to mint fresh buckets.
             return Limit::perMinutes((int) $minutes, (int) $attempts)
-                ->by(Cast::str($request->header('X-Warden-Token', $request->ip())));
+                ->by(Cast::str($request->ip()));
         });
     }
 

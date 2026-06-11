@@ -262,7 +262,13 @@ class DatabaseWardenRepository implements WardenRepository
             $query->where('priority', $filters['priority']);
         }
 
-        return $query->orderByDesc(Cast::str($filters['order'] ?? null, 'last_seen_at'))
+        // Allowlist the order column inside the repository (independent of the
+        // caller): orderByDesc()'s argument is an identifier, not a bound value,
+        // so anything outside the known columns must be clamped (#13).
+        $order = Cast::str($filters['order'] ?? null, 'last_seen_at');
+        $order = in_array($order, ['last_seen_at', 'first_seen_at', 'count'], true) ? $order : 'last_seen_at';
+
+        return $query->orderByDesc($order)
             ->limit(Cast::int($filters['limit'] ?? null, 100))
             ->get();
     }

@@ -48,4 +48,18 @@ class DeadLetterTest extends TestCase
 
         $this->deadLetterPost($body, 'deadbeef')->assertStatus(401);
     }
+
+    public function test_oversized_body_is_rejected_with_413(): void
+    {
+        config()->set('warden.parent.max_body_bytes', 200);
+        $this->project();
+
+        $body = (string) json_encode([
+            'batch_id' => 'b-big',
+            'reason' => str_repeat('a', 1000),
+            'attempts' => 1,
+        ]);
+
+        $this->deadLetterPost($body, (new Signer('psecret'))->sign($body))->assertStatus(413);
+    }
 }
