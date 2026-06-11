@@ -20,6 +20,33 @@ dependencies** (no build step, nothing outside Laravel core).
 That's Warden: run one parent, point every app at it, and watch the entire fleet from one
 place — stored in the database you already operate.
 
+## Principles
+
+Two non-negotiable commitments shape every decision in Warden:
+
+### 🪶 Zero dependencies
+
+Warden requires only `illuminate/*` (Laravel core) and PHP 8.2 — nothing else at runtime.
+No SaaS, no third-party agent, no message broker, no JS build step, and no Composer/NPM
+package outside Laravel core. Storage is the relational database you already operate
+(MySQL / MariaDB / PostgreSQL / SQLite). Adding Warden adds **zero** operational surface.
+
+### 🔒 Privacy by design
+
+Warden records the **shape and performance** of every operation — never the content of your
+users' data. Redaction is **non-optional**, and the defaults are private:
+
+- Email **bodies are never captured**; recipient addresses are masked to their domain
+  (`***@example.com`).
+- Query **bindings**, **inline SQL literals**, **log context**, **headers** and **exception
+  messages** are scrubbed for secrets and PII before anything is stored — a non-removable
+  baseline of sensitive keys, plus a column-aware + heuristic mask for query values.
+- The only user identifier kept is the authenticated **id** — never names or emails.
+- The host can only make redaction **stricter** (extend the scrub list), never weaker.
+
+You get complete observability of how the application *behaves*, without turning the APM into
+a store of personal data.
+
 ## Screenshots
 
 The parent's self-hosted dashboard (Blade + Tailwind, no build step):
