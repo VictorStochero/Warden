@@ -46,6 +46,17 @@ class DashboardRepository
      */
     protected array $edges = [10, 50, 100, 250, 500, 1000, 2500, 5000];
 
+    /**
+     * Per-instance memo of aggregate reads. A single page render asks for the
+     * same (project, type, range) slice from several sections (kpis, series,
+     * top-routes…); without this each one re-queries wdn_aggregates. The
+     * repository is resolved fresh per request (not a singleton), so the cache
+     * is naturally request-scoped and never leaks across Octane requests.
+     *
+     * @var array<string, Collection<int, AggRow>>
+     */
+    protected array $rowsCache = [];
+
     public function __construct(
         protected Connection $db,
         protected DatabaseWardenRepository $reader,
@@ -634,7 +645,9 @@ class DashboardRepository
     /** @return Collection<int, AggRow> */
     protected function rows(int $projectId, string $type, string $range): Collection
     {
-        return $this->db->table('wdn_aggregates')
+        $key = "{$projectId}.{$type}.{$range}";
+
+        return $this->rowsCache[$key] ??= $this->db->table('wdn_aggregates')
             ->where('project_id', $projectId)
             ->where('type', $type)
             ->where('bucket', '>=', $this->rangeStart($range))
