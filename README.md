@@ -33,19 +33,29 @@ package outside Laravel core. Storage is the relational database you already ope
 
 ### 🔒 Privacy by design
 
-Warden records the **shape and performance** of every operation — never the content of your
-users' data. Redaction is **non-optional**, and the defaults are private:
+**Private by default, like Sentry's `send_default_pii`.** Out of the box Warden records the
+**shape and performance** of every operation — never the content of your users' data:
 
-- Email **bodies are never captured**; recipient addresses are masked to their domain
-  (`***@example.com`).
-- Query **bindings**, **inline SQL literals**, **log context**, **headers** and **exception
-  messages** are scrubbed for secrets and PII before anything is stored — a non-removable
-  baseline of sensitive keys, plus a column-aware + heuristic mask for query values.
-- The only user identifier kept is the authenticated **id** — never names or emails.
-- The host can only make redaction **stricter** (extend the scrub list), never weaker.
+- **Credentials are always masked** — passwords, tokens, API keys, bearer/JWT/bcrypt values,
+  card numbers, CPF/SSN — in query **bindings**, **inline SQL literals**, **log context**,
+  **headers** and **exception/log messages**. Column-aware correlation + value heuristics.
+- Email **bodies are never captured** by default; recipient addresses are masked to their
+  domain (`***@example.com`).
+- Incidental **PII** (an email inside a `Duplicate entry '…'` error, a recipient's local
+  part) is masked by default.
+- The host can extend the scrub list to make redaction **stricter** at any time.
 
-You get complete observability of how the application *behaves*, without turning the APM into
-a store of personal data.
+When you need richer diagnostics, you opt in **per category** — nothing turns on by itself:
+
+| Knob (`warden.child.capture.*`) | env | Default | When on |
+| --- | --- | --- | --- |
+| `pii` | `WARDEN_CAPTURE_PII` | `false` | Keeps incidental PII (emails in messages/bindings, full recipients) as diagnostic signal. Credentials stay masked. |
+| `mail_body` | `WARDEN_CAPTURE_MAIL_BODY` | `false` | Stores the rendered e-mail body. |
+| `disable_credential_scrub` | `WARDEN_DISABLE_CREDENTIAL_SCRUB` | `false` | **Discouraged.** Lifts the credential floor — the only switch that lets raw secrets reach the store. |
+
+So the **default** is the safe, private posture; the **ceiling** matches a "capture everything"
+tool if a host deliberately accepts the risk. The parent control plane can set these per project
+(the child `.env` still wins), so you tune observability vs. privacy from one place.
 
 ## Screenshots
 
@@ -442,24 +452,26 @@ Every dashboard and login response carries hardening headers
 ## Privacy & data minimisation
 
 Warden is built to observe *how your app behaves in operation*, not *what your
-users do or say*. It captures the minimum metadata needed to keep the app
-healthy and deliberately stops short of copying personal data into the APM
-store — a posture that maps directly onto LGPD/GDPR data-minimisation duties.
+users do or say*. **By default** it captures the minimum metadata needed to keep
+the app healthy and stops short of copying personal data into the APM store — a
+posture that maps directly onto LGPD/GDPR data-minimisation duties. Hosts that
+need richer diagnostics opt in per category (see *Privacy by design* above); the
+credential floor below is the one thing that never relaxes by accident.
 
-- **No email bodies.** The mail recorder never stores the HTML or text body of a
-  message — only its subject, mailer, status and timing.
-- **Masked recipients.** Email addresses (`from`/`to`/`cc`/`bcc`/`reply_to`) are
-  reduced to their domain: `joana@empresa.com.br` becomes `***@empresa.com.br`,
-  and an address with no domain becomes `***`. The local part (the PII) never
-  leaves the host app.
-- **No user names or emails.** The only user identifier Warden records is the
-  authenticated `user_id` for correlation — never the user's name, email or other
-  profile fields.
-- **Sensitive keys redacted.** The `Scrubber` (`warden.child.scrub`) redacts
-  secrets from query bindings, request input, headers, log context and exception
-  messages; stack-trace paths are relativized to the app base path.
-- **The host is the data controller.** You decide what is captured (recorders and
-  sampling are configurable) and how long it is kept — set retention with
+- **Credentials never leak by default.** The `Scrubber` (`warden.child.scrub` +
+  a built-in floor) masks passwords, tokens, keys, bearer/JWT/bcrypt values and
+  card/CPF/SSN from query bindings, request input, headers, log context and
+  exception/log messages; stack-trace paths are relativized to the app base path.
+  Lifting this floor requires the explicit, discouraged `capture.disable_credential_scrub`.
+- **No email bodies by default.** The mail recorder stores only subject, mailer,
+  status and timing — unless `capture.mail_body` is turned on.
+- **Masked recipients by default.** Email addresses (`from`/`to`/`cc`/`bcc`/`reply_to`)
+  are reduced to their domain (`joana@empresa.com.br` → `***@empresa.com.br`);
+  full addresses are kept only when `capture.pii` is enabled.
+- **Minimal user identity.** The only user identifier Warden records is the
+  authenticated `user_id` for correlation — never the user's name or profile fields.
+- **The host is the data controller.** You decide what is captured (recorders,
+  sampling and the `capture.*` knobs) and how long it is kept — set retention with
   `warden:prune` / partitioning so collected metadata doesn't outlive its purpose.
 
 ## Quality

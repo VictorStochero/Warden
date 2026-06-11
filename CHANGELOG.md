@@ -6,6 +6,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Opt-in sensitive-data capture (`warden.child.capture.*`).** Private by default (à la Sentry's
+  `send_default_pii`): out of the box nothing sensitive is stored. Three per-category knobs let a host
+  capture more when needed — `pii` (incidental PII like emails in messages/bindings and full mail
+  recipients), `mail_body` (the rendered e-mail body), and the discouraged `disable_credential_scrub`
+  (lifts the credential floor). All default **off** and parent-controllable per project (child `.env`
+  still wins).
+
+### Changed
+
+- **Redaction reframed as "private by default" rather than "non-optional".** The credential floor still
+  masks passwords/tokens/keys/cards out of the box, and incidental PII is masked by default — but hosts
+  can now opt into richer capture per category (see above), matching the diagnostic depth of tools like
+  Sentry/Nightwatch without losing the safe default. Exception **and** log message scrubbing moved into
+  a shared `Support\Scrubber::scrubMessage` that honours `capture.pii` (log message bodies are now
+  scrubbed for credentials too — previously only exception messages were).
+
 ### Security
 
 - **Fail-closed management access.** Without an admin password/allowlist, logins are now viewer-only
@@ -42,6 +60,30 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   dashboard middleware stack carries no session/CSRF protection (no `web`, `StartSession` or
   `VerifyCsrfToken`). Documented that the stack must keep these in `password` mode, and that the
   parent should use a server-side `SESSION_DRIVER` because child credentials are flashed once.
+- **Dead-letter anti-replay + dedup.** The dead-letter endpoint now requires a `sent_at` timestamp and
+  rejects reports outside the skew window (same guard as ingest), and deduplicates by `batch_id` so a
+  retried report refreshes one row instead of piling up.
+- **Dead-letter retention.** `warden:prune` reclaims dead-letter rows older than
+  `WARDEN_DEAD_LETTER_RETENTION_DAYS` (default 30), so a misbehaving child can't grow the table unbounded.
+- **Full session teardown on logout.** Logout now `invalidate()`s the session and regenerates the CSRF
+  token (not just forgetting the auth flags), defeating session fixation.
+- **`nosniff` on the stylesheet route.** The package-served CSS route, which sits outside the dashboard
+  middleware group, now sets `X-Content-Type-Options: nosniff`.
+- **Credential writes suppressed from self-monitoring.** Project create/rotate and the self-project
+  bootstrap run under `withoutRecording`, so a self-monitoring parent never records the credential
+  INSERT/UPDATE (defense-in-depth on top of the column-correlated binding scrub).
+
+### Security — accepted by design
+
+- **Auth responses are uniform but distinguishable** (`401 unauthorized` vs `bad_signature`); both
+  still require a valid token *and* HMAC, so the distinction is not an exploitable enumeration oracle.
+- **Full exception stack traces are captured by design** — they are the diagnostic payload; paths are
+  relativized to the app base and messages are scrubbed.
+- **The dashboard CSP allows `'unsafe-inline'`** for styles/scripts because the UI is self-contained
+  (inline styles, inlined fonts/favicon, no build step). `frame-ancestors` / `base-uri` / `form-action`
+  stay locked to `'self'`.
+- **`require_https` defaults to `false`** for deployments behind a TLS-terminating proxy; set
+  `WARDEN_REQUIRE_HTTPS=true` when the parent is exposed directly.
 
 ## [0.3.0] - 2026-06-10
 
