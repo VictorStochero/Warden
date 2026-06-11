@@ -39,6 +39,15 @@ class Warden
      */
     protected ?SelfDelivery $selfDelivery = null;
 
+    /** Entry type of the synthetic trace that rescues trace-less log/exception events. */
+    protected const AMBIENT = 'ambient';
+
+    /** The only event types rescued by ambient capture when no trace is open. */
+    protected const AMBIENT_TYPES = ['log', 'exception'];
+
+    /** Whether the per-process ambient shutdown flush has been registered (once). */
+    protected bool $ambientFlushHooked = false;
+
     public function __construct(
         protected Container $app,
         protected Repository $config,
@@ -158,7 +167,14 @@ class Warden
     public function startTrace(string $entryType, ?array $inherited = null, ?string $name = null): TraceContext
     {
         if ($this->trace !== null) {
-            return $this->trace;
+            // A real entry point starting after some ambient (trace-less) logging
+            // ships the ambient batch first, so those boot logs aren't mislabeled
+            // under — or sampled away with — this entry point.
+            if ($this->trace->entryType === self::AMBIENT && $entryType !== self::AMBIENT) {
+                $this->flush();
+            } else {
+                return $this->trace;
+            }
         }
 
         $sampled = isset($inherited['sampled'])
@@ -218,21 +234,57 @@ class Warden
             return;
         }
 
-        if ($this->trace === null) {
+        // No entry-point trace open? Rescue logs/exceptions into an ambient trace
+        // (boot, daemons, post-terminate) instead of dropping them; other event
+        // types stay entry-point-bound.
+        $trace = $this->trace ?? $this->startAmbientTrace($type);
+
+        if ($trace === null) {
             return;
         }
 
-        $current = $this->trace->currentSpan();
+        $this->trace = $trace;
+        $current = $trace->currentSpan();
 
         $this->buffer->add([
             'type' => $type,
-            'trace_id' => $this->trace->traceId,
+            'trace_id' => $trace->traceId,
             'span_id' => $spanId ?? Ids::generate(),
             'parent_span_id' => $parentSpanId ?? $current->id,
             'occurred_at' => $occurredAt ?? $this->microNow(),
             'duration_us' => $durationUs,
             'payload' => $payload,
         ]);
+
+        // Ambient capture has no entry-point boundary to flush it, so bound the
+        // buffer in long-lived processes: ship and reset once it crosses the
+        // threshold. The normal in-trace hot path never reaches this branch.
+        if ($trace->entryType === self::AMBIENT
+            && $this->buffer->count() >= $this->ambientFlushThreshold()) {
+            $this->flush();
+        }
+    }
+
+    /**
+     * Lazily open a synthetic trace for a log/exception emitted with no
+     * entry-point trace open, so it is captured instead of dropped. Returns null
+     * (and the event is dropped, as before) when ambient capture is disabled, the
+     * type isn't rescuable, or this process isn't capturing.
+     */
+    protected function startAmbientTrace(string $type): ?TraceContext
+    {
+        if (! in_array($type, self::AMBIENT_TYPES, true)
+            || ! $this->ambientEnabled()
+            || ! $this->capturing()) {
+            return null;
+        }
+
+        $trace = new TraceContext(entryType: self::AMBIENT, sampled: true);
+        $trace->forceKeep();
+
+        $this->hookAmbientFlush();
+
+        return $trace;
     }
 
     /** Promote the current trace to force-keep (tail-based, §18.4). */
@@ -341,6 +393,40 @@ class Warden
     public function buffer(): EventBuffer
     {
         return $this->buffer;
+    }
+
+    // ------------------------------------------------------------- ambient
+
+    protected function ambientEnabled(): bool
+    {
+        return Cast::bool($this->config->get('warden.child.ambient.enabled', true));
+    }
+
+    protected function ambientFlushThreshold(): int
+    {
+        return max(1, Cast::int($this->config->get('warden.child.ambient.flush_threshold', 100), 100));
+    }
+
+    /**
+     * Register a single process-shutdown flush so an ambient batch from a
+     * trace-less process (a CLI script, a daemon's final iteration) still ships.
+     * Best-effort and fully guarded — capture must never break the host (RNF-2).
+     */
+    protected function hookAmbientFlush(): void
+    {
+        if ($this->ambientFlushHooked) {
+            return;
+        }
+
+        $this->ambientFlushHooked = true;
+
+        register_shutdown_function(function (): void {
+            try {
+                $this->flush();
+            } catch (\Throwable) {
+                // A shutdown flush must never surface into the host.
+            }
+        });
     }
 
     protected function microNow(): string

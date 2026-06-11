@@ -81,6 +81,19 @@ return [
         'outbox_high_water' => env('WARDEN_OUTBOX_HIGH_WATER', 10000),
         'outbox_low_water' => env('WARDEN_OUTBOX_LOW_WATER', 8000),
 
+        // Logs and exceptions emitted outside any entry-point trace (during boot,
+        // in a long-running custom daemon, or post-terminate) would otherwise be
+        // dropped at record() — they have no trace to correlate to. Ambient
+        // capture rescues them into a synthetic "ambient" trace, shipped at
+        // process shutdown and whenever the ambient buffer crosses flush_threshold
+        // (so a daemon's memory stays flat). Set enabled=false to keep the strict
+        // trace-only behaviour. Only logs/exceptions are rescued; trace-less
+        // queries/cache/etc. (boot noise) stay dropped.
+        'ambient' => [
+            'enabled' => env('WARDEN_AMBIENT', true),
+            'flush_threshold' => (int) env('WARDEN_AMBIENT_FLUSH', 100),
+        ],
+
         // Recorders to enable. Each maps to a single native Laravel hook.
         'recorders' => [
             'request', 'query', 'job', 'exception', 'log', 'mail',
