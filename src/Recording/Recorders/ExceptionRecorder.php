@@ -114,7 +114,13 @@ class ExceptionRecorder extends AbstractRecorder
         return $keys;
     }
 
-    /** Mask `key=value` / `key: value` pairs whose key is configured sensitive. */
+    /**
+     * Mask sensitive data in an exception message while keeping it legible:
+     *  - `key=value` / `key: value` pairs whose key is sensitive;
+     *  - bare email addresses (PII);
+     *  - the value inside `Duplicate entry '...'` (MySQL/Postgres unique
+     *    violations frequently leak the offending email/value).
+     */
     protected function scrubMessage(string $message): string
     {
         foreach ($this->scrubKeys() as $key) {
@@ -128,6 +134,20 @@ class ExceptionRecorder extends AbstractRecorder
                 $message
             );
         }
+
+        // Duplicate entry 'value' — mask only the captured value.
+        $message = (string) preg_replace(
+            "/(Duplicate entry ')[^']*(')/i",
+            '${1}'.Scrubber::MASK.'${2}',
+            $message
+        );
+
+        // Bare email addresses anywhere in the message.
+        $message = (string) preg_replace(
+            '/[^\s\'"<>()]+@[^\s\'"<>()]+\.[^\s\'"<>()]{2,}/',
+            Scrubber::MASK,
+            $message
+        );
 
         return $message;
     }

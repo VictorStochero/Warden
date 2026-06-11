@@ -118,8 +118,20 @@ return [
         ],
 
         // Keys whose values are redacted from query bindings, request input,
-        // log context and headers before anything is buffered (RNF-4).
-        'scrub' => ['password', 'password_confirmation', 'token', 'secret', 'authorization', 'cookie', 'php-auth-pw'],
+        // log context, headers and exception messages before anything is
+        // buffered (RNF-4). Redaction is NOT optional: this list is ADDITIVE to
+        // a non-removable floor enforced in Support\Scrubber (password, token,
+        // secret, authorization, cookie, api_key, cpf, ssn, credit_card, …).
+        // The host can only make redaction stricter — emptying this list does
+        // not expose floor keys, and there is no toggle that captures raw
+        // secrets/PII. Matching is case-insensitive and ignores `_`/`-`.
+        'scrub' => [
+            'password', 'password_confirmation', 'passwd', 'token', 'remember_token',
+            'api_token', 'auth_token', 'access_token', 'refresh_token', 'secret', 'client_secret',
+            'api_key', 'private_key', 'authorization', 'bearer', 'cookie',
+            'php-auth-pw', 'csrf', '_token', 'x-api-key', 'credit_card',
+            'card_number', 'cvv', 'ssn', 'cpf',
+        ],
 
         // How often the host recorder samples /proc, in seconds. Host metrics
         // are coarse by nature; sampling them on every request is wasteful.

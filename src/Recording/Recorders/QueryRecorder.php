@@ -21,12 +21,18 @@ class QueryRecorder extends AbstractRecorder
                 return;
             }
 
-            $bindings = $this->scrubber()->scrub(
+            $scrubber = $this->scrubber();
+
+            // Bindings are positional (int keys), so key-based scrubbing is a
+            // no-op — scrubBindings correlates each `?` to its column and masks
+            // by value heuristic. scrubSql masks any inline sensitive literals.
+            $bindings = $scrubber->scrubBindings(
+                $event->sql,
                 $this->safeBindings($event->bindings)
             );
 
             $this->record([
-                'sql' => $event->sql,
+                'sql' => $scrubber->scrubSql($event->sql),
                 'bindings' => $bindings,
                 'connection' => $event->connectionName,
                 'time_ms' => $event->time,
