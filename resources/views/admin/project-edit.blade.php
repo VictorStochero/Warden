@@ -177,6 +177,78 @@
             </div>
         </div>
 
+        @php
+            $cfg = is_array($project->config) ? $project->config : [];
+            $cfgHostInterval = $cfg['host_interval'] ?? null;
+            $cfgTraceRequest = $cfg['sample']['traces']['request'] ?? null;
+            $cfgTraceJob = $cfg['sample']['traces']['job'] ?? null;
+            $cfgSlowerMs = $cfg['sample']['always_keep']['slower_than_ms'] ?? null;
+            $cfgRecorders = $cfg['recorders'] ?? null; // null = inherit, [] = explicitly none
+            $availableRecorders = (array) config('warden.child.recorders', []);
+            $defHostInterval = config('warden.child.host_interval');
+            $defTraceRequest = config('warden.child.sample.traces.request');
+            $defTraceJob = config('warden.child.sample.traces.job');
+            $defSlowerMs = config('warden.child.sample.always_keep.slower_than_ms');
+        @endphp
+        <div class="rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10 p-6 space-y-5">
+            <div>
+                <h3 class="text-sm font-semibold text-white">Behaviour (advanced)</h3>
+                <p class="mt-1 text-xs text-slate-500">Override the child's capture knobs for this project. The parent pushes these to the child on its next delivery. Leave a field blank to inherit the child's own .env / default.</p>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-3">
+                <x-warden::field label="Host metric interval (s)" for="wdn-cfg-host-interval"
+                    hint="How often /proc is sampled.">
+                    <x-warden::input type="number" min="1" step="1" id="wdn-cfg-host-interval"
+                        name="config[host_interval]" class="mt-1.5"
+                        value="{{ old('config.host_interval', $cfgHostInterval) }}"
+                        placeholder="{{ $defHostInterval }}" />
+                </x-warden::field>
+
+                <x-warden::field label="Sample rate — requests" for="wdn-cfg-trace-request"
+                    hint="0..1 fraction of requests traced.">
+                    <x-warden::input type="number" min="0" max="1" step="0.01" id="wdn-cfg-trace-request"
+                        name="config[sample][traces][request]" class="mt-1.5"
+                        value="{{ old('config.sample.traces.request', $cfgTraceRequest) }}"
+                        placeholder="{{ $defTraceRequest }}" />
+                </x-warden::field>
+
+                <x-warden::field label="Sample rate — jobs" for="wdn-cfg-trace-job"
+                    hint="0..1 fraction of jobs traced.">
+                    <x-warden::input type="number" min="0" max="1" step="0.01" id="wdn-cfg-trace-job"
+                        name="config[sample][traces][job]" class="mt-1.5"
+                        value="{{ old('config.sample.traces.job', $cfgTraceJob) }}"
+                        placeholder="{{ $defTraceJob }}" />
+                </x-warden::field>
+            </div>
+
+            <div class="max-w-xs">
+                <x-warden::field label="Always keep slower than (ms)" for="wdn-cfg-slower-ms"
+                    hint="Force-keep traces above this latency, overriding sampling.">
+                    <x-warden::input type="number" min="0" step="1" id="wdn-cfg-slower-ms"
+                        name="config[sample][always_keep][slower_than_ms]" class="mt-1.5"
+                        value="{{ old('config.sample.always_keep.slower_than_ms', $cfgSlowerMs) }}"
+                        placeholder="{{ $defSlowerMs }}" />
+                </x-warden::field>
+            </div>
+
+            @if($availableRecorders !== [])
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Recorders</label>
+                    <p class="mt-1 text-xs text-slate-500">Check the recorders to enable for this project. Leave all unchecked to inherit the child's own list.</p>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                        @foreach($availableRecorders as $recorder)
+                            <label class="flex items-center gap-2">
+                                <x-warden::checkbox name="config[recorders][]" value="{{ $recorder }}"
+                                    @checked(is_array($cfgRecorders) && in_array($recorder, $cfgRecorders, true)) />
+                                <span class="text-sm text-slate-200">{{ $recorder }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+
         <div class="flex items-center gap-2">
             <x-warden::button type="submit">
                 {{ __('warden::common.save_changes') }}

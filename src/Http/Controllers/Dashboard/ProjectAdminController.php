@@ -6,6 +6,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View as ViewFactory;
+use VictorStochero\Warden\Config\ProjectConfig;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
 use VictorStochero\Warden\Models\Group;
 use VictorStochero\Warden\Models\Project;
@@ -96,8 +97,38 @@ class ProjectAdminController
 
         $project->forceFill(array_merge($intervals, $this->resolveAlertOverride($request)))->save();
 
+        $this->applyBehaviourConfig($project, $request);
+
         return redirect()->route('warden.admin.projects')
             ->with('warden_status', "{$project->name} updated.");
+    }
+
+    /**
+     * Merge the sparse behaviour-config document submitted from the edit form
+     * into the project's stored config. Unknown knobs are dropped and values are
+     * clamped/coerced by ProjectConfig::sanitize. config_version is bumped only
+     * when the sanitised document actually differs from what is already stored,
+     * so a no-op save never forces an unnecessary push to the child.
+     */
+    private function applyBehaviourConfig(Project $project, Request $request): void
+    {
+        $incoming = $request->input('config');
+
+        $document = [];
+        foreach (Cast::arr($incoming) as $key => $value) {
+            $document[Cast::str($key)] = $value;
+        }
+
+        $sanitized = ProjectConfig::sanitize($document);
+
+        $current = is_array($project->config) ? $project->config : [];
+
+        if ($sanitized != $current) { // structural comparison, key order independent
+            $project->forceFill([
+                'config' => $sanitized === [] ? null : $sanitized,
+                'config_version' => Cast::int($project->config_version, 0) + 1,
+            ])->save();
+        }
     }
 
     /**
