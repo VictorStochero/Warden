@@ -59,7 +59,9 @@ class DeadLetterController
             return response()->json(['error' => 'stale'], 422);
         }
 
-        $batchId = isset($data['batch_id']) ? Cast::str($data['batch_id']) : null;
+        // Cap to the column width (string(64)) so an oversized batch_id can't
+        // raise a QueryException on strict-mode MySQL / Postgres.
+        $batchId = isset($data['batch_id']) ? mb_substr(Cast::str($data['batch_id']), 0, 64) : null;
 
         $attributes = [
             'reason' => isset($data['reason']) ? mb_substr(Cast::str($data['reason']), 0, 255) : null,

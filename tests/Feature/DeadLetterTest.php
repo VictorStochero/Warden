@@ -59,6 +59,18 @@ class DeadLetterTest extends TestCase
         $this->deadLetterPost($body, (new Signer('psecret'))->sign($body))->assertStatus(422);
     }
 
+    public function test_oversized_batch_id_is_capped_not_fatal(): void
+    {
+        $this->project();
+        $huge = str_repeat('x', 300);
+        $body = (string) json_encode(['batch_id' => $huge, 'attempts' => 1, 'sent_at' => time()]);
+
+        $this->deadLetterPost($body, (new Signer('psecret'))->sign($body))->assertStatus(202);
+
+        $stored = (string) DeadLetter::query()->value('batch_id');
+        $this->assertSame(64, mb_strlen($stored));
+    }
+
     public function test_same_batch_is_deduplicated(): void
     {
         $project = $this->project();
