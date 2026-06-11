@@ -6,6 +6,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- **Fail-closed management access.** Without an admin password/allowlist, logins are now viewer-only
+  (no `manageWarden`) — configure admin credentials (`WARDEN_DASHBOARD_ADMIN_PASSWORD` /
+  `WARDEN_DASHBOARD_ADMIN_EMAILS`) to grant management. Previously a single password or e-mail list
+  silently doubled as the admin credential, handing destructive actions (HMAC rotation, project
+  deletion) to every viewer.
+- **`gate` auth mode no longer trusts the environment alone.** In `APP_ENV=local` the default gate
+  fallback now grants *view* only to an authenticated host user (never an anonymous request), and
+  *never* grants `manageWarden` by environment — the host must define its own gate or use the
+  password/email modes. A parent deployed with a leftover dev `.env` can no longer be taken over
+  anonymously. A boot-time warning is logged when the dashboard runs in `gate` mode under
+  `APP_ENV=local`.
+- **Global login throttle.** A new aggregate, IP-independent cap (`WARDEN_LOGIN_GLOBAL_MAX`, default
+  100 per window) blocks the login form once total failed attempts cross the ceiling, closing the
+  distributed brute-force gap where a pool of IPs multiplied the per-IP budget. The per-IP throttle
+  is unchanged.
+
 ## [0.3.0] - 2026-06-10
 
 ### Added

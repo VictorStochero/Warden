@@ -4,6 +4,7 @@ namespace VictorStochero\Warden\Tests\Feature;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Gate;
+use VictorStochero\Warden\Dashboard\DashboardAuth;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Tests\TestCase;
 
@@ -133,16 +134,49 @@ class DashboardAuthTest extends TestCase
         });
     }
 
-    public function test_any_login_is_admin_when_no_admin_password_configured(): void
+    public function test_login_is_viewer_only_when_no_admin_password_configured(): void
     {
+        // Fail-closed: without an admin password configured, a successful login
+        // grants viewer access only — never manageWarden by mere absence.
         config()->set('warden.dashboard.auth.mode', 'password');
         config()->set('warden.dashboard.auth.password', 'view-secret');
         config()->set('warden.dashboard.auth.admin_password', null);
         $this->project();
 
-        $this->post(route('warden.login'), ['password' => 'view-secret']);
+        $this->post(route('warden.login'), ['password' => 'view-secret'])
+            ->assertRedirect(route('warden.overview'));
 
-        $this->assertTrue((bool) session('warden_auth_admin'));
+        $this->assertTrue((bool) session('warden_auth'));
+        $this->assertFalse((bool) session('warden_auth_admin'));
+
+        // The viewer-only session cannot reach the management routes.
+        $this->get(route('warden.admin.projects'))->assertForbidden();
+    }
+
+    public function test_global_throttle_blocks_login_across_distinct_ips(): void
+    {
+        $this->passwordEnv(function (): void {
+            config()->set('warden.dashboard.auth.throttle.max_attempts', 5);
+            config()->set('warden.dashboard.auth.login_global_max', 3);
+            $this->project();
+
+            // Each request comes from a fresh IP, so the per-IP limiter never
+            // trips — only the aggregate global cap can stop a distributed pool.
+            for ($i = 0; $i < 3; $i++) {
+                $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.{$i}"])
+                    ->post(route('warden.login'), ['password' => 'wrong'])
+                    ->assertRedirect(route('warden.login'));
+            }
+
+            // Global cap reached: even the correct password from a brand-new IP
+            // is refused.
+            $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.99'])
+                ->post(route('warden.login'), ['password' => 'admin-secret'])
+                ->assertRedirect(route('warden.login'));
+
+            $this->assertNull(session('warden_auth'));
+            $this->assertStringContainsString('Too many attempts', (string) session('warden_error'));
+        });
     }
 
     public function test_viewer_sees_read_only_banner_and_account_block(): void
@@ -272,6 +306,20 @@ class DashboardAuthTest extends TestCase
             ->get(route('warden.overview'))->assertForbidden();
     }
 
+    public function test_email_mode_grants_view_but_not_manage_without_admin_list(): void
+    {
+        // Fail-closed: with no admin allowlist, a listed e-mail views but never
+        // manages — a single list no longer doubles as the admin list.
+        config()->set('warden.dashboard.auth.mode', 'email');
+        config()->set('warden.dashboard.auth.emails', ['viewer@example.com']);
+        config()->set('warden.dashboard.auth.admin_emails', []);
+
+        $auth = $this->app->make(DashboardAuth::class);
+
+        $this->assertTrue($auth->emailCanView('viewer@example.com'));
+        $this->assertFalse($auth->emailCanManage('viewer@example.com'));
+    }
+
     // -------------------------------------------------------------------- gate
 
     public function test_gate_mode_default_is_local_only(): void
@@ -290,5 +338,44 @@ class DashboardAuthTest extends TestCase
         $this->project();
 
         $this->get(route('warden.overview'))->assertOk();
+    }
+
+    public function test_gate_mode_in_local_denies_anonymous_request(): void
+    {
+        // Default "gate" mode in APP_ENV=local must NOT grant an anonymous
+        // request — environment alone is never enough (it requires a user).
+        $this->app['env'] = 'local';
+        $this->project();
+
+        $this->assertTrue(Gate::denies('viewWarden'));
+        $this->assertTrue(Gate::denies('manageWarden'));
+
+        $this->get(route('warden.overview'))->assertForbidden();
+    }
+
+    public function test_gate_mode_in_local_grants_view_to_authenticated_user_but_never_manage(): void
+    {
+        // An authenticated host user in local gets view access; manageWarden is
+        // never granted by environment — the host must define it itself.
+        $this->app['env'] = 'local';
+        $this->project();
+
+        $user = $this->emailUser('someone@example.com');
+
+        $this->assertTrue(Gate::forUser($user)->allows('viewWarden'));
+        $this->assertTrue(Gate::forUser($user)->denies('manageWarden'));
+    }
+
+    public function test_gate_mode_outside_local_denies_everyone(): void
+    {
+        // Outside local (the testbench env is "testing"), both gates deny
+        // regardless of authentication.
+        $this->project();
+
+        $user = $this->emailUser('someone@example.com');
+
+        $this->assertTrue(Gate::denies('viewWarden'));
+        $this->assertTrue(Gate::forUser($user)->denies('viewWarden'));
+        $this->assertTrue(Gate::forUser($user)->denies('manageWarden'));
     }
 }

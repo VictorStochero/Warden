@@ -88,8 +88,9 @@ class DashboardAuth
 
     /**
      * Whether an authenticated user's e-mail grants management in email mode:
-     * present in the admin list, or — when no admin list is set — in the viewer
-     * list (a single allowlist then grants both).
+     * present in the admin allowlist. Fail-closed — with no admin allowlist
+     * configured, NOBODY manages (a single viewer list never doubles as the
+     * admin list). Configure WARDEN_DASHBOARD_ADMIN_EMAILS to grant management.
      */
     public function emailCanManage(?string $email): bool
     {
@@ -97,14 +98,13 @@ class DashboardAuth
             return false;
         }
 
-        $email = mb_strtolower($email);
         $admins = $this->adminEmails();
 
         if ($admins === []) {
-            return in_array($email, $this->emails(), true);
+            return false;
         }
 
-        return in_array($email, $admins, true);
+        return in_array(mb_strtolower($email), $admins, true);
     }
 
     /**

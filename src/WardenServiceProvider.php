@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -229,6 +230,7 @@ class WardenServiceProvider extends ServiceProvider
         $prefix = Cast::str($this->config()->get('warden.parent.route_prefix'), 'warden');
 
         $this->registerDashboardGates();
+        $this->warnIfDashboardUnauthenticated();
         $this->registerAssetRoutes($prefix);
         $this->registerLoginRoutes($prefix);
 
@@ -258,7 +260,10 @@ class WardenServiceProvider extends ServiceProvider
                 return match ($auth->mode()) {
                     'password' => Cast::bool(session('warden_auth')),
                     'email' => $auth->emailCanView($this->userEmail($user)),
-                    default => $this->app->environment('local'),
+                    // gate fallback: local convenience requires an authenticated
+                    // host user — never an anonymous request (a dev .env exposed
+                    // in production must not hand out view access).
+                    default => $this->app->environment('local') && $user !== null,
                 };
             });
         }
@@ -268,9 +273,37 @@ class WardenServiceProvider extends ServiceProvider
                 return match ($auth->mode()) {
                     'password' => Cast::bool(session('warden_auth_admin')),
                     'email' => $auth->emailCanManage($this->userEmail($user)),
-                    default => $this->app->environment('local'),
+                    // gate fallback: management is NEVER granted by environment.
+                    // The host must define its own manageWarden gate (or use the
+                    // password/email modes) to authorize destructive actions.
+                    default => false,
                 };
             });
+        }
+    }
+
+    /**
+     * Best-effort boot warning when the parent dashboard is reachable with no
+     * real authentication: the default "gate" mode in APP_ENV=local lets any
+     * authenticated host user view it and otherwise leans on the environment.
+     * A parent deployed with a leftover dev `.env` would be wide open, so we
+     * surface it loudly in the logs. Never throws (RNF-2).
+     */
+    protected function warnIfDashboardUnauthenticated(): void
+    {
+        try {
+            $auth = $this->app->make(DashboardAuth::class);
+
+            if ($auth->mode() === 'gate' && $this->app->environment('local')) {
+                Log::warning(
+                    'Warden: the dashboard is running in "gate" auth mode with APP_ENV=local and no '
+                    .'host-defined viewWarden/manageWarden gate. Access leans on the environment — set '
+                    .'WARDEN_DASHBOARD_PASSWORD (or WARDEN_DASHBOARD_AUTH=email, or define the gates) '
+                    .'before exposing this parent.'
+                );
+            }
+        } catch (\Throwable) {
+            // Logging is best-effort; never break the host boot.
         }
     }
 

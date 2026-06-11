@@ -266,14 +266,19 @@ return [
         |
         |   password — a built-in login form (independent of the host app's user
         |              system). WARDEN_DASHBOARD_PASSWORD grants view access;
-        |              the optional WARDEN_DASHBOARD_ADMIN_PASSWORD grants the
-        |              management actions (manageWarden). Ideal for a dedicated
+        |              WARDEN_DASHBOARD_ADMIN_PASSWORD grants the management
+        |              actions (manageWarden). Fail-closed: without an admin
+        |              password set, every login is viewer-only — configure the
+        |              admin password to grant management. Ideal for a dedicated
         |              parent app.
         |   email    — uses the host app's authenticated user. An e-mail in
         |              WARDEN_DASHBOARD_EMAILS gets view access; one in
-        |              WARDEN_DASHBOARD_ADMIN_EMAILS gets management.
+        |              WARDEN_DASHBOARD_ADMIN_EMAILS gets management. Fail-closed:
+        |              with no admin allowlist, nobody manages.
         |   gate     — advanced: the host defines viewWarden / manageWarden gates
-        |              in a service provider. Default-deny outside local.
+        |              in a service provider. Default-deny: outside local nobody
+        |              passes; in local only an authenticated host user may VIEW,
+        |              and management is never granted by environment alone.
         |
         | When `mode` is empty it resolves to `password` if a dashboard password
         | is set, otherwise `gate` (local-only) — the historical behaviour.
@@ -313,6 +318,20 @@ return [
                 'max_attempts' => (int) env('WARDEN_LOGIN_MAX_ATTEMPTS', 5),
                 'decay' => (int) env('WARDEN_LOGIN_DECAY', 60),
             ],
+
+            /*
+            |------------------------------------------------------------------
+            | Global login cap (password mode)
+            |------------------------------------------------------------------
+            |
+            | An absolute, IP-independent ceiling on failed login attempts per
+            | decay window. The per-IP throttle above can be multiplied by a
+            | distributed attacker rotating IPs; this aggregate counter blocks
+            | the form once total failures cross `login_global_max`, no matter
+            | the source. Set to 0 to disable the global cap.
+            |
+            */
+            'login_global_max' => (int) env('WARDEN_LOGIN_GLOBAL_MAX', 100),
         ],
     ],
 
