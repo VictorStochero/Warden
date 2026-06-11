@@ -112,7 +112,7 @@ WARDEN_DASHBOARD_ADMIN_PASSWORD=choose-a-strong-admin-password   # optional: gra
 
 `WARDEN_DASHBOARD_PASSWORD` grants **read** access; `WARDEN_DASHBOARD_ADMIN_PASSWORD` grants
 **management** (creating projects, rotating secrets, running maintenance). If you set only the
-first, any successful login is treated as admin. Prefer logging in with your app's own users,
+first, logins are **view-only** — set the admin password to grant management (fail-closed). Prefer logging in with your app's own users,
 or wiring custom gates? See [Dashboard access](#dashboard-access) for the `email` and `gate`
 modes — but `password` is the fastest way to get in.
 
