@@ -100,6 +100,7 @@ class ComposerAudit
         foreach ($json['advisories'] as $package => $list) {
             foreach (Cast::arr($list) as $advisory) {
                 $advisory = Cast::arr($advisory);
+                $affected = Cast::str($advisory['affectedVersions'] ?? '');
                 $out[] = [
                     'ecosystem' => 'composer',
                     'package' => Cast::str($advisory['packageName'] ?? $package),
@@ -107,7 +108,8 @@ class ComposerAudit
                     'title' => Cast::str($advisory['title'] ?? ''),
                     'cve' => Cast::str($advisory['cve'] ?? '') ?: null,
                     'link' => AdvisoryFormat::link($advisory['link'] ?? null),
-                    'affected' => Cast::str($advisory['affectedVersions'] ?? ''),
+                    'affected' => $affected,
+                    'fix' => Remediation::fromComposerConstraint($affected),
                 ];
             }
         }

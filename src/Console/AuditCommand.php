@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Process;
 use VictorStochero\Warden\Console\Audit\AdvisoryFormat;
 use VictorStochero\Warden\Console\Audit\ComposerAudit;
+use VictorStochero\Warden\Console\Audit\Remediation;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\Json;
 use VictorStochero\Warden\Warden;
@@ -120,6 +121,7 @@ class AuditCommand extends Command
                 'cve' => null,
                 'link' => $link,
                 'affected' => Cast::str($vuln['range'] ?? ''),
+                'fix' => Remediation::fromNpm($vuln['fixAvailable'] ?? null),
             ];
         }
 

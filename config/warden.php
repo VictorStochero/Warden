@@ -50,6 +50,12 @@ return [
         // "daemon" expects a supervised `warden:ship` process instead.
         'delivery' => env('WARDEN_DELIVERY', 'scheduler'),
 
+        // How often (seconds) an idle shipper polls the parent for control-channel
+        // directives (audit_due, pushed config) when it has nothing to ship — so a
+        // quiet child still receives "Run audit now" and config pushes. A fresh
+        // `warden:ship --once` always polls once; this only throttles the daemon.
+        'poll_interval' => (int) env('WARDEN_POLL_INTERVAL', 60),
+
         // Let the package auto-register the child schedule (ship --once).
         'schedule' => ['enabled' => env('WARDEN_CHILD_SCHEDULE', true)],
 

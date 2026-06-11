@@ -179,6 +179,10 @@ return [
         'col_package' => 'Paquete',
         'col_advisory' => 'Aviso',
         'col_affected' => 'Afectado',
+        'fix_upgrade' => 'Actualiza a :version o superior',
+        'fix_upgrade_above' => 'Actualiza a una versión superior a :version',
+        'fix_available' => 'Corrección disponible — ejecuta la actualización del paquete',
+        'fix_none' => 'Sin corrección conocida aún',
     ],
 
     // ── sections/uptime.blade.php ────────────────────────────────────────

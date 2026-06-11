@@ -66,6 +66,7 @@ class PackagistAudit
                     'cve' => Cast::str($advisory['cve'] ?? '') ?: null,
                     'link' => AdvisoryFormat::link($advisory['link'] ?? null),
                     'affected' => $affected,
+                    'fix' => Remediation::fromComposerConstraint($affected),
                 ];
             }
         }

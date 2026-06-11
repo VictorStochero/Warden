@@ -6,6 +6,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-06-11
+
+### Added
+
+- **Remediation hints on the Security tab.** Each vulnerability now shows a friendly
+  "how to fix" line — *Update to X or later* (derived from the advisory's fixed version),
+  *Fix available — run the package update* (npm), or *No known fix yet* — instead of leaving
+  the operator to decode a raw version range.
+
+### Fixed
+
+- **The control channel now reaches a quiet child.** "Run audit now" and parent config pushes
+  ride the ingest *response*, so they only reached a child that had events to ship — a
+  low-traffic child never POSTed, so the directive silently stalled. The shipper now polls the
+  parent with an **empty batch** when the outbox is idle (throttled by `WARDEN_POLL_INTERVAL`,
+  default 60s; a `warden:ship --once` always polls once), so audit-now and config pushes
+  propagate without depending on organic traffic. Same endpoint, no new route.
+
 ## [0.2.3] - 2026-06-11
 
 ### Added
@@ -375,7 +393,8 @@ Laravel events and ships batches to the parent).
 - CI matrix (Laravel 12/13, multiple databases), MIT license, packaging files, PHPUnit
   suite and PHPStan configuration.
 
-[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/VictorStochero/Warden/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/VictorStochero/Warden/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/VictorStochero/Warden/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/VictorStochero/Warden/compare/v0.2.0...v0.2.1

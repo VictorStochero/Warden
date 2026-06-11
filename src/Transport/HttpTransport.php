@@ -40,7 +40,24 @@ class HttpTransport implements Transport
 
     public function ship(array $batch): bool
     {
-        return $this->observer->withoutRecording(function () use ($batch) {
+        return $this->deliver($batch);
+    }
+
+    public function poll(): bool
+    {
+        return $this->deliver([]);
+    }
+
+    /**
+     * The shared ingest round-trip. With a non-empty $batches it ships events;
+     * with [] it is a directive-only poll so the control channel still reaches an
+     * idle child. Always suppressed so the POST is not self-observed (§18.3).
+     *
+     * @param  array<int, mixed>  $batches
+     */
+    protected function deliver(array $batches): bool
+    {
+        return $this->observer->withoutRecording(function () use ($batches) {
             try {
                 $this->warnIfInsecure();
 
@@ -50,7 +67,7 @@ class HttpTransport implements Transport
                     'sent_at' => time(),
                     'app_timezone' => Cast::str($this->config->get('app.timezone'), 'UTC'),
                     'config_version' => ConfigCache::version(),
-                    'batches' => array_values($batch),
+                    'batches' => array_values($batches),
                 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
                 if ($body === false) {

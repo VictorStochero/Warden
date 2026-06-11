@@ -44,6 +44,7 @@ class PackagistAuditTest extends TestCase
         $this->assertSame('monolog/monolog', $result['advisories'][0]['package']);
         $this->assertSame('high', $result['advisories'][0]['severity']);
         $this->assertSame('composer', $result['advisories'][0]['ecosystem']);
+        $this->assertSame(['type' => 'upgrade', 'version' => '1.10.1'], $result['advisories'][0]['fix']);
     }
 
     public function test_ignores_an_advisory_when_the_installed_version_is_not_affected(): void

@@ -179,6 +179,10 @@ return [
         'col_package' => 'Package',
         'col_advisory' => 'Advisory',
         'col_affected' => 'Affected',
+        'fix_upgrade' => 'Update to :version or later',
+        'fix_upgrade_above' => 'Update to a version above :version',
+        'fix_available' => 'Fix available — run the package update',
+        'fix_none' => 'No known fix yet',
     ],
 
     // ── sections/uptime.blade.php ────────────────────────────────────────

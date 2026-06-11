@@ -78,6 +78,11 @@ class RemoteConfigApplyTest extends TestCase
                 return true;
             }
 
+            public function poll(): bool
+            {
+                return true;
+            }
+
             public function lastDirectives(): array
             {
                 return ['config_version' => 3, 'config' => ['host_interval' => 99]];

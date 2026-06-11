@@ -97,6 +97,19 @@
                                     <span class="text-slate-300">{{ Str::limit($a['title'] ?? ($a['cve'] ?? 'advisory'), 90) }}</span>
                                 @endif
                                 @if(! empty($a['cve']))<span class="ml-1 font-mono text-[10px] text-slate-500">{{ $a['cve'] }}</span>@endif
+                                @php
+                                    $fix = is_array($a['fix'] ?? null) ? $a['fix'] : null;
+                                    $fixLabel = $fix ? match ($fix['type'] ?? '') {
+                                        'upgrade' => __('warden::project.security.fix_upgrade', ['version' => $fix['version'] ?? '?']),
+                                        'upgrade_above' => __('warden::project.security.fix_upgrade_above', ['version' => $fix['version'] ?? '?']),
+                                        'fix_available' => __('warden::project.security.fix_available'),
+                                        'none' => __('warden::project.security.fix_none'),
+                                        default => null,
+                                    } : null;
+                                @endphp
+                                @if($fixLabel)
+                                    <div class="mt-1 text-[11px] {{ ($fix['type'] ?? '') === 'none' ? 'text-amber-400/80' : 'text-emerald-400/90' }}">↳ {{ $fixLabel }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3 font-mono text-[11px] text-slate-400">{{ $a['affected'] ?? '' }}</td>
                         </tr>

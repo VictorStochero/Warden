@@ -32,6 +32,9 @@ class ShipCommand extends Command
     /** Monotonic seconds of the last parent-requested audit (in-process throttle). */
     protected float $lastAuditAt = 0.0;
 
+    /** Monotonic seconds of the last idle directive poll (in-process throttle). */
+    protected float $lastPollAt = 0.0;
+
     public function handle(Outbox $outbox, Transport $transport): int
     {
         if (config('warden.mode') !== 'child') {
@@ -51,6 +54,11 @@ class ShipCommand extends Command
             $batches = $outbox->reserve($limit);
 
             if ($batches === []) {
+                // Nothing to ship, but the control channel (audit_due, pushed
+                // config) rides the ingest response — so poll the parent anyway,
+                // or a quiet child would never receive it.
+                $this->pollWhenIdle($transport);
+
                 if ($this->option('once')) {
                     break;
                 }
@@ -123,6 +131,28 @@ class ShipCommand extends Command
     protected function backoff(int $attempts): int
     {
         return (int) min(2 ** $attempts, 300);
+    }
+
+    /**
+     * Directive-only round-trip when there's nothing to ship, so audit_due and
+     * pushed config still reach a quiet child. Throttled per process so a daemon
+     * doesn't poll the parent on every idle tick; a fresh `--once` process always
+     * polls (lastPollAt starts at 0), so the scheduler path stays responsive.
+     */
+    protected function pollWhenIdle(Transport $transport): void
+    {
+        $interval = max(5, Cast::int(config('warden.child.poll_interval', 60), 60));
+        $now = microtime(true);
+
+        if ($this->lastPollAt > 0.0 && ($now - $this->lastPollAt) < $interval) {
+            return;
+        }
+        $this->lastPollAt = $now;
+
+        if ($transport->poll()) {
+            $this->maybeRunAudit($transport);
+            $this->persistPushedConfig($transport);
+        }
     }
 
     /**

@@ -23,6 +23,14 @@ interface Transport
     public function reportDeadLetter(string $batchId, string $reason, int $attempts): bool;
 
     /**
+     * Directive-only round-trip: POST an empty batch so the parent's control
+     * channel (audit_due, pushed config) still reaches a child that has nothing
+     * to ship. Populates lastDirectives() from the response. MUST NOT throw —
+     * returns false if the parent is unreachable.
+     */
+    public function poll(): bool;
+
+    /**
      * Directives the parent returned on the most recent successful ship (the
      * control channel — e.g. `['audit_due' => true]`). Empty if none / no ship.
      *
