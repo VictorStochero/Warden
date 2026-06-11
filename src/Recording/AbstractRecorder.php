@@ -17,6 +17,17 @@ abstract class AbstractRecorder implements Recorder
         protected Repository $config,
     ) {}
 
+    private ?Scrubber $scrubber = null;
+
+    private ?string $scrubberKey = null;
+
+    /**
+     * The Scrubber for this recorder. Building one is non-trivial (it compiles
+     * the message-key regex fragments), and the query recorder builds it on the
+     * hot path — once per query. Config is stable within a process, so we memoize
+     * and only rebuild when the inputs actually change (keyed by a cheap config
+     * signature, so a runtime config change is still picked up).
+     */
     protected function scrubber(): Scrubber
     {
         $keys = [];
@@ -24,11 +35,20 @@ abstract class AbstractRecorder implements Recorder
             $keys[] = Cast::str($key);
         }
 
-        return new Scrubber(
-            $keys,
-            Cast::bool($this->config->get('warden.child.capture.pii', false)),
-            Cast::bool($this->config->get('warden.child.capture.disable_credential_scrub', false)),
-        );
+        $pii = Cast::bool($this->config->get('warden.child.capture.pii', false));
+        $noFloor = Cast::bool($this->config->get('warden.child.capture.disable_credential_scrub', false));
+
+        $signature = implode('|', $keys).'#'.($pii ? '1' : '0').($noFloor ? '1' : '0');
+
+        $scrubber = $this->scrubberKey === $signature ? $this->scrubber : null;
+
+        if ($scrubber === null) {
+            $scrubber = new Scrubber($keys, $pii, $noFloor);
+            $this->scrubber = $scrubber;
+            $this->scrubberKey = $signature;
+        }
+
+        return $scrubber;
     }
 
     /** @param array<string, mixed> $payload */
