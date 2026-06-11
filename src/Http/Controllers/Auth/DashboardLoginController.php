@@ -145,7 +145,12 @@ class DashboardLoginController
 
     public function logout(Request $request): RedirectResponse
     {
+        // Fully tear down the authenticated session: drop our flags, rotate the
+        // session id (defeats fixation) and reissue the CSRF token so no stale
+        // credential survives the logout.
         $request->session()->forget(['warden_auth', 'warden_auth_admin']);
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect()->route('warden.login');
     }

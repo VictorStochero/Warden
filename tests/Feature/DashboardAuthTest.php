@@ -219,12 +219,15 @@ class DashboardAuthTest extends TestCase
     public function test_logout_clears_the_session(): void
     {
         $this->passwordEnv(function (): void {
-            $this->withSession(['warden_auth' => true, 'warden_auth_admin' => true]);
+            // A sentinel value `forget` would leave behind — only a full
+            // invalidate() drops it, proving the session is torn down entirely.
+            $this->withSession(['warden_auth' => true, 'warden_auth_admin' => true, 'sentinel' => 'x']);
 
             $this->post(route('warden.logout'))->assertRedirect(route('warden.login'));
 
             $this->assertNull(session('warden_auth'));
             $this->assertNull(session('warden_auth_admin'));
+            $this->assertNull(session('sentinel'));
         });
     }
 
