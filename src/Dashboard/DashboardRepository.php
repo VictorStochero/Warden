@@ -575,14 +575,31 @@ class DashboardRepository
 
     /**
      * Recent log events, optionally filtered to a single level (driven by the
-     * clickable "Logs by level" breakdown). Filters in PHP so it stays portable
-     * across drivers; fetches a wider window when a level is selected.
+     * clickable "Logs by level" breakdown) and optionally scoped to a time range
+     * so the list stays consistent with the "Logs by level" card. Filters in PHP
+     * so it stays portable across drivers; fetches a wider window when a level is
+     * selected.
      *
      * @return Collection<int, \stdClass>
      */
-    public function recentLogs(int $projectId, ?string $level, int $limit = 100): Collection
+    public function recentLogs(int $projectId, ?string $level, int $limit = 100, ?string $range = null): Collection
     {
-        $events = $this->recentEvents($projectId, 'log', $level !== null ? 500 : $limit);
+        $query = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('type', 'log');
+
+        if ($range !== null) {
+            $query->where('occurred_at', '>=', $this->rangeStart($range));
+        }
+
+        $events = $query->orderByDesc('id')
+            ->limit($level !== null ? 500 : $limit)
+            ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload'])
+            ->map(function (\stdClass $e): \stdClass {
+                $e->payload = Json::decode($e->payload ?? null);
+
+                return $e;
+            });
 
         if ($level !== null) {
             $events = $events

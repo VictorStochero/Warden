@@ -55,7 +55,7 @@ class ProjectController
             ],
             'logs' => [
                 'levels' => $repo->breakdown($id, 'log', $range),
-                'recent' => $repo->recentLogs($id, $logLevel = $this->logLevel($request), 100),
+                'recent' => $repo->recentLogs($id, $logLevel = $this->logLevel($request), 100, $range),
                 'activeLevel' => $logLevel,
             ],
             'mail' => [
