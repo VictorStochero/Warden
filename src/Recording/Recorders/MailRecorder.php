@@ -38,6 +38,9 @@ class MailRecorder extends AbstractRecorder
 
             $this->record([
                 'subject' => $email?->getSubject(),
+                'body' => Cast::bool($this->config->get('warden.child.capture.mail_body', false))
+                    ? $this->body($email)
+                    : null,
                 'from' => $this->addresses($email?->getFrom() ?? []),
                 'to' => $this->addresses($email?->getTo() ?? []),
                 'cc' => $this->addresses($email?->getCc() ?? []),
@@ -50,13 +53,35 @@ class MailRecorder extends AbstractRecorder
     }
 
     /**
+     * Recipient addresses. Domain-only masked by default (the local part is PII);
+     * stored in full only when `capture.pii` is opted in.
+     *
      * @param  array<array-key, Address>  $addresses
-     * @return list<string> domain-only masked addresses (LGPD: never store the
-     *                      local part / full PII of recipients)
+     * @return list<string>
      */
     protected function addresses(array $addresses): array
     {
-        return array_values(array_map(fn (Address $addr): string => $this->mask($addr->getAddress()), $addresses));
+        $pii = Cast::bool($this->config->get('warden.child.capture.pii', false));
+
+        return array_values(array_map(
+            fn (Address $addr): string => $pii ? $addr->getAddress() : $this->mask($addr->getAddress()),
+            $addresses
+        ));
+    }
+
+    /**
+     * The rendered message body (text preferred, html fallback), truncated.
+     * Only reached when `capture.mail_body` is opted in — bulk user content.
+     */
+    protected function body(?Email $email): ?string
+    {
+        if ($email === null) {
+            return null;
+        }
+
+        $body = $email->getTextBody() ?? $email->getHtmlBody();
+
+        return is_string($body) ? mb_substr($body, 0, 10000) : null;
     }
 
     protected function mask(string $email): string
