@@ -6,8 +6,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-11
+
 ### Added
 
+- **Parent control plane.** Per-project capture behaviour (recorders, trace sampling, type gate,
+  always-keep, scrub keys, host interval) is now stored on the parent and pushed to each child
+  through a version handshake on the existing ingest round-trip — no new endpoint, no polling. The
+  child caches the document locally and applies it at boot. Edit it under **Manage projects → Edit
+  ("Behaviour")**. Storage: new `config` / `config_version` columns on `wdn_projects`.
+- **`.env` precedence (never breaks an existing install).** Precedence is **child `.env` › parent
+  › package default**: the parent only controls knobs a child has not fixed in its own `.env`, and
+  the pushed document is *sparse* (only admin-overridden knobs). With no overrides, behaviour is
+  byte-for-byte identical to before.
+- **Automatic project timezone.** Each child reports its `app.timezone`; the parent records it per
+  project automatically. The manual timezone selector was removed.
 - **Opt-in sensitive-data capture (`warden.child.capture.*`).** Private by default (à la Sentry's
   `send_default_pii`): out of the box nothing sensitive is stored. Three per-category knobs let a host
   capture more when needed — `pii` (incidental PII like emails in messages/bindings and full mail
@@ -17,12 +30,39 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **CSS served from the package** by `AssetController` (with `@font-face` sources inlined and a
+  content-hash cache-bust) instead of being published to `public/vendor/warden`. A package update
+  can no longer leave a stale stylesheet against new markup, and the host needs no writable
+  `public/` directory.
+- **Canonical UTC time.** `occurred_at` / `received_at` are stored as UTC instants (each child
+  converts from its own local timezone); the dashboard renders every timestamp in its own
+  `config('app.timezone')`. Timestamps are no longer skewed by a child's UTC offset.
+- **Default `WARDEN_MODE` is `child`** — only the parent needs to set the mode.
 - **Redaction reframed as "private by default" rather than "non-optional".** The credential floor still
   masks passwords/tokens/keys/cards out of the box, and incidental PII is masked by default — but hosts
   can now opt into richer capture per category (see above), matching the diagnostic depth of tools like
   Sentry/Nightwatch without losing the safe default. Exception **and** log message scrubbing moved into
   a shared `Support\Scrubber::scrubMessage` that honours `capture.pii` (log message bodies are now
   scrubbed for credentials too — previously only exception messages were).
+
+### Performance
+
+- **Overview N+1 removed** — the request and uptime aggregates behind the fleet overview are batched
+  into one query each instead of one per project.
+- **Hot-path scrubber memoised** — the `Scrubber` is cached per config instead of rebuilt on every
+  recorded query.
+- **Alert evaluation N+1 removed** — `warden:evaluate` pre-loads open incidents and memoises
+  `AlertSetting` instead of querying per issue.
+- **Delivery tab index** — a `(project_id, received_at)` index on `wdn_events` backs the Delivery view.
+- **Opt-in gzip on ship** — `warden:ship` can gzip the batch body; the parent inflates before the HMAC
+  check, so it stays backward-compatible.
+- **Aggregate persist batched** — the per-key aggregate lookup on persist is now a single query
+  (N+1 select → 1), with the meta merge kept in PHP.
+
+### Fixed
+
+- "Logs by level" could read empty while "Recent logs" still listed older entries: the recent-logs
+  list now honours the selected time range, so the breakdown card and the list always agree.
 
 ### Security
 
@@ -100,38 +140,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **The global login cap can lock the form for everyone during a sustained attack** and a valid login
   does not reset it — a deliberate trade-off (an absolute ceiling over convenience); it grants no
   access and self-recovers when the decay window passes.
-
-## [0.3.0] - 2026-06-10
-
-### Added
-
-- **Parent control plane.** Per-project capture behaviour (recorders, trace sampling, type gate,
-  always-keep, scrub keys, host interval) is now stored on the parent and pushed to each child
-  through a version handshake on the existing ingest round-trip — no new endpoint, no polling. The
-  child caches the document locally and applies it at boot. Edit it under **Manage projects → Edit
-  ("Behaviour")**. Storage: new `config` / `config_version` columns on `wdn_projects`.
-- **`.env` precedence (never breaks an existing install).** Precedence is **child `.env` › parent
-  › package default**: the parent only controls knobs a child has not fixed in its own `.env`, and
-  the pushed document is *sparse* (only admin-overridden knobs). With no overrides, behaviour is
-  byte-for-byte identical to before.
-- **Automatic project timezone.** Each child reports its `app.timezone`; the parent records it per
-  project automatically. The manual timezone selector was removed.
-
-### Changed
-
-- **CSS served from the package** by `AssetController` (with `@font-face` sources inlined and a
-  content-hash cache-bust) instead of being published to `public/vendor/warden`. A package update
-  can no longer leave a stale stylesheet against new markup, and the host needs no writable
-  `public/` directory.
-- **Canonical UTC time.** `occurred_at` / `received_at` are stored as UTC instants (each child
-  converts from its own local timezone); the dashboard renders every timestamp in its own
-  `config('app.timezone')`. Timestamps are no longer skewed by a child's UTC offset.
-- **Default `WARDEN_MODE` is `child`** — only the parent needs to set the mode.
-
-### Fixed
-
-- "Logs by level" could read empty while "Recent logs" still listed older entries: the recent-logs
-  list now honours the selected time range, so the breakdown card and the list always agree.
 
 ## [0.2.1] - 2026-06-10
 
@@ -335,7 +343,10 @@ Laravel events and ships batches to the parent).
 - CI matrix (Laravel 12/13, multiple databases), MIT license, packaging files, PHPUnit
   suite and PHPStan configuration.
 
-[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/VictorStochero/Warden/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/VictorStochero/Warden/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/VictorStochero/Warden/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/VictorStochero/Warden/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/VictorStochero/Warden/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/VictorStochero/Warden/releases/tag/v0.1.0
