@@ -104,7 +104,7 @@
     </div>
 
     {{-- Per-type highlights --}}
-    @if(! empty($rows) || isset($p['message']) || isset($p['sql']) || ! empty($p['html']) || ! empty($p['text']) || ! empty($p['context']) || ! empty($p['bindings']) || ! empty($p['stack']))
+    @if(! empty($rows) || isset($p['message']) || isset($p['sql']) || ! empty($p['context']) || ! empty($p['bindings']) || ! empty($p['stack']))
         <div class="mt-5 space-y-5">
             @if(isset($p['message']))
                 <div class="rounded-2xl border border-ink-700/70 bg-ink-900 p-5 shadow-lg shadow-black/10">
@@ -136,15 +136,6 @@
                     @endif
                 </div>
             @endif
-
-            @foreach(['html' => 'warden::events.mail_html', 'text' => 'warden::events.mail_text'] as $bodyKey => $bodyLabel)
-                @if(! empty($p[$bodyKey]))
-                    <div class="rounded-2xl border border-ink-700/70 bg-ink-900 p-5 shadow-lg shadow-black/10">
-                        <p class="wdn-eyebrow text-[10px] text-slate-500">{{ __($bodyLabel) }}</p>
-                        <pre class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-ink-950 p-3 font-mono text-[12px] text-slate-300">{{ $p[$bodyKey] }}</pre>
-                    </div>
-                @endif
-            @endforeach
 
             @if(! empty($p['context']))
                 <div class="rounded-2xl border border-ink-700/70 bg-ink-900 p-5 shadow-lg shadow-black/10">

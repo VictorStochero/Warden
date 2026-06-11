@@ -33,8 +33,8 @@ class EventDetailTest extends TestCase
                 'stack' => [['file' => 'app/X.php', 'line' => 10, 'function' => 'go', 'class' => 'App\\X']],
             ]],
             ['type' => 'mail', 'trace_id' => 'tr1', 'span_id' => 's2', 'occurred_at' => $at, 'duration_us' => 4200, 'payload' => [
-                'subject' => 'Welcome aboard', 'from' => ['app@example.com'], 'to' => ['user@example.com'],
-                'html' => '<h1>Hello there</h1>', 'mailer' => 'smtp', 'status' => 'sent',
+                'subject' => 'Welcome aboard', 'from' => ['***@example.com'], 'to' => ['***@example.com'],
+                'mailer' => 'smtp', 'status' => 'sent',
             ]],
             ['type' => 'query', 'trace_id' => 'tr1', 'span_id' => 's3', 'occurred_at' => $at, 'duration_us' => 800, 'payload' => [
                 'sql' => 'select * from orders where id = ?', 'bindings' => [9], 'connection' => 'mysql',
@@ -65,16 +65,16 @@ class EventDetailTest extends TestCase
             ->assertSee('app/X.php');    // location / stack
     }
 
-    public function test_mail_detail_shows_addresses_and_body(): void
+    public function test_mail_detail_shows_subject_and_masked_addresses_but_no_body(): void
     {
         $project = $this->seedEvents();
 
         $this->get(route('warden.event', ['demo', $this->eventId($project, 'mail')]))
             ->assertOk()
             ->assertSee('Welcome aboard')
-            ->assertSee('app@example.com')
-            ->assertSee('user@example.com')
-            ->assertSee('Hello there'); // body content (HTML source, escaped)
+            ->assertSee('***@example.com') // domain-only masked recipients (LGPD)
+            ->assertDontSee('mail_html')   // no body section rendered
+            ->assertDontSee('mail_text');
     }
 
     public function test_query_detail_shows_sql(): void

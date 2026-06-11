@@ -9,6 +9,11 @@ use Symfony\Component\Mime\Email;
 use VictorStochero\Warden\Recording\AbstractRecorder;
 use VictorStochero\Warden\Support\Cast;
 
+/**
+ * Captures operational metadata for outgoing mail only. Per LGPD/data
+ * minimisation, the message body is never stored and recipient addresses are
+ * masked to their domain — the local part (PII) never enters the APM store.
+ */
 class MailRecorder extends AbstractRecorder
 {
     protected ?float $startedAt = null;
@@ -39,38 +44,25 @@ class MailRecorder extends AbstractRecorder
                 'bcc' => $this->addresses($email?->getBcc() ?? []),
                 'reply_to' => $this->addresses($email?->getReplyTo() ?? []),
                 'mailer' => Cast::str($event->data['mailer'] ?? null) ?: null,
-                'html' => $this->body($email?->getHtmlBody()),
-                'text' => $this->body($email?->getTextBody()),
                 'status' => 'sent',
             ], durationUs: $duration);
         });
     }
 
     /**
-     * The rendered body (HTML or text), size-capped so a large newsletter can't
-     * bloat the buffer/outbox. Symfony returns string|resource|null.
-     */
-    protected function body(mixed $body): ?string
-    {
-        if (is_resource($body)) {
-            $body = stream_get_contents($body) ?: null;
-        }
-
-        if (! is_string($body) || $body === '') {
-            return null;
-        }
-
-        $max = 65_536;
-
-        return mb_strlen($body) > $max ? mb_substr($body, 0, $max).'…' : $body;
-    }
-
-    /**
      * @param  array<array-key, Address>  $addresses
-     * @return list<string>
+     * @return list<string> domain-only masked addresses (LGPD: never store the
+     *                      local part / full PII of recipients)
      */
     protected function addresses(array $addresses): array
     {
-        return array_values(array_map(fn (Address $addr): string => $addr->getAddress(), $addresses));
+        return array_values(array_map(fn (Address $addr): string => $this->mask($addr->getAddress()), $addresses));
+    }
+
+    protected function mask(string $email): string
+    {
+        $at = strrpos($email, '@');
+
+        return $at === false ? '***' : '***@'.substr($email, $at + 1);
     }
 }

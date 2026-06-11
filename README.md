@@ -397,6 +397,29 @@ from the `.env` with **`WARDEN_DASHBOARD_AUTH`** — no code required:
 When `WARDEN_DASHBOARD_AUTH` is unset it resolves to `password` if a dashboard
 password is configured, otherwise `gate` (local-only) — the historical default.
 
+## Privacy & data minimisation
+
+Warden is built to observe *how your app behaves in operation*, not *what your
+users do or say*. It captures the minimum metadata needed to keep the app
+healthy and deliberately stops short of copying personal data into the APM
+store — a posture that maps directly onto LGPD/GDPR data-minimisation duties.
+
+- **No email bodies.** The mail recorder never stores the HTML or text body of a
+  message — only its subject, mailer, status and timing.
+- **Masked recipients.** Email addresses (`from`/`to`/`cc`/`bcc`/`reply_to`) are
+  reduced to their domain: `joana@empresa.com.br` becomes `***@empresa.com.br`,
+  and an address with no domain becomes `***`. The local part (the PII) never
+  leaves the host app.
+- **No user names or emails.** The only user identifier Warden records is the
+  authenticated `user_id` for correlation — never the user's name, email or other
+  profile fields.
+- **Sensitive keys redacted.** The `Scrubber` (`warden.child.scrub`) redacts
+  secrets from query bindings, request input, headers, log context and exception
+  messages; stack-trace paths are relativized to the app base path.
+- **The host is the data controller.** You decide what is captured (recorders and
+  sampling are configurable) and how long it is kept — set retention with
+  `warden:prune` / partitioning so collected metadata doesn't outlive its purpose.
+
 ## Quality
 
 ```bash
