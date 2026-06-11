@@ -7,9 +7,14 @@ namespace VictorStochero\Warden\Support;
  * (RNF-4). Matching is case-insensitive on the key; matched values become
  * "[scrubbed]" while structure is preserved.
  *
- * Redaction is NOT optional. A non-removable floor of sensitive keys is always
- * enforced; the host config can only add keys, never remove the floor — there
- * is no toggle that captures the raw secret/PII.
+ * Private by default (à la Sentry's send_default_pii): out of the box the
+ * credential floor and incidental PII are masked. Two opt-in flags loosen this
+ * for hosts that need richer diagnostics:
+ *  - $capturePii preserves incidental PII (emails) as diagnostic signal;
+ *  - $captureCredentials (DANGER, discouraged) lifts the credential floor so
+ *    raw secrets can reach the store — Nightwatch-level "capture everything".
+ * The two are orthogonal: lifting the floor never unmasks PII, and capturing
+ * PII never unmasks credentials.
  */
 class Scrubber
 {
@@ -36,18 +41,45 @@ class Scrubber
      */
     protected array $keys;
 
-    /** @param list<string> $keys host-provided keys, additive to the floor */
-    public function __construct(array $keys = [])
+    /**
+     * Raw effective key spellings (deduped), used to mask `key=value` pairs in
+     * free-text messages where the original spelling matters.
+     *
+     * @var list<string>
+     */
+    protected array $messageKeys;
+
+    protected bool $capturePii;
+
+    protected bool $captureCredentials;
+
+    /**
+     * @param  list<string>  $keys  host-provided keys, additive to the floor
+     * @param  bool  $capturePii  preserve incidental PII (emails) as diagnostic signal
+     * @param  bool  $captureCredentials  DANGER: drop the credential floor entirely
+     */
+    public function __construct(array $keys = [], bool $capturePii = false, bool $captureCredentials = false)
     {
+        $floor = $captureCredentials ? [] : self::FLOOR;
+        $effective = array_merge($floor, $keys);
+
         $normalized = [];
 
-        foreach (array_merge(self::FLOOR, $keys) as $key) {
+        foreach ($effective as $key) {
             $normalized[self::normalize($key)] = true;
         }
 
         unset($normalized['']);
 
         $this->keys = array_keys($normalized);
+
+        $this->messageKeys = array_values(array_unique(array_filter(
+            $effective,
+            static fn (string $k): bool => trim($k) !== ''
+        )));
+
+        $this->capturePii = $capturePii;
+        $this->captureCredentials = $captureCredentials;
     }
 
     /**
@@ -74,6 +106,44 @@ class Scrubber
     public function shouldScrub(string $key): bool
     {
         return in_array(self::normalize($key), $this->keys, true);
+    }
+
+    /**
+     * Mask sensitive data in a free-text message while keeping it legible:
+     *  - `key=value` / `key: value` whose key is in the effective floor/host set
+     *    (no-op when credential capture is enabled — the set is then empty);
+     *  - when PII capture is OFF: bare emails and the value inside
+     *    `Duplicate entry '...'` (unique-violation leaks).
+     *
+     * Diagnostic text is otherwise preserved — this is an APM, the cause matters.
+     */
+    public function scrubMessage(string $message): string
+    {
+        foreach ($this->messageKeys as $key) {
+            $message = (string) preg_replace(
+                '/('.preg_quote($key, '/').'\s*[=:]\s*)\S+/i',
+                '${1}'.self::MASK,
+                $message
+            );
+        }
+
+        if (! $this->capturePii) {
+            // Duplicate entry 'value' — mask only the captured value.
+            $message = (string) preg_replace(
+                "/(Duplicate entry ')[^']*(')/i",
+                '${1}'.self::MASK.'${2}',
+                $message
+            );
+
+            // Bare email addresses anywhere in the message (PII).
+            $message = (string) preg_replace(
+                '/[^\s\'"<>()]+@[^\s\'"<>()]+\.[^\s\'"<>()]{2,}/',
+                self::MASK,
+                $message
+            );
+        }
+
+        return $message;
     }
 
     /**
@@ -205,25 +275,30 @@ class Scrubber
     }
 
     /**
-     * High-confidence value shapes that are always secrets/PII regardless of
-     * the column. Deliberately narrow — no "long string" rule (false-positives
-     * on IDs).
+     * High-confidence value shapes that are secrets/PII regardless of the
+     * column. Deliberately narrow — no "long string" rule (false-positives on
+     * IDs). Credentials (bcrypt/JWT) yield to $captureCredentials; the email
+     * heuristic (PII) yields to $capturePii.
      */
     protected function valueLooksSensitive(string $value): bool
     {
-        // bcrypt hash
-        if (preg_match('/^\$2[aby]\$\d{2}\$/', $value)) {
-            return true;
+        if (! $this->captureCredentials) {
+            // bcrypt hash
+            if (preg_match('/^\$2[aby]\$\d{2}\$/', $value)) {
+                return true;
+            }
+
+            // JWT (header.payload.signature)
+            if (preg_match('/^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\./', $value)) {
+                return true;
+            }
         }
 
-        // JWT (header.payload.signature)
-        if (preg_match('/^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\./', $value)) {
-            return true;
-        }
-
-        // email address
-        if (preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/', $value)) {
-            return true;
+        if (! $this->capturePii) {
+            // email address
+            if (preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/', $value)) {
+                return true;
+            }
         }
 
         return false;
