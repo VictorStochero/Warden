@@ -93,48 +93,77 @@ class DatabaseAggregator implements Aggregator
         });
     }
 
-    /** @param array<string, array{count:int,sum:int,max:int,meta:array<string,mixed>}> $deltas */
+    /**
+     * @param  array<string, array{count:int,sum:int,max:int,meta:array<string,mixed>}>  $deltas
+     *
+     * A raw SQL upsert can't replace this: `meta` (histogram + counters + host
+     * gauges) is merged in PHP via mergeMeta. Instead of a SELECT + transaction
+     * per (bucket,key), we batch-load all existing rows in one query and apply
+     * inserts/updates inside the rollup's transaction — the cursor lock already
+     * serialises concurrent runs, so the per-key lockForUpdate was redundant.
+     */
     protected function persist(int $projectId, string $type, array $deltas): void
     {
+        if ($deltas === []) {
+            return;
+        }
+
+        $buckets = [];
+        $keys = [];
+        foreach (array_keys($deltas) as $compound) {
+            [$bucket, $key] = explode("\0", $compound, 2);
+            $buckets[$bucket] = true;
+            $keys[$key] = true;
+        }
+
+        // Superset of the touched rows (bucket × key); filtered by exact compound
+        // below, so spurious cross-product matches are harmless.
+        $existing = [];
+        $rows = $this->db->table('wdn_aggregates')
+            ->where('project_id', $projectId)
+            ->where('type', $type)
+            ->whereIn('bucket', array_keys($buckets))
+            ->whereIn('key', array_keys($keys))
+            ->get();
+        foreach ($rows as $row) {
+            $existing[Cast::str($row->bucket)."\0".Cast::str($row->key)] = $row;
+        }
+
+        $now = Carbon::now();
+        $inserts = [];
+
         foreach ($deltas as $compound => $delta) {
             [$bucket, $key] = explode("\0", $compound, 2);
+            $row = $existing[$compound] ?? null;
 
-            $this->db->transaction(function () use ($projectId, $type, $bucket, $key, $delta) {
-                $existing = $this->db->table('wdn_aggregates')
-                    ->where('project_id', $projectId)
-                    ->where('type', $type)
-                    ->where('bucket', $bucket)
-                    ->where('key', $key)
-                    ->lockForUpdate()
-                    ->first();
-
-                $now = Carbon::now();
-
-                if ($existing === null) {
-                    $this->db->table('wdn_aggregates')->insert([
-                        'project_id' => $projectId,
-                        'type' => $type,
-                        'bucket' => $bucket,
-                        'key' => $key,
-                        'count' => $delta['count'],
-                        'sum_duration' => $delta['sum'],
-                        'max_duration' => $delta['max'],
-                        'meta' => Json::encode($delta['meta']),
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ]);
-
-                    return;
-                }
-
-                $this->db->table('wdn_aggregates')->where('id', $existing->id)->update([
-                    'count' => Cast::int($existing->count) + $delta['count'],
-                    'sum_duration' => Cast::int($existing->sum_duration) + $delta['sum'],
-                    'max_duration' => max(Cast::int($existing->max_duration), $delta['max']),
-                    'meta' => Json::encode($this->mergeMeta(Json::decode($existing->meta), $delta['meta'])),
+            if ($row === null) {
+                $inserts[] = [
+                    'project_id' => $projectId,
+                    'type' => $type,
+                    'bucket' => $bucket,
+                    'key' => $key,
+                    'count' => $delta['count'],
+                    'sum_duration' => $delta['sum'],
+                    'max_duration' => $delta['max'],
+                    'meta' => Json::encode($delta['meta']),
+                    'created_at' => $now,
                     'updated_at' => $now,
-                ]);
-            });
+                ];
+
+                continue;
+            }
+
+            $this->db->table('wdn_aggregates')->where('id', $row->id)->update([
+                'count' => Cast::int($row->count) + $delta['count'],
+                'sum_duration' => Cast::int($row->sum_duration) + $delta['sum'],
+                'max_duration' => max(Cast::int($row->max_duration), $delta['max']),
+                'meta' => Json::encode($this->mergeMeta(Json::decode($row->meta), $delta['meta'])),
+                'updated_at' => $now,
+            ]);
+        }
+
+        if ($inserts !== []) {
+            $this->db->table('wdn_aggregates')->insert($inserts);
         }
     }
 
