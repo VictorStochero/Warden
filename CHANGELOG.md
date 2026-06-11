@@ -72,6 +72,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Credential writes suppressed from self-monitoring.** Project create/rotate and the self-project
   bootstrap run under `withoutRecording`, so a self-monitoring parent never records the credential
   INSERT/UPDATE (defense-in-depth on top of the column-correlated binding scrub).
+- **Message redaction hardened (post-reaudit).** `Scrubber::scrubMessage` now also masks credentials a
+  multi-agent reaudit found leaking by default in log/exception text: hyphenated floor keys
+  (`api-key`/`private-key`), credentials inside JSON/quoted structures (`{"password":"…"}`), the token
+  after an auth scheme (`Authorization: Bearer …` / `Basic …`), and bare JWT/bcrypt shapes. `scrubSql`
+  now masks literals next to quoted-identifier columns (`` `password` ``, `[password]`, `"password"`),
+  and `scrubBindings` masks every tuple of a multi-row `INSERT` (previously only the first).
+- **Dead-letter input hygiene.** `batch_id` is capped to the column width (64) so an oversized value
+  can't raise a `QueryException` on strict-mode MySQL/Postgres, and the endpoint has its own tighter
+  rate-limit bucket (`WARDEN_DEAD_LETTER_RATE_LIMIT`, default `60,1`) instead of sharing the generous
+  ingest limit, blunting table-bloat from a misbehaving child.
 
 ### Security — accepted by design
 
@@ -84,6 +94,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   stay locked to `'self'`.
 - **`require_https` defaults to `false`** for deployments behind a TLS-terminating proxy; set
   `WARDEN_REQUIRE_HTTPS=true` when the parent is exposed directly.
+- **The per-IP login throttle assumes a correctly-configured `TrustProxies`.** Under a permissive proxy
+  config a client can rotate `X-Forwarded-For` to evade the per-IP cap; the IP-independent
+  `login_global_max` cap is the compensating control (documented in `config/warden.php`).
+- **The global login cap can lock the form for everyone during a sustained attack** and a valid login
+  does not reset it — a deliberate trade-off (an absolute ceiling over convenience); it grants no
+  access and self-recovers when the decay window passes.
 
 ## [0.3.0] - 2026-06-10
 
