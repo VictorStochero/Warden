@@ -23,6 +23,9 @@ final class KnobMap
             'sample.always_keep.slower_than_ms' => 'WARDEN_ALWAYS_KEEP_MS',
             'sample.type_gate' => null,
             'scrub' => null,
+            'capture.pii' => 'WARDEN_CAPTURE_PII',
+            'capture.mail_body' => 'WARDEN_CAPTURE_MAIL_BODY',
+            'capture.disable_credential_scrub' => 'WARDEN_DISABLE_CREDENTIAL_SCRUB',
             'host_interval' => 'WARDEN_HOST_INTERVAL',
         ];
     }

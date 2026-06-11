@@ -119,18 +119,35 @@ return [
 
         // Keys whose values are redacted from query bindings, request input,
         // log context, headers and exception messages before anything is
-        // buffered (RNF-4). Redaction is NOT optional: this list is ADDITIVE to
-        // a non-removable floor enforced in Support\Scrubber (password, token,
-        // secret, authorization, cookie, api_key, cpf, ssn, credit_card, …).
-        // The host can only make redaction stricter — emptying this list does
-        // not expose floor keys, and there is no toggle that captures raw
-        // secrets/PII. Matching is case-insensitive and ignores `_`/`-`.
+        // buffered (RNF-4). ADDITIVE to a credential floor enforced in
+        // Support\Scrubber (password, token, secret, authorization, cookie,
+        // api_key, cpf, ssn, credit_card, …), masked by default. The floor can
+        // be lifted only via `capture.disable_credential_scrub` below (off,
+        // discouraged); incidental PII via `capture.pii`. Matching is
+        // case-insensitive and ignores `_`/`-`.
         'scrub' => [
             'password', 'password_confirmation', 'passwd', 'token', 'remember_token',
             'api_token', 'auth_token', 'access_token', 'refresh_token', 'secret', 'client_secret',
             'api_key', 'private_key', 'authorization', 'bearer', 'cookie',
             'php-auth-pw', 'csrf', '_token', 'x-api-key', 'credit_card',
             'card_number', 'cvv', 'ssn', 'cpf',
+        ],
+
+        // Sensitive-data capture (opt-in, private by default). Mirrors Sentry's
+        // send_default_pii: out of the box nothing sensitive is stored; a host
+        // that needs richer diagnostics turns these on, per category. The parent
+        // control plane can set them per project; the child .env still wins.
+        'capture' => [
+            // Preserve incidental PII (emails in messages/bindings, full mail
+            // recipients) as diagnostic signal. Credentials stay masked.
+            'pii' => env('WARDEN_CAPTURE_PII', false),
+
+            // Store the rendered e-mail body (text preferred). Bulk user content.
+            'mail_body' => env('WARDEN_CAPTURE_MAIL_BODY', false),
+
+            // DANGER: drop the credential floor (passwords/tokens/keys/cards).
+            // The only switch that lets raw secrets reach the store — discouraged.
+            'disable_credential_scrub' => env('WARDEN_DISABLE_CREDENTIAL_SCRUB', false),
         ],
 
         // How often the host recorder samples /proc, in seconds. Host metrics

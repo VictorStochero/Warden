@@ -24,7 +24,11 @@ abstract class AbstractRecorder implements Recorder
             $keys[] = Cast::str($key);
         }
 
-        return new Scrubber($keys);
+        return new Scrubber(
+            $keys,
+            Cast::bool($this->config->get('warden.child.capture.pii', false)),
+            Cast::bool($this->config->get('warden.child.capture.disable_credential_scrub', false)),
+        );
     }
 
     /** @param array<string, mixed> $payload */
