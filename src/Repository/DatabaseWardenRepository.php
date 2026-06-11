@@ -65,17 +65,29 @@ class DatabaseWardenRepository implements WardenRepository
         $tagsByProject = $this->tagsByProject();
         $groupsById = $this->groupsById();
 
-        return $query->get()->map(function (\stdClass $project) use ($since, $tagsByProject, $groupsById): \stdClass {
-            $requests = $this->db->table('wdn_aggregates')
-                ->where('project_id', $project->id)
-                ->where('type', 'request')
-                ->where('bucket', '>=', $since)
-                ->get();
+        $projects = $query->get();
+        $ids = array_values($projects->map(fn (\stdClass $p): int => Cast::int($p->id))->all());
 
-            $count = Cast::int($requests->sum('count'));
+        // Batch the request aggregates for every project in one query, grouped by
+        // project_id — was one query per project (N+1 on the most-visited screen).
+        $aggByProject = [];
+        foreach ($this->db->table('wdn_aggregates')
+            ->whereIn('project_id', $ids)
+            ->where('type', 'request')
+            ->where('bucket', '>=', $since)
+            ->get() as $row) {
+            $aggByProject[Cast::int($row->project_id)][] = $row;
+        }
+
+        // And availability for all projects in a single wdn_incidents read.
+        $uptimes = $this->uptimeForProjects($ids, '30d');
+
+        return $projects->map(function (\stdClass $project) use ($aggByProject, $uptimes, $tagsByProject, $groupsById): \stdClass {
+            $count = 0;
             $errors = 0;
             $histogram = [];
-            foreach ($requests as $row) {
+            foreach ($aggByProject[Cast::int($project->id)] ?? [] as $row) {
+                $count += Cast::int($row->count);
                 $meta = Json::decode($row->meta ?? null);
                 $errors += Cast::int($meta['errors'] ?? null);
                 foreach ($meta as $k => $v) {
@@ -98,7 +110,7 @@ class DatabaseWardenRepository implements WardenRepository
             $summary->error_rate = $errorRate;
             $summary->p95_ms = $p95;
             $summary->health = $this->health($lastSeen, $errorRate, $p95);
-            $summary->uptime = $this->uptime(Cast::int($project->id), '30d');
+            $summary->uptime = $uptimes[Cast::int($project->id)] ?? 100.0;
 
             $groupId = isset($project->group_id) ? Cast::int($project->group_id) : 0;
             $summary->group = $groupId > 0 ? ($groupsById[$groupId] ?? null) : null;
@@ -160,31 +172,64 @@ class DatabaseWardenRepository implements WardenRepository
      */
     public function uptime(int $projectId, string $range = '30d'): float
     {
+        return $this->uptimeForProjects([$projectId], $range)[$projectId] ?? 100.0;
+    }
+
+    /**
+     * Availability for several projects at once — a single wdn_incidents read,
+     * intervals grouped and merged per project (overview avoids N queries).
+     *
+     * @param  list<int>  $projectIds
+     * @return array<int, float>
+     */
+    protected function uptimeForProjects(array $projectIds, string $range): array
+    {
+        if ($projectIds === []) {
+            return [];
+        }
+
         $start = $this->rangeStart($range);
         $startTs = $start->getTimestamp();
         $nowTs = Carbon::now()->getTimestamp();
         $window = max(1, $nowTs - $startTs);
 
         $incidents = $this->db->table('wdn_incidents')
-            ->where('project_id', $projectId)
+            ->whereIn('project_id', $projectIds)
             ->where('severity', 'critical')
             ->whereNotNull('started_at')
             ->where(function (Builder $q) use ($start) {
                 $q->whereNull('resolved_at')->orWhere('resolved_at', '>=', $start);
             })
-            ->get(['started_at', 'resolved_at']);
+            ->get(['project_id', 'started_at', 'resolved_at']);
 
-        /** @var list<array{0:int,1:int}> $intervals */
-        $intervals = [];
+        /** @var array<int, list<array{0:int,1:int}>> $byProject */
+        $byProject = [];
         foreach ($incidents as $inc) {
             $s = max($startTs, Carbon::parse(Cast::str($inc->started_at))->getTimestamp());
             $e = $inc->resolved_at !== null ? Carbon::parse(Cast::str($inc->resolved_at))->getTimestamp() : $nowTs;
             $e = min($e, $nowTs);
             if ($e > $s) {
-                $intervals[] = [$s, $e];
+                $byProject[Cast::int($inc->project_id)][] = [$s, $e];
             }
         }
 
+        $out = [];
+        foreach ($projectIds as $id) {
+            $downtime = $this->mergeDowntime($byProject[$id] ?? []);
+            $out[$id] = round(max(0.0, min(100.0, (1 - $downtime / $window) * 100)), 2);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Total non-overlapping downtime seconds across a set of [start, end]
+     * intervals (concurrent outages are merged, not double-counted).
+     *
+     * @param  list<array{0:int,1:int}>  $intervals
+     */
+    protected function mergeDowntime(array $intervals): int
+    {
         usort($intervals, fn (array $a, array $b): int => $a[0] <=> $b[0]);
 
         $downtime = 0;
@@ -203,7 +248,7 @@ class DatabaseWardenRepository implements WardenRepository
             $downtime += $cur[1] - $cur[0];
         }
 
-        return round(max(0.0, min(100.0, (1 - $downtime / $window) * 100)), 2);
+        return $downtime;
     }
 
     /** @return Collection<int, TraceSpan> */
