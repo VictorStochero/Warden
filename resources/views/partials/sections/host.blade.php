@@ -21,7 +21,7 @@
         @include('warden::partials.kpi', ['label' => __('warden::project.host.disk'), 'value' => isset($h['disk']) && $h['disk'] !== null ? $h['disk'].'%' : '—', 'tone' => $gauge($h['disk'] ?? null)])
     </div>
 
-    <div class="mt-6 grid gap-5 sm:grid-cols-2">
+    <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div class="rounded-xl bg-ink-850 ring-1 ring-inset ring-ink-700/50 p-4">
             <p class="mb-3 text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.host.cpu_chart') }}</p>
             @include('warden::partials.chart', ['values' => $cpuSeries, 'color' => '#6366f1', 'height' => 64])

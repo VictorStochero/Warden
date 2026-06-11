@@ -197,7 +197,7 @@
     </aside>
 
     {{-- Main --}}
-    <div id="wdn-main" class="flex-1">
+    <div id="wdn-main" class="min-w-0 flex-1">
         <header class="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-ink-700 glass px-4 sm:px-6 lg:px-8">
             <button type="button" data-wdn-sidebar-toggle aria-label="{{ __('warden::nav.toggle_sidebar') }}" title="{{ __('warden::nav.toggle_sidebar') }}"
                 class="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-ink-800 hover:text-white">

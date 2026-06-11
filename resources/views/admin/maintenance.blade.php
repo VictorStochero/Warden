@@ -20,7 +20,7 @@
         {{ __('warden::admin.maintenance.intro') }}
     </p>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         @foreach($commands as $command)
             @php $run = $runs[$command] ?? null; @endphp
             <div class="rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10 p-5">

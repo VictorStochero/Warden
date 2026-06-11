@@ -40,7 +40,7 @@
                 <p class="mt-1 text-xs text-slate-500">{{ __('warden::admin.settings.recipients_help') }}</p>
             </div>
 
-            <div class="grid gap-5 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::admin.settings.min_severity_label') }}</label>
                     <select name="min_severity"

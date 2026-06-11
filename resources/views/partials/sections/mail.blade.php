@@ -1,5 +1,5 @@
 @php use VictorStochero\Warden\Dashboard\Format; @endphp
-<div class="grid gap-5 lg:grid-cols-2">
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
     @include('warden::partials.card-open', ['title' => __('warden::project.mail.mailers_title'), 'action' => null])
         @if($mailers->isEmpty())
             <p class="px-4 py-8 text-center text-sm text-slate-600">{{ __('warden::project.mail.mailers_empty') }}</p>
@@ -27,7 +27,7 @@
     @include('warden::partials.card-close')
 </div>
 
-<div class="mt-6 grid gap-5 lg:grid-cols-2">
+<div class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
     @include('warden::partials.event-list', ['events' => $recent_mail, 'type' => 'mail', 'title' => __('warden::project.mail.recent_mail_title')])
     @include('warden::partials.event-list', ['events' => $recent_notifications, 'type' => 'notification', 'title' => __('warden::project.mail.recent_notif_title')])
 </div>

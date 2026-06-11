@@ -5,7 +5,7 @@
     $p95s   = $series->map(fn ($b) => $b['p95'] ?? 0)->all();
 @endphp
 
-<div class="grid gap-5 lg:grid-cols-3">
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
     {{-- Left: charts + tables --}}
     <div class="space-y-6 lg:col-span-2">
         <div class="grid gap-5 sm:grid-cols-2">

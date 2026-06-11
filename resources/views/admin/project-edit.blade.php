@@ -21,7 +21,7 @@
                     class="mt-1.5 w-full rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
             </div>
 
-            <div class="grid gap-5 sm:grid-cols-2">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::admin.edit.client_label') }}</label>
                     <input type="text" name="client" value="{{ old('client', $project->client) }}" placeholder="{{ __('warden::admin.edit.client_placeholder') }}"
@@ -77,7 +77,7 @@
             </div>
 
             {{-- Security audit schedule --}}
-            <div class="grid gap-5 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::admin.edit.audit_frequency_label') }}</label>
                     <select name="audit_frequency" id="wdn-audit-frequency"
@@ -196,7 +196,7 @@
                 <p class="mt-1 text-xs text-slate-500">{{ __('warden::project.behaviour.intro') }}</p>
             </div>
 
-            <div class="grid gap-5 sm:grid-cols-3">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
                 <x-warden::field :label="__('warden::project.behaviour.host_interval')" for="wdn-cfg-host-interval"
                     :hint="__('warden::project.behaviour.host_interval_hint')">
                     <x-warden::input type="number" min="1" step="1" id="wdn-cfg-host-interval"
@@ -236,7 +236,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::project.behaviour.recorders') }}</label>
                     <p class="mt-1 text-xs text-slate-500">{{ __('warden::project.behaviour.recorders_hint') }}</p>
-                    <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                    <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                         @foreach($availableRecorders as $recorder)
                             <label class="flex items-center gap-2">
                                 <x-warden::checkbox name="config[recorders][]" value="{{ $recorder }}"
