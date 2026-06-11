@@ -241,4 +241,20 @@ return [
         'uptime_30d' => '% uptime · 30d',
     ],
 
+    // ── admin/project-edit.blade.php — Behaviour section ─────────────────
+    'behaviour' => [
+        'title' => 'Behaviour (advanced)',
+        'intro' => "Override the child's capture knobs for this project. The parent pushes these to the child on its next delivery. Leave a field blank to inherit the child's own .env / default.",
+        'host_interval' => 'Host metric interval (s)',
+        'host_interval_hint' => 'How often /proc is sampled.',
+        'sample_request' => 'Sample rate — requests',
+        'sample_request_hint' => '0..1 fraction of requests traced.',
+        'sample_job' => 'Sample rate — jobs',
+        'sample_job_hint' => '0..1 fraction of jobs traced.',
+        'slower_ms' => 'Always keep slower than (ms)',
+        'slower_ms_hint' => 'Force-keep traces above this latency, overriding sampling.',
+        'recorders' => 'Recorders',
+        'recorders_hint' => "Check the recorders to enable for this project. Leave all unchecked to inherit the child's own list.",
+    ],
+
 ];

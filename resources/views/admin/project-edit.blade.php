@@ -192,29 +192,29 @@
         @endphp
         <div class="rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10 p-6 space-y-5">
             <div>
-                <h3 class="text-sm font-semibold text-white">Behaviour (advanced)</h3>
-                <p class="mt-1 text-xs text-slate-500">Override the child's capture knobs for this project. The parent pushes these to the child on its next delivery. Leave a field blank to inherit the child's own .env / default.</p>
+                <h3 class="text-sm font-semibold text-white">{{ __('warden::project.behaviour.title') }}</h3>
+                <p class="mt-1 text-xs text-slate-500">{{ __('warden::project.behaviour.intro') }}</p>
             </div>
 
             <div class="grid gap-5 sm:grid-cols-3">
-                <x-warden::field label="Host metric interval (s)" for="wdn-cfg-host-interval"
-                    hint="How often /proc is sampled.">
+                <x-warden::field :label="__('warden::project.behaviour.host_interval')" for="wdn-cfg-host-interval"
+                    :hint="__('warden::project.behaviour.host_interval_hint')">
                     <x-warden::input type="number" min="1" step="1" id="wdn-cfg-host-interval"
                         name="config[host_interval]" class="mt-1.5"
                         value="{{ old('config.host_interval', $cfgHostInterval) }}"
                         placeholder="{{ $defHostInterval }}" />
                 </x-warden::field>
 
-                <x-warden::field label="Sample rate — requests" for="wdn-cfg-trace-request"
-                    hint="0..1 fraction of requests traced.">
+                <x-warden::field :label="__('warden::project.behaviour.sample_request')" for="wdn-cfg-trace-request"
+                    :hint="__('warden::project.behaviour.sample_request_hint')">
                     <x-warden::input type="number" min="0" max="1" step="0.01" id="wdn-cfg-trace-request"
                         name="config[sample][traces][request]" class="mt-1.5"
                         value="{{ old('config.sample.traces.request', $cfgTraceRequest) }}"
                         placeholder="{{ $defTraceRequest }}" />
                 </x-warden::field>
 
-                <x-warden::field label="Sample rate — jobs" for="wdn-cfg-trace-job"
-                    hint="0..1 fraction of jobs traced.">
+                <x-warden::field :label="__('warden::project.behaviour.sample_job')" for="wdn-cfg-trace-job"
+                    :hint="__('warden::project.behaviour.sample_job_hint')">
                     <x-warden::input type="number" min="0" max="1" step="0.01" id="wdn-cfg-trace-job"
                         name="config[sample][traces][job]" class="mt-1.5"
                         value="{{ old('config.sample.traces.job', $cfgTraceJob) }}"
@@ -223,8 +223,8 @@
             </div>
 
             <div class="max-w-xs">
-                <x-warden::field label="Always keep slower than (ms)" for="wdn-cfg-slower-ms"
-                    hint="Force-keep traces above this latency, overriding sampling.">
+                <x-warden::field :label="__('warden::project.behaviour.slower_ms')" for="wdn-cfg-slower-ms"
+                    :hint="__('warden::project.behaviour.slower_ms_hint')">
                     <x-warden::input type="number" min="0" step="1" id="wdn-cfg-slower-ms"
                         name="config[sample][always_keep][slower_than_ms]" class="mt-1.5"
                         value="{{ old('config.sample.always_keep.slower_than_ms', $cfgSlowerMs) }}"
@@ -234,8 +234,8 @@
 
             @if($availableRecorders !== [])
                 <div>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Recorders</label>
-                    <p class="mt-1 text-xs text-slate-500">Check the recorders to enable for this project. Leave all unchecked to inherit the child's own list.</p>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::project.behaviour.recorders') }}</label>
+                    <p class="mt-1 text-xs text-slate-500">{{ __('warden::project.behaviour.recorders_hint') }}</p>
                     <div class="mt-2 grid gap-2 sm:grid-cols-3">
                         @foreach($availableRecorders as $recorder)
                             <label class="flex items-center gap-2">

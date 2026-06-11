@@ -241,4 +241,20 @@ return [
         'uptime_30d' => '% uptime · 30d',
     ],
 
+    // ── admin/project-edit.blade.php — seção Comportamento ───────────────
+    'behaviour' => [
+        'title' => 'Comportamento (avançado)',
+        'intro' => 'Sobrescreve os parâmetros de captura do child para este projeto. O parent os empurra ao child na próxima entrega. Deixe um campo em branco para herdar o .env / padrão do child.',
+        'host_interval' => 'Intervalo de métricas de host (s)',
+        'host_interval_hint' => 'Com que frequência o /proc é amostrado.',
+        'sample_request' => 'Taxa de amostragem — requests',
+        'sample_request_hint' => 'Fração 0..1 de requests rastreados.',
+        'sample_job' => 'Taxa de amostragem — jobs',
+        'sample_job_hint' => 'Fração 0..1 de jobs rastreados.',
+        'slower_ms' => 'Sempre manter acima de (ms)',
+        'slower_ms_hint' => 'Força manter traces acima desta latência, sobrepondo a amostragem.',
+        'recorders' => 'Recorders',
+        'recorders_hint' => 'Marque os recorders a habilitar para este projeto. Deixe todos desmarcados para herdar a lista do child.',
+    ],
+
 ];
