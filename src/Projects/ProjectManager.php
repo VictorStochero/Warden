@@ -55,7 +55,7 @@ class ProjectManager
             throw new \InvalidArgumentException('Self project slug is empty.');
         }
 
-        return Project::query()->firstOrCreate(
+        $project = Project::query()->firstOrCreate(
             ['slug' => $slug],
             [
                 'name' => $name ?? $this->defaultSelfName($slug),
@@ -64,6 +64,27 @@ class ProjectManager
                 'active' => true,
             ],
         );
+
+        $this->syncSelfTimezone($project);
+
+        return $project;
+    }
+
+    /**
+     * Auto-detect the self project's display timezone from the parent's own
+     * app.timezone — the self-monitoring equivalent of what the ingest endpoint
+     * does for remote children. Idempotent: only a valid IANA identifier that
+     * differs from the stored value is written.
+     */
+    private function syncSelfTimezone(Project $project): void
+    {
+        $tz = Cast::str(config('app.timezone'));
+
+        if ($tz === '' || $tz === Cast::str($project->timezone) || ! in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
+            return;
+        }
+
+        $project->forceFill(['timezone' => $tz])->save();
     }
 
     /**

@@ -46,7 +46,6 @@ Route::middleware(Authorize::class.':manageWarden')->group(function () {
     Route::post('/admin/projects/{project}/toggle', [ProjectAdminController::class, 'toggle'])->name('warden.admin.projects.toggle');
     Route::post('/admin/projects/{project}/reset', [ProjectAdminController::class, 'reset'])->name('warden.admin.projects.reset');
     Route::post('/admin/projects/{project}/audit-now', [ProjectAdminController::class, 'auditNow'])->name('warden.admin.projects.audit-now');
-    Route::post('/admin/projects/{project}/timezone', [ProjectAdminController::class, 'timezone'])->name('warden.admin.projects.timezone');
 
     Route::get('/admin/maintenance', [MaintenanceController::class, 'index'])->name('warden.admin.maintenance');
     Route::post('/admin/maintenance/run', [MaintenanceController::class, 'run'])->name('warden.admin.maintenance.run');

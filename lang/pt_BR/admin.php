@@ -27,8 +27,7 @@ return [
 
         'label_audit' => 'Auditoria',
         'label_tz' => 'Fuso',
-        'parent_default' => 'Padrão do parent',
-        'tz_search' => 'Buscar fuso…',
+        'tz_auto' => 'Detectando…',
         'run_now' => 'Executar agora',
         'btn_edit' => 'Editar',
         'btn_credentials' => 'Credenciais',

@@ -10,6 +10,7 @@ use VictorStochero\Warden\Contracts\Ingestor;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Transport\Signer;
+use VictorStochero\Warden\Warden;
 
 /**
  * Parent ingestion endpoint (M4). Authenticates by per-project token, verifies
@@ -18,7 +19,7 @@ use VictorStochero\Warden\Transport\Signer;
  */
 class IngestController
 {
-    public function __invoke(Request $request, Ingestor $ingestor): JsonResponse
+    public function __invoke(Request $request, Ingestor $ingestor, Warden $observer): JsonResponse
     {
         // Optional TLS enforcement: reject plaintext ingest before any work. The
         // request honours trusted-proxy headers configured by the host app, so a
@@ -87,6 +88,11 @@ class IngestController
 
         $accepted = $ingestor->ingest($project->slug, $batches);
 
+        // Derive the project's display timezone from the child's reported
+        // app.timezone — replaces the manual selector. Suppressed so the
+        // write is never self-observed (§18.3).
+        $observer->withoutRecording(fn () => $this->syncTimezone($project, $data));
+
         // Control channel: tell the child to run a dependency audit when the
         // parent-configured interval has elapsed (M: parent-driven scheduling),
         // plus the sparse config push via a version handshake.
@@ -105,6 +111,25 @@ class IngestController
         }
 
         return response()->json($payload, 202);
+    }
+
+    /**
+     * Auto-detect the project's display timezone from the app.timezone the child
+     * reports in its ingest body. Only a valid IANA identifier that differs from
+     * the stored value is written, so the column self-heals when the child's
+     * config changes and a no-op report never touches the row.
+     *
+     * @param  array<array-key, mixed>  $data
+     */
+    protected function syncTimezone(Project $project, array $data): void
+    {
+        $tz = Cast::str($data['app_timezone'] ?? '');
+
+        if ($tz === '' || $tz === Cast::str($project->timezone) || ! in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
+            return;
+        }
+
+        $project->forceFill(['timezone' => $tz])->save();
     }
 
     /**

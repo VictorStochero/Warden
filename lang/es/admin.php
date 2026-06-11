@@ -27,8 +27,7 @@ return [
 
         'label_audit' => 'Auditoría',
         'label_tz' => 'Zona',
-        'parent_default' => 'Predeterminado del parent',
-        'tz_search' => 'Buscar zona horaria…',
+        'tz_auto' => 'Detectando…',
         'run_now' => 'Ejecutar ahora',
         'btn_edit' => 'Editar',
         'btn_credentials' => 'Credenciales',

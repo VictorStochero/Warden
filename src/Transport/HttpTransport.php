@@ -47,6 +47,7 @@ class HttpTransport implements Transport
                     'schema_version' => 2,
                     'project' => $this->config->get('warden.child.project'),
                     'sent_at' => time(),
+                    'app_timezone' => Cast::str($this->config->get('app.timezone'), 'UTC'),
                     'config_version' => ConfigCache::version(),
                     'batches' => array_values($batch),
                 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

@@ -306,19 +306,4 @@ class ProjectAdminController
         return redirect()->back()
             ->with('warden_status', "{$project->name}: audit requested — the child will run it on its next delivery.");
     }
-
-    /** Set the display timezone for this project's absolute timestamps. */
-    public function timezone(Project $project, Request $request): RedirectResponse
-    {
-        $tz = trim(Cast::str($request->input('timezone')));
-
-        if ($tz !== '' && ! in_array($tz, \DateTimeZone::listIdentifiers(), true)) {
-            return redirect()->route('warden.admin.projects')->with('warden_error', 'Invalid timezone.');
-        }
-
-        $project->forceFill(['timezone' => $tz !== '' ? $tz : null])->save();
-
-        return redirect()->route('warden.admin.projects')
-            ->with('warden_status', "{$project->name} timezone updated.");
-    }
 }

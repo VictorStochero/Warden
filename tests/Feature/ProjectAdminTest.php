@@ -198,19 +198,6 @@ class ProjectAdminTest extends TestCase
         $this->assertNotNull($project->fresh()->audit_requested_at);
     }
 
-    public function test_timezone_can_be_set_and_is_validated(): void
-    {
-        $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't', 'secret' => 's', 'active' => true]);
-
-        $this->post(route('warden.admin.projects.timezone', $project->id), ['timezone' => 'America/Mexico_City'])
-            ->assertRedirect(route('warden.admin.projects'));
-        $this->assertSame('America/Mexico_City', $project->fresh()->timezone);
-
-        $this->post(route('warden.admin.projects.timezone', $project->id), ['timezone' => 'Not/AZone'])
-            ->assertSessionHas('warden_error');
-        $this->assertSame('America/Mexico_City', $project->fresh()->timezone); // unchanged
-    }
-
     public function test_format_at_converts_to_the_display_timezone(): void
     {
         Format::tz('UTC');

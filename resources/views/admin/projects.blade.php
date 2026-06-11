@@ -5,7 +5,6 @@
 @section('subheading', __('warden::admin.projects.subheading'))
 
 @section('content')
-    @php $timezones = \DateTimeZone::listIdentifiers(); @endphp
     @if(session('warden_status'))
         <div class="mb-5 rounded-lg border border-emerald-700/50 bg-emerald-900/20 px-4 py-3 text-sm text-emerald-300">
             {{ session('warden_status') }}
@@ -87,26 +86,11 @@
                                         <x-warden::button type="submit" variant="secondary" size="sm">{{ __('warden::admin.projects.run_now') }}</x-warden::button>
                                     </form>
                                 </div>
-                                <form method="POST" action="{{ route('warden.admin.projects.timezone', $project->id) }}" class="flex items-center gap-1.5">
-                                    @csrf
+                                <div class="flex items-center gap-1.5">
                                     <span class="w-12 text-[10px] uppercase tracking-wider text-slate-600">{{ __('warden::admin.projects.label_tz') }}</span>
-                                    {{-- Searchable select (zero-dep combobox) — same look as the form selects. --}}
-                                    <div class="relative w-48" data-tz>
-                                        <input type="hidden" name="timezone" value="{{ $project->timezone }}" data-tz-value>
-                                        <button type="button" data-tz-trigger
-                                            class="flex w-full items-center justify-between gap-2 rounded-xl border border-ink-700 bg-ink-850 px-3 py-1.5 text-left font-mono text-xs text-slate-200 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
-                                            <span class="truncate {{ $project->timezone ? '' : 'font-sans text-slate-500' }}" data-tz-label>{{ $project->timezone ?: __('warden::admin.projects.parent_default') }}</span>
-                                            <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
-                                        </button>
-                                        <div data-tz-panel class="fixed z-50 hidden w-64 overflow-hidden rounded-xl border border-ink-700 bg-ink-900 shadow-2xl shadow-black/50">
-                                            <div class="border-b border-ink-700/70 p-2">
-                                                <input type="text" data-tz-search autocomplete="off" placeholder="{{ __('warden::admin.projects.tz_search') }}"
-                                                    class="w-full rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-xs text-white outline-none transition placeholder:text-slate-600 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
-                                            </div>
-                                            <ul data-tz-list class="max-h-56 overflow-auto p-1 font-mono text-xs"></ul>
-                                        </div>
-                                    </div>
-                                </form>
+                                    {{-- Auto-detected from the child's app.timezone — read-only. --}}
+                                    <span class="font-mono text-xs {{ $project->timezone ? 'text-slate-300' : 'text-slate-500' }}">{{ $project->timezone ?: __('warden::admin.projects.tz_auto') }}</span>
+                                </div>
                             </div>
                         </td>
                         <td class="px-4 py-3">
@@ -191,71 +175,7 @@
 
     @include('warden::partials.confirm-modal')
 
-    {{-- Searchable timezone select — shared list + behaviour (zero-dep). --}}
     <script>
-    window.__wdnTz = @json($timezones);
-    window.__wdnTzDefault = @json(__('warden::admin.projects.parent_default'));
-    (function () {
-        var list = window.__wdnTz || [];
-        var def = window.__wdnTzDefault || '';
-        document.querySelectorAll('[data-tz]').forEach(function (root) {
-            var trigger = root.querySelector('[data-tz-trigger]');
-            var panel = root.querySelector('[data-tz-panel]');
-            var search = root.querySelector('[data-tz-search]');
-            var ul = root.querySelector('[data-tz-list]');
-            var hidden = root.querySelector('[data-tz-value]');
-            var label = root.querySelector('[data-tz-label]');
-            var form = root.closest('form');
-
-            function choose(value, text) {
-                hidden.value = value;
-                label.textContent = text || def;
-                label.className = 'truncate' + (value ? '' : ' font-sans text-slate-500');
-                close();
-                if (form) { form.submit(); }
-            }
-            function render(q) {
-                q = (q || '').toLowerCase();
-                var items = [{ v: '', l: def }];
-                for (var i = 0; i < list.length; i++) { items.push({ v: list[i], l: list[i] }); }
-                if (q) { items = items.filter(function (it) { return it.l.toLowerCase().indexOf(q) > -1; }); }
-                ul.innerHTML = '';
-                items.slice(0, 250).forEach(function (it) {
-                    var b = document.createElement('button');
-                    b.type = 'button';
-                    b.textContent = it.l;
-                    b.className = 'block w-full truncate rounded-md px-2.5 py-1.5 text-left transition hover:bg-ink-800 ' + (it.v === hidden.value ? 'text-brand-400' : 'text-slate-300');
-                    b.addEventListener('click', function () { choose(it.v, it.l); });
-                    var li = document.createElement('li');
-                    li.appendChild(b);
-                    ul.appendChild(li);
-                });
-            }
-            function open() {
-                panel.classList.remove('hidden');
-                var r = trigger.getBoundingClientRect();
-                var w = panel.offsetWidth;
-                panel.style.top = (r.bottom + 6) + 'px';
-                panel.style.left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8) + 'px';
-                search.value = '';
-                render('');
-                search.focus();
-            }
-            function close() { panel.classList.add('hidden'); }
-
-            trigger.addEventListener('click', function (e) {
-                e.stopPropagation();
-                panel.classList.contains('hidden') ? open() : close();
-            });
-            search.addEventListener('input', function () { render(search.value); });
-            panel.addEventListener('click', function (e) { e.stopPropagation(); });
-            document.addEventListener('click', close);
-            document.addEventListener('scroll', close, true);
-            window.addEventListener('resize', close);
-            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { close(); } });
-        });
-    })();
-
     // Kebab overflow menus on the project rows. The panel is position:fixed and
     // placed by JS so the table's overflow never clips it.
     (function () {

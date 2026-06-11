@@ -27,8 +27,7 @@ return [
 
         'label_audit' => 'Audit',
         'label_tz' => 'TZ',
-        'parent_default' => 'Parent default',
-        'tz_search' => 'Search timezone…',
+        'tz_auto' => 'Auto-detecting…',
         'run_now' => 'Run now',
         'btn_edit' => 'Edit',
         'btn_credentials' => 'Credentials',
