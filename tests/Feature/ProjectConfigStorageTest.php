@@ -2,6 +2,7 @@
 
 namespace VictorStochero\Warden\Tests\Feature;
 
+use VictorStochero\Warden\Config\KnobMap;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Tests\TestCase;
 
@@ -10,6 +11,16 @@ class ProjectConfigStorageTest extends TestCase
     protected function observerMode(): string
     {
         return 'parent';
+    }
+
+    public function test_knob_map_paths_resolve_against_default_config(): void
+    {
+        foreach (KnobMap::keys() as $knob) {
+            $this->assertTrue(
+                config()->has('warden.child.'.$knob),
+                "Knob {$knob} nao existe em config('warden.child')"
+            );
+        }
     }
 
     public function test_project_stores_sparse_config_and_version(): void
