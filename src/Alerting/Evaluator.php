@@ -34,13 +34,39 @@ class Evaluator
         protected Repository $config,
     ) {}
 
+    /**
+     * Open incidents for the project under evaluation, keyed by subject — loaded
+     * once per run so open/resolve are in-memory lookups, not a SELECT per issue.
+     *
+     * @var array<string, Incident>
+     */
+    protected array $openIncidents = [];
+
+    protected ?AlertSetting $alertSetting = null;
+
     public function evaluate(int $projectId): void
     {
         $this->observer->withoutRecording(function () use ($projectId) {
+            $this->loadState($projectId);
             $this->registerHeartbeats($projectId);
             $this->evaluateHeartbeats($projectId);
             $this->evaluateIssues($projectId);
         });
+    }
+
+    /** Preload the per-run state both issue and heartbeat evaluation rely on. */
+    protected function loadState(int $projectId): void
+    {
+        /** @var array<string, Incident> $bySubject */
+        $bySubject = Incident::query()
+            ->where('project_id', $projectId)
+            ->where('status', 'open')
+            ->get()
+            ->keyBy('subject')
+            ->all();
+
+        $this->openIncidents = $bySubject;
+        $this->alertSetting = AlertSetting::current();
     }
 
     // --------------------------------------------------------- heartbeats
@@ -177,11 +203,7 @@ class Evaluator
     /** @param array<string, mixed> $meta */
     protected function openIncident(int $projectId, string $subject, string $severity, string $summary, array $meta = []): void
     {
-        $incident = Incident::query()
-            ->where('project_id', $projectId)
-            ->where('subject', $subject)
-            ->where('status', 'open')
-            ->first();
+        $incident = $this->openIncidents[$subject] ?? null;
 
         if ($incident === null) {
             $incident = Incident::query()->create([
@@ -194,6 +216,7 @@ class Evaluator
                 'meta' => $meta,
             ]);
 
+            $this->openIncidents[$subject] = $incident;
             $this->dispatch($incident, 'opened');
 
             return;
@@ -212,17 +235,14 @@ class Evaluator
 
     protected function resolveIncident(int $projectId, string $subject): void
     {
-        $incident = Incident::query()
-            ->where('project_id', $projectId)
-            ->where('subject', $subject)
-            ->where('status', 'open')
-            ->first();
+        $incident = $this->openIncidents[$subject] ?? null;
 
         if ($incident === null) {
             return;
         }
 
         $incident->forceFill(['status' => 'resolved', 'resolved_at' => Carbon::now()])->save();
+        unset($this->openIncidents[$subject]);
         $this->dispatch($incident, 'resolved');
     }
 
@@ -233,8 +253,9 @@ class Evaluator
     protected function cooldown(): int
     {
         $configured = Cast::int($this->config->get('warden.alerts.cooldown', 300), 300);
+        $setting = $this->alertSetting ?? AlertSetting::current();
 
-        return AlertSetting::current()->cooldown ?: $configured;
+        return $setting->cooldown ?: $configured;
     }
 
     protected function dispatch(Incident $incident, string $event): void
