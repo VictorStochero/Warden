@@ -364,8 +364,19 @@ class Warden
     /** Octane / worker boundary: drop all per-entry-point state. */
     public function reset(): void
     {
-        $this->resetTrace();
         $this->suppression = 0;
+
+        // An ambient batch has no entry-point boundary of its own, and in a
+        // long-lived worker the process-shutdown hook may never fire — a
+        // boundary reset must ship it, not drop it (logs/exceptions captured
+        // between Octane requests, §18.2). flush() clears the state in finally.
+        if ($this->trace?->entryType === self::AMBIENT && ! $this->buffer->isEmpty()) {
+            $this->flush();
+
+            return;
+        }
+
+        $this->resetTrace();
     }
 
     protected function resetTrace(): void

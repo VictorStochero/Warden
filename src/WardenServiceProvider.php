@@ -26,6 +26,7 @@ use VictorStochero\Warden\Config\SelfMonitorConfig;
 use VictorStochero\Warden\Console\AggregateCommand;
 use VictorStochero\Warden\Console\AuditCommand;
 use VictorStochero\Warden\Console\DemoCommand;
+use VictorStochero\Warden\Console\DoctorCommand;
 use VictorStochero\Warden\Console\EvaluateCommand;
 use VictorStochero\Warden\Console\InstallCommand;
 use VictorStochero\Warden\Console\PartitionCommand;
@@ -111,6 +112,8 @@ class WardenServiceProvider extends ServiceProvider
 
         if ($observer->isChild() && $observer->isChildConfigured()) {
             $this->bootChild($observer);
+        } elseif ($observer->isChild()) {
+            $this->warnUnconfiguredChild();
         }
 
         if ($observer->selfMonitoring()) {
@@ -122,6 +125,28 @@ class WardenServiceProvider extends ServiceProvider
     }
 
     // ------------------------------------------------------------- child
+
+    /**
+     * An unconfigured child is deliberately inert (it captures and ships
+     * nothing), but silence makes that look like a bug. Surface one log line
+     * per hour pointing at the fix — throttled through the host cache and fully
+     * guarded so the hint itself can never break the host (RNF-2).
+     */
+    protected function warnUnconfiguredChild(): void
+    {
+        try {
+            $cache = $this->app->make(\Illuminate\Contracts\Cache\Repository::class);
+
+            if ($cache->add('warden:unconfigured-child-warned', 1, 3600)) {
+                Log::warning(
+                    'Warden is in child mode but WARDEN_PARENT_URL / WARDEN_TOKEN are not set, so nothing is captured or shipped. '
+                    .'Run `php artisan warden:install --child` to configure it, or `php artisan warden:doctor` to diagnose.'
+                );
+            }
+        } catch (\Throwable) {
+            // Cache or logger unavailable — stay silent rather than interfere.
+        }
+    }
 
     protected function bootChild(Warden $observer): void
     {
@@ -507,6 +532,7 @@ class WardenServiceProvider extends ServiceProvider
             ProjectCommand::class,
             DemoCommand::class,
             AuditCommand::class,
+            DoctorCommand::class,
         ]);
     }
 

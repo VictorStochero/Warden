@@ -259,6 +259,15 @@ class DatabaseAggregator implements Aggregator
     }
 
     /**
+     * Host gauges are point-in-time readings, not counters: when two rollup
+     * runs touch the same bucket the newest sample must replace the stored one,
+     * never be summed into it (50% + 60% must not become 110%).
+     *
+     * @var list<string>
+     */
+    protected array $latestWinsKeys = ['cpu', 'mem', 'load', 'disk'];
+
+    /**
      * @param  array<string,mixed>  $existing
      * @param  array<string,mixed>  $delta
      * @return array<string,mixed>
@@ -266,7 +275,9 @@ class DatabaseAggregator implements Aggregator
     protected function mergeMeta(array $existing, array $delta): array
     {
         foreach ($delta as $key => $value) {
-            if (is_numeric($value) && is_numeric($existing[$key] ?? null)) {
+            if (in_array($key, $this->latestWinsKeys, true)) {
+                $existing[$key] = $value ?? ($existing[$key] ?? null);
+            } elseif (is_numeric($value) && is_numeric($existing[$key] ?? null)) {
                 $existing[$key] = Cast::int($existing[$key]) + Cast::int($value);
             } elseif (! array_key_exists($key, $existing) || $existing[$key] === null) {
                 $existing[$key] = $value;

@@ -79,8 +79,12 @@ class XssHardeningTest extends TestCase
     /** AuditCommand drops a `javascript:` advisory link at ingestion. */
     public function test_audit_command_drops_non_http_advisory_links(): void
     {
+        // The locator may resolve composer to an absolute path ("/usr/local/bin/
+        // composer" audit ...), so match on the audit invocation, not the binary
+        // name — and never let a real composer process run during the test.
+        Process::preventStrayProcesses();
         Process::fake([
-            'composer audit*' => Process::result((string) json_encode([
+            '*audit --format=json*' => Process::result((string) json_encode([
                 'advisories' => [
                     'vendor/pkg' => [[
                         'packageName' => 'vendor/pkg',
@@ -119,8 +123,9 @@ class XssHardeningTest extends TestCase
     /** A legitimate http advisory link survives ingestion (regression). */
     public function test_audit_command_keeps_http_advisory_links(): void
     {
+        Process::preventStrayProcesses();
         Process::fake([
-            'composer audit*' => Process::result((string) json_encode([
+            '*audit --format=json*' => Process::result((string) json_encode([
                 'advisories' => [
                     'vendor/pkg' => [[
                         'packageName' => 'vendor/pkg',

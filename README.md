@@ -180,8 +180,13 @@ minute — so as long as that child's scheduler cron is running, **nothing else 
 
 Generate some traffic on the child (load a page, run a job). Within a minute the project lights
 up on the parent's overview, with traces, slow queries, issues and host metrics. If nothing
-appears, check that the child's scheduler cron is running and that `WARDEN_PARENT_URL` points
-at the parent over HTTPS.
+appears, run the built-in diagnostician — it checks the database, credentials, parent
+reachability (a real authenticated round-trip), outbox health and the host-metric probes,
+with a hint next to anything that fails:
+
+```bash
+php artisan warden:doctor
+```
 
 ---
 
@@ -293,6 +298,7 @@ composer remove victorstochero/warden    # then drop the package itself
 | `warden:prune` | parent | Apply retention (drop old raw events + aggregates) |
 | `warden:audit` | child | Run `composer audit` + `npm audit` and ship vulnerabilities to the parent |
 | `warden:demo` | child | Generate one of each event type to exercise the pipeline (dev/testing) |
+| `warden:doctor` | both | Validate the setup end to end (DB, tables, credentials, parent reachability, outbox, host-metrics probes) with a hint next to every failure |
 
 > The parent's maintenance schedule and the child's shipping (`scheduler` delivery)
 > are auto-registered by the package — you only need the Laravel scheduler cron

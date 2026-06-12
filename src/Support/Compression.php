@@ -23,8 +23,10 @@ final class Compression
 
     /**
      * gzip-decode, capped at $maxBytes of output so a compression bomb can't
-     * exhaust memory. Returns null when the input is not valid gzip. A truncated
-     * (over-cap) result simply fails the subsequent HMAC check.
+     * exhaust memory. Returns null when the input is not valid gzip or when the
+     * decompressed payload exceeds the cap — an oversized body is rejected as
+     * 413 outright instead of being truncated and wasting an HMAC pass that can
+     * only fail.
      */
     public static function inflate(string $data, int $maxBytes): ?string
     {
@@ -32,8 +34,12 @@ final class Compression
             return null;
         }
 
-        $out = @gzdecode($data, $maxBytes);
+        $out = @gzdecode($data, $maxBytes + 1);
 
-        return $out === false ? null : $out;
+        if ($out === false || strlen($out) > $maxBytes) {
+            return null;
+        }
+
+        return $out;
     }
 }

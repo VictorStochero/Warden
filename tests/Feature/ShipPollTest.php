@@ -35,8 +35,12 @@ class ShipPollTest extends TestCase
 
     public function test_an_idle_shipper_polls_the_parent_and_runs_a_due_audit(): void
     {
+        // Match the audit invocation, not the binary name — the locator may
+        // resolve composer to a quoted absolute path. Stray real processes are
+        // blocked so the test never shells out for real.
+        Process::preventStrayProcesses();
         Process::fake([
-            'composer*' => Process::result((string) json_encode(['advisories' => []])),
+            '*audit --format=json*' => Process::result((string) json_encode(['advisories' => []])),
             'npm audit*' => Process::result((string) json_encode(['vulnerabilities' => []])),
         ]);
         Http::fake(['*' => Http::response(['accepted' => 0, 'audit_due' => true, 'config_version' => 0], 202)]);

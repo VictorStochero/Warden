@@ -10,8 +10,12 @@ class AuditCommandTest extends TestCase
 {
     public function test_it_ships_a_security_event_with_normalized_advisories(): void
     {
+        // The locator may resolve composer to an absolute path ("/usr/local/bin/
+        // composer" audit ...), so match on the audit invocation, not the binary
+        // name — and never let a real composer process run during the test.
+        Process::preventStrayProcesses();
         Process::fake([
-            'composer audit*' => Process::result((string) json_encode([
+            '*audit --format=json*' => Process::result((string) json_encode([
                 'advisories' => [
                     'vendor/pkg' => [[
                         'packageName' => 'vendor/pkg',
@@ -51,6 +55,7 @@ class AuditCommandTest extends TestCase
 
     public function test_composer_audit_falls_back_when_composer_not_on_path(): void
     {
+        Process::preventStrayProcesses();
         Process::fake([
             // Primary candidate (configured bin) is what should be used.
             'php composer.phar audit*' => Process::result((string) json_encode([

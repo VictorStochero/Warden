@@ -62,4 +62,20 @@ class IngestCompressionTest extends TestCase
 
         $this->assertSame(1, Schema::db()->table('wdn_events')->count());
     }
+
+    public function test_a_compression_bomb_is_rejected_as_payload_too_large(): void
+    {
+        $this->project();
+        config()->set('warden.parent.max_body_bytes', 1024);
+
+        // A tiny wire body that inflates far past the cap must be rejected as
+        // 413 outright — not truncated into a misleading bad_signature 401.
+        $bomb = str_repeat('0', 64 * 1024);
+
+        $this->ingest((string) gzencode($bomb), ['Content-Encoding' => 'gzip'], $bomb)
+            ->assertStatus(413)
+            ->assertJson(['error' => 'payload_too_large']);
+
+        $this->assertSame(0, Schema::db()->table('wdn_events')->count());
+    }
 }

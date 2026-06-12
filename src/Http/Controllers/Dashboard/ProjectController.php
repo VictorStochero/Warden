@@ -67,6 +67,9 @@ class ProjectController
             'host' => [
                 'latest' => $repo->hostLatest($id, $range),
                 'series' => $repo->hostSeries($id, $range),
+                // Aggregates only keep coarse gauges; the absolute RAM/disk
+                // figures and the process list come from the newest raw sample.
+                'detail' => $repo->recentEvents($id, 'host', 1)->first(),
             ],
             'security' => ['audit' => $repo->recentEvents($id, 'security', 1)->first()],
             'delivery' => ['delivery' => $repo->delivery($id, 60)],
