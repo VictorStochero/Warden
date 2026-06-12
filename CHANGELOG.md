@@ -6,6 +6,51 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-06-12
+
+### Added
+
+- **`warden:doctor` — one command that answers "why isn't Warden working?".** Validates the
+  database and `wdn_` tables, the child credentials, **parent reachability via a real signed
+  ingest round-trip** (URL, TLS, token and HMAC secret in one shot), outbox driver/size/full
+  state, delivery + scheduler wiring, enabled recorders and the host-metrics probes
+  (`/proc` readable, snapshot dir writable) — with an actionable hint next to every failure.
+  Exits non-zero on blocking problems, so it can gate deploys.
+- **Detailed host metrics.** The host sample now carries absolute memory figures (used /
+  available / free / total + swap), disk used / free / total, the core count and a **top-process
+  list** (CPU by tick-delta between samples, like `top`; memory by RSS). Only the 15-char
+  executable name is captured — never the command line, which can carry secrets in argv. The
+  dashboard's Host tab gained CPU/memory/disk detail cards and a "Top processes" table fed by
+  the newest raw sample; the aggregate gauges and charts are unchanged.
+- **Correlation shortcuts across the dashboard.** The same failure used to show up in Issues,
+  Errors, Requests and Traces with no way to jump between them. Now every surface is a hub:
+  the issue page lists its **recent raw occurrences** (each linking to the event detail and that
+  occurrence's full trace), an exception's event detail links back to **its issue** (resolved by
+  recomputing the grouping fingerprint — no schema change), and every row in the trace
+  timeline links to the event detail, with an "issue →" chip on exception spans.
+- **An unconfigured child now says so.** A child without `WARDEN_PARENT_URL`/`WARDEN_TOKEN`
+  is deliberately inert, but the silence looked like a bug. It now logs one warning per hour
+  (cache-throttled, fully guarded) pointing at `warden:install --child` / `warden:doctor`.
+
+### Fixed
+
+- **Host CPU% finally works under PHP-FPM.** CPU% needs the delta between two `/proc/stat`
+  snapshots, and the previous snapshot lived in a static property — which resets on every
+  FPM request, so CPU was permanently empty (and the `host_interval` throttle never held,
+  emitting one host event per request). Both now persist in a small cross-process state file
+  in the system temp dir; CPU% appears from the second sample on, in every runtime.
+- **Host gauges no longer sum across aggregation runs.** When two rollups touched the same
+  aggregate bucket, the meta merge added the gauges together (50% + 60% became 110% on the
+  dashboard). Point-in-time gauges (cpu/mem/load/disk) now replace instead of sum.
+- **Octane boundaries no longer drop pending ambient batches.** Logs/exceptions rescued into
+  an ambient trace between requests were cleared by the boundary `reset()` before reaching
+  the flush threshold — and a long-lived worker never runs the shutdown hook. `reset()` now
+  ships a non-empty ambient buffer instead of discarding it.
+- **Oversized gzip ingest bodies are rejected honestly.** A compressed body that inflates past
+  `max_body_bytes` was truncated at the cap and then failed HMAC verification, surfacing as a
+  misleading `401 bad_signature`. Decompression overflow is now detected and rejected as
+  `413 payload_too_large` before any signature work.
+
 ## [0.2.4] - 2026-06-11
 
 ### Added
