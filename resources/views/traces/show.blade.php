@@ -55,7 +55,14 @@
                     <div class="col-span-5 flex items-center gap-2 min-w-0">
                         <span class="h-2 w-2 shrink-0 rounded-sm" style="background: {{ $color }}"></span>
                         <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">{{ $e['type'] }}</span>
-                        <span class="truncate font-mono text-[12px] {{ $e['type'] === 'exception' ? 'text-rose-400' : 'text-slate-300' }}">{{ trim($label) }}</span>
+                        <a href="{{ route('warden.event', [$project->slug, $e['id']]) }}"
+                           title="{{ __('warden::traces.detail.view_event') }}"
+                           class="truncate font-mono text-[12px] transition hover:underline {{ $e['type'] === 'exception' ? 'text-rose-400 hover:text-rose-300' : 'text-slate-300 hover:text-slate-100' }}">{{ trim($label) }}</a>
+                        @if(isset($issues[$e['id']]))
+                            <a href="{{ route('warden.issue', [$project->slug, $issues[$e['id']]->id]) }}"
+                               class="shrink-0 rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-medium text-rose-400 ring-1 ring-inset ring-rose-500/20 transition hover:bg-rose-500/20"
+                               title="{{ __('warden::traces.detail.view_issue_title', ['count' => $issues[$e['id']]->count]) }}">{{ __('warden::traces.detail.issue_chip') }} →</a>
+                        @endif
                         @if(!empty($e['n_plus_one']))
                             <span class="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400" title="{{ __('warden::traces.detail.n_plus_one_title', ['count' => $e['repeat_count'] ?? '']) }}">{{ __('warden::traces.detail.n_plus_one_label', ['count' => $e['repeat_count'] ?? '']) }}</span>
                         @endif

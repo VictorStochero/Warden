@@ -37,6 +37,9 @@ class IssueController
         return ViewFactory::make('warden::issues.show', array_merge($this->chrome(), [
             'project' => $model,
             'issue' => $row,
+            // Each raw occurrence links to its event detail and trace, so the
+            // rollup and the concrete failures are one click apart.
+            'occurrences' => $repo->issueOccurrences($model->id, Cast::str($row->fingerprint)),
         ]));
     }
 }

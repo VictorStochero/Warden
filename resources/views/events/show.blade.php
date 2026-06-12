@@ -93,12 +93,21 @@
             @endif
         </dl>
 
-        @if($event->trace_id)
-            <div class="mt-4 border-t border-ink-700/70 pt-4">
-                <a href="{{ route('warden.trace', [$project->slug, $event->trace_id]) }}"
-                   class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-400 transition hover:text-brand-300">
-                    {{ __('warden::events.view_trace') }} →
-                </a>
+        @if($event->trace_id || ($issue ?? null))
+            <div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-ink-700/70 pt-4">
+                @if($event->trace_id)
+                    <a href="{{ route('warden.trace', [$project->slug, $event->trace_id]) }}"
+                       class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-400 transition hover:text-brand-300">
+                        {{ __('warden::events.view_trace') }} →
+                    </a>
+                @endif
+                @if($issue ?? null)
+                    <a href="{{ route('warden.issue', [$project->slug, $issue->id]) }}"
+                       class="inline-flex items-center gap-1.5 text-sm font-medium text-rose-400 transition hover:text-rose-300">
+                        {{ __('warden::events.view_issue') }}
+                        <span class="rounded bg-rose-500/10 px-1.5 py-0.5 font-mono text-[11px] ring-1 ring-inset ring-rose-500/20">{{ Format::num($issue->count) }}×</span> →
+                    </a>
+                @endif
             </div>
         @endif
     </div>

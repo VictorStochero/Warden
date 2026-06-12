@@ -3,6 +3,7 @@
 return [
     'title' => 'Detalhe do evento',
     'view_trace' => 'Ver trace completo',
+    'view_issue' => 'Ver issue',
     'when' => 'Quando',
     'duration' => 'Duração',
     'trace' => 'Trace',

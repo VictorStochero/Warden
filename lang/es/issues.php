@@ -24,5 +24,9 @@ return [
         'stat_last_seen' => 'Última vez visto',
         'view_last_trace' => 'Ver último trace',
         'stack_trace' => 'Stack trace',
+        'occurrences' => 'Ocurrencias recientes',
+        'occurrences_hint' => 'Las excepciones crudas más recientes agrupadas bajo este issue — cada una enlaza a su detalle de evento y a la traza completa.',
+        'occ_user' => 'usuario',
+        'occ_trace' => 'traza',
     ],
 ];

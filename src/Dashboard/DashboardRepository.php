@@ -6,6 +6,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use VictorStochero\Warden\Issues\Fingerprint;
 use VictorStochero\Warden\Models\Incident;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Repository\DatabaseWardenRepository;
@@ -492,6 +493,49 @@ class DashboardRepository
         }
 
         return $issue;
+    }
+
+    /**
+     * The wdn_issues row a raw exception event belongs to, resolved by
+     * recomputing the same fingerprint IssueProcessor groups by. This is the
+     * shortcut that lets the UI jump from an exception (event detail, trace
+     * timeline) straight to its issue — the data was always correlated, this
+     * just surfaces the edge.
+     *
+     * @param  array<array-key, mixed>  $payload
+     */
+    public function issueForExceptionPayload(int $projectId, array $payload): ?\stdClass
+    {
+        return $this->db->table('wdn_issues')
+            ->where('project_id', $projectId)
+            ->where('fingerprint', $this->exceptionFingerprint($payload))
+            ->first(['id', 'status', 'class', 'count']);
+    }
+
+    /**
+     * Recent occurrences of one issue: the newest raw exception events whose
+     * recomputed fingerprint matches. Scans a bounded window of recent
+     * exceptions (the project+type+id index keeps it cheap) and filters in
+     * PHP — wdn_events deliberately stores no fingerprint column.
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function issueOccurrences(int $projectId, string $fingerprint, int $limit = 10, int $scan = 300): Collection
+    {
+        return $this->recentEvents($projectId, 'exception', $scan)
+            ->filter(fn (\stdClass $e): bool => $this->exceptionFingerprint(Cast::arr($e->payload)) === $fingerprint)
+            ->take($limit)
+            ->values();
+    }
+
+    /** @param array<array-key, mixed> $payload */
+    protected function exceptionFingerprint(array $payload): string
+    {
+        return Fingerprint::for(
+            Cast::str($payload['class'] ?? null, 'Exception'),
+            Cast::str($payload['message'] ?? null),
+            is_array($payload['stack'] ?? null) ? $payload['stack'] : null,
+        );
     }
 
     /** @return Collection<int, \stdClass> */

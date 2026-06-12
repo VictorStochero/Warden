@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View as ViewFactory;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
+use VictorStochero\Warden\Support\Cast;
 
 class TraceController
 {
@@ -29,10 +30,24 @@ class TraceController
 
         abort_if($spans->isEmpty(), 404);
 
+        // Exception spans link out to the issue they are grouped under
+        // (event id => issue row), so the timeline is a hub, not a dead end.
+        $issues = [];
+        foreach ($spans as $span) {
+            if ($span['type'] === 'exception') {
+                $issue = $repo->issueForExceptionPayload($model->id, Cast::arr($span['payload']));
+
+                if ($issue !== null) {
+                    $issues[Cast::int($span['id'])] = $issue;
+                }
+            }
+        }
+
         return ViewFactory::make('warden::traces.show', array_merge($this->chrome(), [
             'project' => $model,
             'trace_id' => $traceId,
             'spans' => $spans,
+            'issues' => $issues,
         ]));
     }
 }

@@ -24,5 +24,9 @@ return [
         'stat_last_seen' => 'Last seen',
         'view_last_trace' => 'View last trace',
         'stack_trace' => 'Stack trace',
+        'occurrences' => 'Recent occurrences',
+        'occurrences_hint' => 'The newest raw exceptions grouped under this issue — each links to its event detail and full trace.',
+        'occ_user' => 'user',
+        'occ_trace' => 'trace',
     ],
 ];
