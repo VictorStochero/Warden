@@ -3,6 +3,10 @@
     $counts = $series->pluck('count')->all();
     $p95s   = $series->map(fn ($b) => $b['p95'] ?? 0)->all();
     $errs   = $series->pluck('errors')->all();
+    $showWarden = $showWarden ?? false;
+    $panelToggle = $showWarden
+        ? [__('warden::project.requests.hide_panel'), request()->fullUrlWithQuery(['warden' => null])]
+        : [__('warden::project.requests.show_panel'), request()->fullUrlWithQuery(['warden' => 1])];
 @endphp
 
 @if(!empty($deploys) && $deploys->isNotEmpty())
@@ -34,7 +38,7 @@
 </div>
 
 <div class="mt-6">
-    @include('warden::partials.card-open', ['title' => __('warden::project.requests.routes_title'), 'action' => null])
+    @include('warden::partials.card-open', ['title' => __('warden::project.requests.routes_title'), 'action' => $panelToggle])
         @include('warden::partials.route-table', ['routes' => $routes])
     @include('warden::partials.card-close')
 </div>

@@ -11,6 +11,7 @@ return [
     'sign_in_as_admin' => 'Sign in as admin',
     'sign_out' => 'Sign out',
     'self_hosted' => 'Self-hosted · zero deps',
+    'version' => 'Warden :version',
 
     'read_only_notice' => 'Read-only access — sign in as admin to manage projects, alerts and maintenance.',
 

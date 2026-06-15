@@ -60,6 +60,7 @@ use VictorStochero\Warden\Recording\RecorderHealth;
 use VictorStochero\Warden\Recording\RecorderManager;
 use VictorStochero\Warden\Repository\DatabaseWardenRepository;
 use VictorStochero\Warden\Sampling\Sampler;
+use VictorStochero\Warden\Schedule\AuditSchedule;
 use VictorStochero\Warden\Schema\SchemaManager;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Trace\Propagation;
@@ -496,6 +497,17 @@ class WardenServiceProvider extends ServiceProvider
                 $schedule->command('warden:evaluate')->everyFiveMinutes()->withoutOverlapping();
                 $schedule->command('warden:partition')->daily();
                 $schedule->command('warden:prune')->daily();
+
+                // A self-monitoring parent audits itself: it runs warden:audit
+                // only when its own self-project's audit schedule (set in the UI:
+                // off/daily/weekly/monthly, or an instant "run now") says it's due.
+                if ($observer->selfMonitoring()) {
+                    $slug = Cast::str($config->get('warden.parent.self_project', 'parent'), 'parent');
+                    $schedule->command('warden:audit')
+                        ->everyMinute()
+                        ->withoutOverlapping()
+                        ->when(fn (): bool => $this->selfAuditDue($slug));
+                }
             }
 
             if ($observer->isChild()
@@ -513,6 +525,25 @@ class WardenServiceProvider extends ServiceProvider
                 $schedule->command('warden:audit')
                     ->cron(Cast::str($config->get('warden.child.audit.cron', '0 3 * * *'), '0 3 * * *'))
                     ->withoutOverlapping();
+            }
+        });
+    }
+
+    /**
+     * Whether the self-monitoring parent's own project is due for an audit. Read
+     * suppressed so the scheduler's due-check never self-observes; any failure
+     * (missing table on a fresh parent, DB down) is swallowed into "not due" so
+     * the scheduler can never break the host (RNF-2).
+     */
+    protected function selfAuditDue(string $slug): bool
+    {
+        return $this->app->make(Warden::class)->withoutRecording(function () use ($slug): bool {
+            try {
+                $project = $this->app->make(ProjectManager::class)->ensureSelfProject($slug);
+
+                return $this->app->make(AuditSchedule::class)->due($project);
+            } catch (\Throwable) {
+                return false;
             }
         });
     }

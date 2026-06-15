@@ -17,6 +17,7 @@ class ProjectController
     {
         $model = $repo->project($project);
         $range = $this->range($request);
+        $showWarden = $this->showWarden($request);
         $id = $model->id;
 
         $data = [
@@ -27,9 +28,10 @@ class ProjectController
         $data += match ($section) {
             'requests' => [
                 'series' => $repo->requestSeries($id, $range),
-                'routes' => $repo->topRoutes($id, $range, 50),
-                'recent' => $repo->recentEvents($id, 'request', 60),
+                'routes' => $repo->topRoutes($id, $range, 50, $showWarden),
+                'recent' => $repo->recentRequests($id, 60, null, $showWarden),
                 'deploys' => $repo->releaseMarkers($id, $range),
+                'showWarden' => $showWarden,
             ],
             'errors' => [
                 'series' => $repo->requestSeries($id, $range),

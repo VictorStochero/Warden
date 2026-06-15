@@ -149,6 +149,8 @@ return [
         'deploys' => 'Deploys',
         'routes_title' => 'Rutas',
         'recent_title' => 'Solicitudes recientes',
+        'show_panel' => 'Mostrar solicitudes del panel',
+        'hide_panel' => 'Ocultar solicitudes del panel',
     ],
 
     // ── sections/schedule.blade.php ──────────────────────────────────────

@@ -11,6 +11,7 @@ return [
     'sign_in_as_admin' => 'Entrar como admin',
     'sign_out' => 'Sair',
     'self_hosted' => 'Auto-hospedado · zero deps',
+    'version' => 'Warden :version',
 
     'read_only_notice' => 'Acesso somente leitura — entre como admin para gerenciar projetos, alertas e manutenção.',
 

@@ -17,6 +17,16 @@ trait ResolvesContext
         return in_array($range, $this->ranges, true) ? $range : '1h';
     }
 
+    /**
+     * Whether to include the dashboard's own `warden.*` requests in the Requests
+     * section. Hidden by default (a self-monitoring parent's poller dominates the
+     * list); `?warden=1` opts them back in.
+     */
+    protected function showWarden(Request $request): bool
+    {
+        return Cast::bool($request->query('warden'));
+    }
+
     /** @return array<string, mixed> shared view data for the chrome. */
     protected function chrome(): array
     {

@@ -7,6 +7,7 @@
     // and would otherwise mark the last looped project active. Gate on the route.
     $activeProject = request()->route('project') ? ($project ?? null) : null;
     $activeSection = $section ?? ($active ?? null);
+    $wardenVersion = \VictorStochero\Warden\Support\Version::current();
     $refresh = $refresh ?? 0;
     $ranges = $ranges ?? [];
     $currentRange = $range ?? request()->query('range', '1h');
@@ -207,10 +208,16 @@
                         <button type="submit" class="text-slate-400 transition hover:text-white">{{ __('warden::common.sign_out') }}</button>
                     </form>
                 </div>
+                @if($wardenVersion)
+                    <p class="mt-2 font-mono text-[10px] text-slate-600">{{ __('warden::common.version', ['version' => $wardenVersion]) }}</p>
+                @endif
             </div>
         @else
             <div class="wdn-railhide border-t border-ink-700 px-5 py-3 text-[11px] text-slate-600">
                 {{ __('warden::common.self_hosted') }}
+                @if($wardenVersion)
+                    <span class="font-mono text-slate-600"> · {{ __('warden::common.version', ['version' => $wardenVersion]) }}</span>
+                @endif
             </div>
         @endif
     </aside>

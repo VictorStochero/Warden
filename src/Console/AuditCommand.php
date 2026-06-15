@@ -12,9 +12,11 @@ use VictorStochero\Warden\Support\Json;
 use VictorStochero\Warden\Warden;
 
 /**
- * Child-side dependency audit: audits composer + npm dependencies and ships a
- * single `security` snapshot event through the normal pipeline (outbox -> ship
- * -> ingest) so the parent can display vulnerabilities.
+ * Dependency audit: audits composer + npm dependencies and emits a single
+ * `security` snapshot event through the normal pipeline. A child ships it via
+ * the outbox (outbox -> ship -> ingest); a self-monitoring parent self-delivers
+ * it straight to its own project, so the parent audits itself like every other
+ * captured section.
  *
  * Composer auditing is portable across hosts (see {@see ComposerAudit}): it
  * uses the native binary when reachable and falls back to a binary-free audit
@@ -28,18 +30,20 @@ class AuditCommand extends Command
         {--composer : Only run composer audit}
         {--npm : Only run npm audit}';
 
-    protected $description = 'Audit composer/npm dependencies and ship vulnerabilities to the parent (child)';
+    protected $description = 'Audit composer/npm dependencies for vulnerabilities (child ships to the parent; a self-monitoring parent audits itself)';
 
     public function handle(Warden $warden): int
     {
-        if (! $warden->isChild()) {
-            $this->components->error('warden:audit only runs in child mode.');
-
-            return self::FAILURE;
-        }
-
-        if (! $warden->isChildConfigured()) {
-            $this->components->error('Child is not configured (set WARDEN_PARENT_URL and WARDEN_TOKEN).');
+        // Runs anywhere the recording pipeline is live: a configured child (ships
+        // the snapshot via the outbox) or a self-monitoring parent (self-delivers
+        // it to its own project, like every other section). `capturing()` is the
+        // exact predicate that gates flush, so if it's false nothing would persist.
+        if (! $warden->capturing()) {
+            $this->components->error(match (true) {
+                $warden->isChild() && ! $warden->isChildConfigured() => 'Child is not configured (set WARDEN_PARENT_URL and WARDEN_TOKEN).',
+                $warden->isParent() => 'warden:audit needs parent self-monitoring (warden.parent.self_monitor is off).',
+                default => 'warden:audit is disabled (WARDEN_ENABLED=false).',
+            });
 
             return self::FAILURE;
         }
@@ -79,7 +83,7 @@ class AuditCommand extends Command
         ]);
         $warden->flush();
 
-        $this->summary($tools, $counts, count($advisories));
+        $this->summary($tools, $counts, count($advisories), $warden->selfMonitoring());
 
         return self::SUCCESS;
     }
@@ -153,7 +157,7 @@ class AuditCommand extends Command
      * @param  array<string, array{ran: bool, method: string|null, reason: string|null}>  $tools
      * @param  array<string, int>  $counts
      */
-    protected function summary(array $tools, array $counts, int $total): void
+    protected function summary(array $tools, array $counts, int $total, bool $selfMonitoring): void
     {
         $this->newLine();
         foreach ($tools as $tool => $status) {
@@ -169,7 +173,11 @@ class AuditCommand extends Command
             $this->components->twoColumnDetail("  {$sev}", (string) $n);
         }
         $this->newLine();
-        $this->line('  <fg=gray>Shipped to the parent. Deliver now with</> <fg=yellow>php artisan warden:ship --once</><fg=gray>.</>');
+        if ($selfMonitoring) {
+            $this->line('  <fg=gray>Stored locally (parent self-monitoring) — visible on the Security tab.</>');
+        } else {
+            $this->line('  <fg=gray>Shipped to the parent. Deliver now with</> <fg=yellow>php artisan warden:ship --once</><fg=gray>.</>');
+        }
         $this->newLine();
     }
 }

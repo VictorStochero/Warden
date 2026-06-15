@@ -191,10 +191,15 @@ class DashboardRepository
     }
 
     /** @return Collection<int, RouteRow> */
-    public function topRoutes(int $projectId, string $range, int $limit = 12): Collection
+    public function topRoutes(int $projectId, string $range, int $limit = 12, bool $includeWarden = true): Collection
     {
-        return $this->rows($projectId, 'request', $range)
-            ->groupBy('key')
+        $groups = $this->rows($projectId, 'request', $range)->groupBy('key');
+
+        if (! $includeWarden) {
+            $groups = $groups->reject(fn (Collection $rows, int|string $key): bool => $this->isWardenRouteName($key));
+        }
+
+        return $groups
             ->map(fn (Collection $rows, int|string $key): array => [
                 'key' => (string) $key,
                 'count' => Cast::int($rows->sum('count')),
@@ -506,6 +511,35 @@ class DashboardRepository
 
                 return $e;
             });
+    }
+
+    /**
+     * Recent request events for the Requests drill-down. On a self-monitoring
+     * parent the dashboard's own `warden.*` traffic (the live poller especially)
+     * floods this list, so it is hidden by default; `$includeWarden` (the
+     * `?warden=1` toggle) brings it back. Mirrors recentLogs: when filtering we
+     * scan a wider window and trim in PHP so the result stays driver-portable.
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function recentRequests(int $projectId, int $limit = 60, ?string $range = null, bool $includeWarden = true): Collection
+    {
+        if ($includeWarden) {
+            return $this->recentEvents($projectId, 'request', $limit, $range);
+        }
+
+        return $this->recentEvents($projectId, 'request', max($limit * 5, 300), $range)
+            ->reject(fn (\stdClass $e): bool => $this->isWardenRouteName(
+                is_array($e->payload) ? ($e->payload['route'] ?? null) : null
+            ))
+            ->take($limit)
+            ->values();
+    }
+
+    /** A dashboard self-request — a route named `warden.*`. */
+    private function isWardenRouteName(mixed $route): bool
+    {
+        return is_string($route) && str_starts_with($route, 'warden.');
     }
 
     /**
