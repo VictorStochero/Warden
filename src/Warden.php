@@ -250,6 +250,18 @@ class Warden
         }
     }
 
+    /**
+     * Record a business counter as a custom event (§35) — e.g. signups, items
+     * shipped, webhooks received. A no-op when not capturing, so host code can
+     * call it unconditionally.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public function increment(string $metric, int $by = 1, array $context = []): void
+    {
+        $this->record('custom', ['name' => $metric, 'count' => $by] + $context);
+    }
+
     // ------------------------------------------------------------ record
 
     /**

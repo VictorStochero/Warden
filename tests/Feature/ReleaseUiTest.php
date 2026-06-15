@@ -97,4 +97,26 @@ class ReleaseUiTest extends TestCase
             ->assertSee(__('warden::project.errors.release_filter'))
             ->assertSee('v1.0.0');
     }
+
+    public function test_release_markers_lists_deploys_in_range(): void
+    {
+        $project = $this->project();
+        $this->seedError('v1.0.0');
+        $this->seedError('v2.0.0');
+
+        $markers = $this->repo()->releaseMarkers($project->id, '24h')->pluck('release')->all();
+
+        $this->assertContains('v1.0.0', $markers);
+        $this->assertContains('v2.0.0', $markers);
+    }
+
+    public function test_requests_section_shows_the_deploy_strip(): void
+    {
+        $this->project();
+        $this->seedError('v4.2.0');
+
+        $this->get(route('warden.project.section', ['project' => 'demo', 'section' => 'requests']))
+            ->assertOk()
+            ->assertSee('v4.2.0');
+    }
 }

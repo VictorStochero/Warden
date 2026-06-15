@@ -698,6 +698,26 @@ class DashboardRepository
     }
 
     /**
+     * Deploy markers: each release seen within the range and when it first
+     * appeared, for an "a deploy happened here" strip on the timelines (§5.6).
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function releaseMarkers(int $projectId, string $range): Collection
+    {
+        return $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->whereNotNull('release')
+            ->where('occurred_at', '>=', $this->rangeStart($range))
+            ->groupBy('release')
+            ->orderByRaw('min(occurred_at) asc')
+            ->get([
+                'release',
+                $this->db->raw('min(occurred_at) as first_seen'),
+            ]);
+    }
+
+    /**
      * Distinct release markers seen for a project, most recent first — feeds the
      * "errors since this deploy" filter (§5.6).
      *

@@ -43,7 +43,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   falling back to `APP_VERSION`) onto every event, and the parent persists it to a new
   `wdn_events.release` column. The dashboard surfaces it: the event detail shows the release, and
   the **Errors** section gains a **"since this deploy"** filter (release chips) that slices the
-  recent 5xx list by release.
+  recent 5xx list by release, and the **Requests** section shows a deploy strip of the releases
+  seen in the window and when each first appeared.
 - **Deploy-aware regression detection.** A resolved issue that recurs now reopens only when it
   returns on a **newer release** than the one it was resolved on — a genuine post-deploy
   regression — while the same fault on the already-triaged deploy stays resolved (no alert churn).
@@ -51,8 +52,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Custom instrumentation API.** `Warden::measure('name', fn () => …, $context)` times a block of
   host code as a custom span and records a `custom` event with its duration, returning the
-  callback's value — turning automatic capture into an extensible platform. Safe when capture is
-  off: the callback still runs untouched.
+  callback's value; `Warden::increment('metric', $by, $context)` records a business counter.
+  Together they turn automatic capture into an extensible platform. Safe when capture is off.
 - **Log search.** The Logs section gains a free-text search across log messages (`?q=`),
   composable with the existing level filter — so you can find a specific line, not just a level.
 - **Audit log.** Every successful manage action (project create/rotate/delete, issue transitions,

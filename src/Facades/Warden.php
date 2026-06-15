@@ -16,6 +16,7 @@ use VictorStochero\Warden\Trace\TraceContext;
  * @method static TraceContext startTrace(string $entryType, array<string, mixed>|null $inherited = null, ?string $name = null)
  * @method static void record(string $type, array<string, mixed> $payload, ?int $durationUs = null, ?string $spanId = null, ?string $parentSpanId = null, ?string $occurredAt = null)
  * @method static mixed measure(string $name, \Closure $callback, array<string, mixed> $context = [])
+ * @method static void increment(string $metric, int $by = 1, array<string, mixed> $context = [])
  * @method static void keep()
  * @method static void flush()
  * @method static void reset()

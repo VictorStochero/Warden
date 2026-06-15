@@ -29,6 +29,7 @@ class ProjectController
                 'series' => $repo->requestSeries($id, $range),
                 'routes' => $repo->topRoutes($id, $range, 50),
                 'recent' => $repo->recentEvents($id, 'request', 60),
+                'deploys' => $repo->releaseMarkers($id, $range),
             ],
             'errors' => [
                 'series' => $repo->requestSeries($id, $range),

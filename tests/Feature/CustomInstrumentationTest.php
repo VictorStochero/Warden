@@ -45,6 +45,24 @@ class CustomInstrumentationTest extends TestCase
         $this->assertSame(0, OutboxEntry::count());
     }
 
+    public function test_increment_records_a_business_counter(): void
+    {
+        /** @var Warden $observer */
+        $observer = $this->app->make(Warden::class);
+        $observer->startTrace('request');
+        $observer->keep();
+
+        $observer->increment('signups', 1, ['plan' => 'pro']);
+        $observer->flush();
+
+        $custom = collect(OutboxEntry::first()->batch['events'])->firstWhere('type', 'custom');
+
+        $this->assertNotNull($custom);
+        $this->assertSame('signups', $custom['payload']['name']);
+        $this->assertSame(1, $custom['payload']['count']);
+        $this->assertSame('pro', $custom['payload']['plan']);
+    }
+
     public function test_measure_works_through_the_facade(): void
     {
         /** @var Warden $observer */

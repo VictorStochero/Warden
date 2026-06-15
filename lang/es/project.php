@@ -146,6 +146,7 @@ return [
         'throughput' => 'Throughput',
         'errors' => 'Errores',
         'p95_latency' => 'Latencia p95',
+        'deploys' => 'Deploys',
         'routes_title' => 'Rutas',
         'recent_title' => 'Solicitudes recientes',
     ],
