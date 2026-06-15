@@ -80,6 +80,8 @@ return [
         'routes_empty' => 'Sin errores 5xx en el período 🎉',
         'recent_title' => 'Solicitudes 5xx recientes',
         'exceptions_title' => 'Excepciones recientes',
+        'release_filter' => 'Desde la release',
+        'release_all' => 'Todas',
     ],
 
     // ── sections/host.blade.php ──────────────────────────────────────────

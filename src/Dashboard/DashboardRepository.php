@@ -439,7 +439,7 @@ class DashboardRepository
 
         return $query->orderByDesc('id')
             ->limit($limit)
-            ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload'])
+            ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload', 'release'])
             ->map(function (\stdClass $e): \stdClass {
                 $e->payload = Json::decode($e->payload ?? null);
 
@@ -457,7 +457,7 @@ class DashboardRepository
         $event = $this->db->table('wdn_events')
             ->where('project_id', $projectId)
             ->where('id', $eventId)
-            ->first(['id', 'trace_id', 'span_id', 'parent_span_id', 'type', 'occurred_at', 'duration_us', 'payload']);
+            ->first(['id', 'trace_id', 'span_id', 'parent_span_id', 'type', 'occurred_at', 'duration_us', 'payload', 'release']);
 
         if ($event === null) {
             return null;
@@ -618,11 +618,32 @@ class DashboardRepository
      *
      * @return Collection<int, \stdClass>
      */
-    public function recentErrors(int $projectId, int $limit = 50): Collection
+    public function recentErrors(int $projectId, int $limit = 50, ?string $release = null): Collection
     {
         return $this->recentEvents($projectId, 'request', 300)
             ->filter(fn (\stdClass $e): bool => Cast::int(is_array($e->payload) ? ($e->payload['status'] ?? 0) : 0) >= 500)
+            ->when($release !== null && $release !== '', fn (Collection $errors): Collection => $errors
+                ->filter(fn (\stdClass $e): bool => Cast::str($e->release ?? null) === $release))
             ->take($limit)
+            ->values();
+    }
+
+    /**
+     * Distinct release markers seen for a project, most recent first — feeds the
+     * "errors since this deploy" filter (§5.6).
+     *
+     * @return Collection<int, string>
+     */
+    public function releases(int $projectId, int $limit = 20): Collection
+    {
+        return $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->whereNotNull('release')
+            ->groupBy('release')
+            ->orderByRaw('max(id) desc')
+            ->limit($limit)
+            ->pluck('release')
+            ->map(fn (mixed $r): string => Cast::str($r))
             ->values();
     }
 

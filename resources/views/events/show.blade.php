@@ -79,6 +79,12 @@
                     <dd class="mt-0.5 font-mono text-[13px] text-slate-300">{{ Format::dur($event->duration_us) }}</dd>
                 </div>
             @endif
+            @if($event->release ?? null)
+                <div class="min-w-0">
+                    <dt class="wdn-eyebrow text-[10px] text-slate-500">{{ __('warden::events.release') }}</dt>
+                    <dd class="mt-0.5 truncate font-mono text-[13px] text-slate-300">{{ $event->release }}</dd>
+                </div>
+            @endif
             @if($event->trace_id)
                 <div class="min-w-0">
                     <dt class="wdn-eyebrow text-[10px] text-slate-500">{{ __('warden::events.trace') }}</dt>

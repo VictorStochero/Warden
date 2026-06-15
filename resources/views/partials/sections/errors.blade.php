@@ -30,6 +30,18 @@
     </div>
 @endif
 
+@if(isset($releases) && $releases->isNotEmpty())
+    <div class="mt-6 flex flex-wrap items-center gap-2">
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.release_filter') }}</span>
+        <a href="{{ request()->fullUrlWithQuery(['release' => null]) }}"
+           class="rounded-md px-2.5 py-1 text-xs font-medium transition {{ empty($activeRelease) ? 'bg-brand-600 text-white' : 'border border-ink-700 text-slate-400 hover:text-white' }}">{{ __('warden::project.errors.release_all') }}</a>
+        @foreach($releases as $r)
+            <a href="{{ request()->fullUrlWithQuery(['release' => $r]) }}"
+               class="rounded-md px-2.5 py-1 font-mono text-xs transition {{ ($activeRelease ?? null) === $r ? 'bg-brand-600 text-white' : 'border border-ink-700 text-slate-400 hover:text-white' }}">{{ $r }}</a>
+        @endforeach
+    </div>
+@endif
+
 <div class="mt-6">
     @include('warden::partials.event-list', ['events' => $recent, 'type' => 'request', 'title' => __('warden::project.errors.recent_title')])
 </div>

@@ -7,6 +7,7 @@ return [
     'duration' => 'Duração',
     'trace' => 'Trace',
     'span' => 'Span',
+    'release' => 'Release',
     'type' => 'Tipo',
     'empty' => '—',
 

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View as ViewFactory;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
+use VictorStochero\Warden\Support\Cast;
 
 class ProjectController
 {
@@ -32,8 +33,10 @@ class ProjectController
             'errors' => [
                 'series' => $repo->requestSeries($id, $range),
                 'routes' => $repo->topRoutes($id, $range, 50),
-                'recent' => $repo->recentErrors($id, 50),
+                'recent' => $repo->recentErrors($id, 50, $release = $this->releaseFilter($request)),
                 'exceptions' => $repo->recentEvents($id, 'exception', 50),
+                'releases' => $repo->releases($id),
+                'activeRelease' => $release,
             ],
             'queries' => [
                 'slow' => $repo->slowQueries($id, $range, 25),
@@ -90,6 +93,14 @@ class ProjectController
             'project' => $model,
             'range' => $range,
         ]));
+    }
+
+    /** Release marker to slice errors by ("since this deploy"), or null for all. */
+    private function releaseFilter(Request $request): ?string
+    {
+        $release = trim(Cast::str($request->query('release')));
+
+        return $release !== '' ? $release : null;
     }
 
     /** Validated log level from the query string, or null for "all". */
