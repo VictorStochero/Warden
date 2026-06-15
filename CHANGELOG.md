@@ -56,6 +56,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Together they turn automatic capture into an extensible platform. Safe when capture is off.
 - **Log search.** The Logs section gains a free-text search across log messages (`?q=`),
   composable with the existing level filter — so you can find a specific line, not just a level.
+- **Per-project authorization (RBAC primitive).** The `viewWarden` / `manageWarden` gates now
+  receive the current route's project slug (null off a project route), so a host can authorize
+  access per project — e.g. `Gate::define('viewWarden', fn ($user, $project = null) => …)`. The
+  default gates ignore it (no behaviour change); project-scoped access is opt-in.
 - **Read-only API + tokens.** A token-authenticated JSON API (`/<prefix>/api/v1/overview`,
   `/projects/{project}`) serves the read layer for automation, status pages and external
   dashboards. Tokens are minted and revoked from a manage-gated **API tokens** page (only the

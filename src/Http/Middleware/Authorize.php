@@ -17,6 +17,11 @@ use VictorStochero\Warden\Dashboard\DashboardAuth;
  * built-in login form instead of a flat 403.
  * Note: the ability names viewWarden/manageWarden are a public contract
  * with the host app and must not be renamed.
+ *
+ * The current route's {project} slug (or null off a project route) is passed to
+ * the gate as its argument, so a host can do per-project RBAC — e.g.
+ * Gate::define('viewWarden', fn ($user, $project = null) => $user?->canSee($project)).
+ * The package's default gates ignore it; project-scoped access is opt-in.
  */
 class Authorize
 {
@@ -25,7 +30,10 @@ class Authorize
     /** @param Closure(Request): Response $next */
     public function handle(Request $request, Closure $next, string $ability = 'viewWarden'): Response
     {
-        if (Gate::allows($ability, [$request->user()])) {
+        $project = $request->route('project');
+        $project = is_string($project) ? $project : null;
+
+        if (Gate::allows($ability, [$project])) {
             return $next($request);
         }
 

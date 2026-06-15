@@ -336,6 +336,14 @@ use Illuminate\Support\Facades\Gate;
 Gate::define('manageWarden', fn ($user) => $user->isAdmin());
 ```
 
+Both gates receive the current route's **project slug** (null off a project route), so you can
+authorize per project — the building block for multi-team / multi-tenant access without the
+package shipping a user model:
+
+```php
+Gate::define('viewWarden', fn ($user, $project = null) => $user->canSee($project));
+```
+
 The dashboard updates in **real time** without a build step or a WebSocket: a cursor-based
 conditional-GET poller fetches the live KPIs/fleet counters as JSON and a `304 Not Modified`
 when nothing changed, so an idle dashboard costs one cheap request per interval instead of a
