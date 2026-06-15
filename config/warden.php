@@ -327,6 +327,14 @@ return [
             'min_severity' => env('WARDEN_ALERT_WEBHOOK_MIN_SEVERITY', 'warning'),
         ],
 
+        // Threshold rules (§5.5). Each compares a KPI over a window against a
+        // threshold and opens/resolves a `rule:<name>` incident through the
+        // channels below. Empty by default. Example:
+        //   ['name' => 'error-rate', 'metric' => 'error_rate', 'op' => '>', 'threshold' => 5, 'window' => '1h', 'severity' => 'critical'],
+        // metric ∈ error_rate | p95 | throughput | errors | slow | failed_jobs | cache_hit_rate
+        // op ∈ > | >= | < | <=   ·   window ∈ 15m | 1h | 6h | 24h | 7d
+        'rules' => [],
+
         // MailAlertChannel is registered unconditionally; it self-silences when
         // e-mail alerts are disabled or unconfigured (see Settings -> Alerts).
         // The chat/webhook channels likewise self-silence without a URL.

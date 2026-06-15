@@ -6,6 +6,7 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Carbon;
 use VictorStochero\Warden\Contracts\AlertChannel;
+use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Models\AlertSetting;
 use VictorStochero\Warden\Models\Heartbeat;
 use VictorStochero\Warden\Models\Incident;
@@ -51,6 +52,7 @@ class Evaluator
             $this->registerHeartbeats($projectId);
             $this->evaluateHeartbeats($projectId);
             $this->evaluateIssues($projectId);
+            $this->evaluateRules($projectId);
         });
     }
 
@@ -190,6 +192,94 @@ class Evaluator
         foreach ($closed as $issue) {
             $this->resolveIncident($projectId, 'issue:'.$issue->fingerprint);
         }
+    }
+
+    // --------------------------------------------------------------- rules
+
+    /**
+     * Configurable threshold rules (§5.5): each compares a KPI over a window
+     * against a threshold and opens/resolves a `rule:<name>` incident through the
+     * same channel pipeline. Empty by default — inert until the host defines
+     * warden.alerts.rules.
+     */
+    protected function evaluateRules(int $projectId): void
+    {
+        $rules = Cast::arr($this->config->get('warden.alerts.rules', []));
+
+        if ($rules === []) {
+            return;
+        }
+
+        $repo = $this->app->make(DashboardRepository::class);
+
+        foreach ($rules as $rule) {
+            if (! is_array($rule)) {
+                continue;
+            }
+
+            $name = trim(Cast::str($rule['name'] ?? ''));
+            $metric = trim(Cast::str($rule['metric'] ?? ''));
+
+            if ($name === '' || $metric === '') {
+                continue;
+            }
+
+            $window = Cast::str($rule['window'] ?? '1h', '1h');
+            $value = $this->metricValue($repo->kpis($projectId, $window), $metric);
+
+            if ($value === null) {
+                continue;
+            }
+
+            $op = Cast::str($rule['op'] ?? '>', '>');
+            $threshold = (float) Cast::str($rule['threshold'] ?? '0', '0');
+            $subject = 'rule:'.$name;
+
+            if ($this->breached($value, $op, $threshold)) {
+                $this->openIncident(
+                    $projectId,
+                    $subject,
+                    Cast::str($rule['severity'] ?? 'warning', 'warning'),
+                    sprintf('%s %s %s over %s (now %s)', $metric, $op, $threshold, $window, $value),
+                    ['rule' => $name, 'metric' => $metric, 'value' => $value, 'op' => $op, 'threshold' => $threshold, 'window' => $window],
+                );
+            } else {
+                $this->resolveIncident($projectId, $subject);
+            }
+        }
+    }
+
+    /**
+     * Pull a comparable numeric KPI by name, or null when it isn't available
+     * (e.g. p95 / cache hit-rate with no data) so the rule simply doesn't fire.
+     *
+     * @param  array<string, mixed>  $kpis
+     */
+    protected function metricValue(array $kpis, string $metric): ?float
+    {
+        $candidates = [
+            'error_rate' => $kpis['error_rate'] ?? null,
+            'p95' => $kpis['p95'] ?? null,
+            'throughput' => $kpis['throughput'] ?? null,
+            'errors' => $kpis['errors'] ?? null,
+            'slow' => $kpis['slow'] ?? null,
+            'failed_jobs' => $kpis['failed_jobs'] ?? null,
+            'cache_hit_rate' => $kpis['cache_hit_rate'] ?? null,
+        ];
+
+        $value = $candidates[$metric] ?? null;
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    protected function breached(float $value, string $op, float $threshold): bool
+    {
+        return match ($op) {
+            '>=' => $value >= $threshold,
+            '<' => $value < $threshold,
+            '<=' => $value <= $threshold,
+            default => $value > $threshold,
+        };
     }
 
     protected function severityFor(Issue $issue): string

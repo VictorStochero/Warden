@@ -41,6 +41,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   regression — while the same fault on the already-triaged deploy stays resolved (no alert churn).
   With no release information it falls back to the historical reopen-on-recurrence behaviour.
 
+- **Configurable threshold alert rules.** A `warden.alerts.rules` list lets you alert on KPIs —
+  e.g. `error_rate > 5` over `1h`, `p95 > 500`, `failed_jobs > 10` — each opening/resolving a
+  `rule:<name>` incident through the same channel pipeline (e-mail, Slack, Discord, webhook). The
+  evaluator computes the metric over the window and the rule is inert until configured.
 - **`warden:doctor` command.** A one-shot diagnosis (parent or child) that walks the kill-switch,
   child credentials, delivery mode, dashboard auth and schema, printing an ok/warn/error line with
   the fix for each and exiting non-zero on a hard problem — so an operator can self-serve "why

@@ -119,10 +119,10 @@ Entregue: assign, snooze, ignore, resolve e **reabertura automática** quando um
 reaparece (+ alerta), com snooze que silencia o alerta. _Abertos:_ comentários por issue,
 **usuários impactados** (quantos usuários distintos bateram numa exceção) e Apdex por rota.
 
-#### #34 — Regras de alerta configuráveis
-Motor de regras de threshold gerenciável pela UI: _"error rate > 5% em 5min"_, _"p95 da rota X >
-2s"_, _"fila com > N jobs pendentes"_. Salto de observabilidade passiva → alerta proativo.
-Integra com os canais do #30.
+#### #34 — Regras de alerta configuráveis — 🟡 PARCIAL (dev-main)
+Entregue: motor de regras de threshold config-driven (`warden.alerts.rules`) — _"error_rate > 5
+em 1h"_, _"p95 > 500"_, _"failed_jobs > N"_ — abrindo/resolvendo incidente `rule:<name>` pelos
+canais do #30. _Abertos:_ gestão pela UI, anomalia sobre baseline móvel, regra por rota.
 
 #### #35 — API de instrumentação custom + busca de logs
 - Facade para instrumentação pelo host: `Warden::measure()`, `Warden::increment()`, spans e
