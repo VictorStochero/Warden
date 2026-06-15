@@ -60,7 +60,10 @@ class TraceFilterTest extends TestCase
         $this->get(route('warden.traces', ['project' => $project->slug, 'route' => '/checkout']))
             ->assertOk()
             ->assertSee('/checkout')
-            ->assertDontSee('/home');
+            // Scope the exclusion to the filtered list itself: the right-hand
+            // "Related" panel renders project-wide recent traces and may list
+            // /home there — the filter only governs the main table.
+            ->assertViewHas('traces', fn ($traces) => $traces->pluck('trace_id')->doesntContain('trace-home'));
     }
 
     public function test_filters_traces_by_query_fingerprint(): void
@@ -80,7 +83,9 @@ class TraceFilterTest extends TestCase
         $this->get(route('warden.traces', ['project' => $project->slug, 'query' => $fp]))
             ->assertOk()
             ->assertSee('/orders')
-            ->assertDontSee('/other');
+            // Exclusion scoped to the filtered table (see note above); the
+            // Related panel lists project-wide recent traces.
+            ->assertViewHas('traces', fn ($traces) => $traces->pluck('trace_id')->doesntContain('trace-other'));
     }
 
     public function test_filters_traces_by_job_class(): void
@@ -96,6 +101,8 @@ class TraceFilterTest extends TestCase
         $this->get(route('warden.traces', ['project' => $project->slug, 'job' => 'App\\Jobs\\SendMail']))
             ->assertOk()
             ->assertSee('App\\Jobs\\SendMail')
-            ->assertDontSee('App\\Jobs\\SendNotification');
+            // Exclusion scoped to the filtered table (see note above); the
+            // Related panel lists project-wide recent traces.
+            ->assertViewHas('traces', fn ($traces) => $traces->pluck('trace_id')->doesntContain('trace-notify'));
     }
 }

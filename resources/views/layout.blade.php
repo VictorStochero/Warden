@@ -100,6 +100,15 @@
         /* Mobile: hidden off-canvas, slides in when open. */
         @media (max-width:1023.98px){#wdn-sidebar{transform:translateX(-100%)}.wdn-open #wdn-sidebar{transform:translateX(0)}.wdn-open #wdn-backdrop{display:block}}
 
+        /* Right-hand "Related" panel: ~320px on xl+, collapses to a thin rail
+           that shows only the expand button. Root class toggled & persisted by
+           the JS below, same pattern as the left sidebar rail. */
+        #wdn-related{width:20rem;transition:width .2s ease}
+        .wdn-related-only-collapsed{display:none}
+        .wdn-related-collapsed #wdn-related{width:3.25rem}
+        .wdn-related-collapsed #wdn-related .wdn-related-body{display:none}
+        .wdn-related-collapsed #wdn-related .wdn-related-only-collapsed{display:flex}
+
         @include('warden::partials.supplemental-css')
     </style>
 </head>
@@ -270,18 +279,30 @@
             </div>
         </header>
 
-        <main class="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            @if(session('warden_auth') && ! session('warden_auth_admin'))
-                <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-700/50 bg-amber-900/20 px-4 py-2.5 text-sm text-amber-200">
-                    <span>{{ __('warden::common.read_only_notice') }}</span>
-                    <a href="{{ route('warden.login') }}"
-                       class="shrink-0 rounded-md border border-amber-600/60 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-600/20">
-                        {{ __('warden::common.sign_in_as_admin') }}
-                    </a>
-                </div>
-            @endif
-            @yield('content')
-        </main>
+        {{-- Content + optional right-hand "Related" panel. The aside is rendered
+             only when a project view passes $related; admin/overview views don't,
+             so they keep their exact prior single-column layout. Hidden below xl
+             so it never crowds narrow viewports. --}}
+        <div class="flex">
+            <main class="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                @if(session('warden_auth') && ! session('warden_auth_admin'))
+                    <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-700/50 bg-amber-900/20 px-4 py-2.5 text-sm text-amber-200">
+                        <span>{{ __('warden::common.read_only_notice') }}</span>
+                        <a href="{{ route('warden.login') }}"
+                           class="shrink-0 rounded-md border border-amber-600/60 px-3 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-600/20">
+                            {{ __('warden::common.sign_in_as_admin') }}
+                        </a>
+                    </div>
+                @endif
+                @yield('content')
+            </main>
+
+            @isset($related)
+                <aside id="wdn-related" class="hidden shrink-0 flex-col self-stretch border-l border-ink-700 bg-ink-900 xl:flex">
+                    @include('warden::partials.related-panel', ['related' => $related])
+                </aside>
+            @endisset
+        </div>
     </div>
 </div>
 <script>
@@ -326,6 +347,27 @@
     if (backdrop) { backdrop.addEventListener('click', function () { root.classList.remove('wdn-open'); }); }
     window.addEventListener('resize', function () { if (isDesktop()) { root.classList.remove('wdn-open'); } });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { root.classList.remove('wdn-open'); } });
+})();
+
+// Collapsible "Related" panel: open by default; persists the collapsed state.
+// Same localStorage pattern as the left sidebar rail. No-op when the aside is
+// absent (admin/overview views).
+(function () {
+    var root = document.getElementById('wdn-root');
+    var aside = document.getElementById('wdn-related');
+    if (!root || !aside) { return; }
+    var KEY = 'wdn_related_collapsed';
+
+    if (localStorage.getItem(KEY) === '1') { root.classList.add('wdn-related-collapsed'); }
+
+    function toggle() {
+        root.classList.toggle('wdn-related-collapsed');
+        localStorage.setItem(KEY, root.classList.contains('wdn-related-collapsed') ? '1' : '0');
+    }
+
+    document.querySelectorAll('[data-wdn-related-toggle], [data-wdn-related-expand]').forEach(function (b) {
+        b.addEventListener('click', toggle);
+    });
 })();
 
 @if($streamUrl && $refresh > 0 && ($autoRefresh ?? true))
