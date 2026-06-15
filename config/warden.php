@@ -1,8 +1,11 @@
 <?php
 
 use VictorStochero\Warden\Alerting\Channels\DatabaseAlertChannel;
+use VictorStochero\Warden\Alerting\Channels\DiscordAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\LogAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\MailAlertChannel;
+use VictorStochero\Warden\Alerting\Channels\SlackAlertChannel;
+use VictorStochero\Warden\Alerting\Channels\WebhookAlertChannel;
 
 return [
 
@@ -302,12 +305,33 @@ return [
             ))),
         ],
 
+        // Chat / webhook channels (§5.5). Each is config-driven by a webhook URL
+        // and self-silences when unset, so they're safe to leave registered. The
+        // outbound POST runs suppressed (§18.3) and is best-effort (never throws).
+        // `min_severity` (info|warning|critical) floors what each one forwards.
+        'slack' => [
+            'webhook_url' => env('WARDEN_ALERT_SLACK_WEBHOOK'),
+            'min_severity' => env('WARDEN_ALERT_SLACK_MIN_SEVERITY', 'warning'),
+        ],
+        'discord' => [
+            'webhook_url' => env('WARDEN_ALERT_DISCORD_WEBHOOK'),
+            'min_severity' => env('WARDEN_ALERT_DISCORD_MIN_SEVERITY', 'warning'),
+        ],
+        'webhook' => [
+            'url' => env('WARDEN_ALERT_WEBHOOK_URL'),
+            'min_severity' => env('WARDEN_ALERT_WEBHOOK_MIN_SEVERITY', 'warning'),
+        ],
+
         // MailAlertChannel is registered unconditionally; it self-silences when
         // e-mail alerts are disabled or unconfigured (see Settings -> Alerts).
+        // The chat/webhook channels likewise self-silence without a URL.
         'channels' => [
             DatabaseAlertChannel::class,
             LogAlertChannel::class,
             MailAlertChannel::class,
+            SlackAlertChannel::class,
+            DiscordAlertChannel::class,
+            WebhookAlertChannel::class,
         ],
     ],
 
