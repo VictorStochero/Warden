@@ -378,6 +378,18 @@ WARDEN_ALERT_DISCORD_WEBHOOK=https://discord.com/api/webhooks/000/xxxx
 WARDEN_ALERT_WEBHOOK_URL=https://ops.example.com/warden-hook
 ```
 
+## Read API
+
+A token-authenticated, read-only JSON API exposes the same read layer the dashboard uses — for
+automation, status pages or an external dashboard. Mint a token under **API tokens** (manage
+access); only its hash is stored and the plaintext is shown once. Authenticate with a bearer
+token:
+
+```bash
+curl -H "Authorization: Bearer wdn_…" https://apm.example.com/warden/api/v1/overview
+curl -H "Authorization: Bearer wdn_…" "https://apm.example.com/warden/api/v1/projects/<slug>?range=24h"
+```
+
 ## Security audits
 
 A child can audit its own dependencies and surface vulnerabilities on the parent:

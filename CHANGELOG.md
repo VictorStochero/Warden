@@ -56,6 +56,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Together they turn automatic capture into an extensible platform. Safe when capture is off.
 - **Log search.** The Logs section gains a free-text search across log messages (`?q=`),
   composable with the existing level filter — so you can find a specific line, not just a level.
+- **Read-only API + tokens.** A token-authenticated JSON API (`/<prefix>/api/v1/overview`,
+  `/projects/{project}`) serves the read layer for automation, status pages and external
+  dashboards. Tokens are minted and revoked from a manage-gated **API tokens** page (only the
+  SHA-256 hash is stored; the plaintext is shown once), and authenticate via `Authorization:
+  Bearer`.
 - **Audit log.** Every successful manage action (project create/rotate/delete, issue transitions,
   maintenance, settings, incident resolve, …) is recorded — actor, action, target, method, IP —
   by a single middleware on the manage routes, and surfaced on a new manage-gated **Audit log**

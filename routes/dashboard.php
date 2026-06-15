@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use VictorStochero\Warden\Http\Controllers\Dashboard\ApiTokenController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\AuditController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\EventController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\IncidentController;
@@ -47,6 +48,10 @@ Route::get('/projects/{project}/incidents/{incident}', [IncidentController::clas
 
 Route::middleware([Authorize::class.':manageWarden', AuditManageActions::class])->group(function () {
     Route::get('/admin/audit', [AuditController::class, 'index'])->name('warden.admin.audit');
+
+    Route::get('/admin/api-tokens', [ApiTokenController::class, 'index'])->name('warden.admin.api-tokens');
+    Route::post('/admin/api-tokens', [ApiTokenController::class, 'store'])->name('warden.admin.api-tokens.store');
+    Route::post('/admin/api-tokens/{token}/delete', [ApiTokenController::class, 'destroy'])->whereNumber('token')->name('warden.admin.api-tokens.delete');
 
     Route::get('/admin/projects', [ProjectAdminController::class, 'index'])->name('warden.admin.projects');
     Route::post('/admin/projects', [ProjectAdminController::class, 'store'])->name('warden.admin.projects.store');

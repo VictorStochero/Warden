@@ -33,6 +33,7 @@ class WardenTables
             'wdn_alert_settings',
             'wdn_alert_rules',
             'wdn_audit_log',
+            'wdn_api_tokens',
         ];
     }
 }

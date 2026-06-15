@@ -126,6 +126,20 @@ return [
         'col_ip' => 'IP',
     ],
 
+    'api_tokens' => [
+        'title' => 'Tokens de API',
+        'heading' => 'Tokens de API',
+        'subheading' => 'Tokens somente-leitura para automação e dashboards externos',
+        'new_token' => 'Novo token — copie agora, não será mostrado de novo',
+        'name_placeholder' => 'Nome do token (ex.: status-page)',
+        'create' => 'Criar token',
+        'empty' => 'Nenhum token de API ainda.',
+        'col_name' => 'Nome',
+        'col_created' => 'Criado',
+        'col_last_used' => 'Último uso',
+        'revoke' => 'Revogar',
+    ],
+
     'maintenance' => [
         'title' => 'Manutenção',
         'heading' => 'Manutenção',
