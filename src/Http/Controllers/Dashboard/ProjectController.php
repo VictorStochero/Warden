@@ -28,6 +28,14 @@ class ProjectController
         $showWarden = $this->showWarden($request);
         $id = $model->id;
 
+        // A custom from→to window overrides the preset on both ends. Resolve it
+        // once and apply it to the repository before any read; the preset string
+        // still flows to the view so the range picker keeps its presets.
+        $window = $this->window($request);
+        if ($window['custom']) {
+            $repo->withWindow($window['start'], $window['end']);
+        }
+
         $data = [
             'kpis' => $repo->kpis($id, $range),
             'section' => $section,
@@ -105,6 +113,8 @@ class ProjectController
         return ViewFactory::make('warden::project', array_merge($this->chrome(), $this->related($repo, $id), $data, [
             'project' => $model,
             'range' => $range,
+            'customWindow' => $window['custom'],
+            'customWindowLabel' => $window['label'],
         ]));
     }
 

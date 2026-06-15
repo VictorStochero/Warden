@@ -44,4 +44,12 @@ return [
     'help' => 'Primeiros passos',
     'language' => 'Idioma',
     'toggle_sidebar' => 'Recolher/expandir menu',
+
+    'range' => [
+        'custom' => 'Personalizado',
+        'from' => 'De',
+        'to' => 'Até',
+        'apply' => 'Aplicar',
+        'clear' => 'Limpar',
+    ],
 ];

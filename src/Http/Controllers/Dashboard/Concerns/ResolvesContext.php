@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Http\Controllers\Dashboard\Concerns;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cookie;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Support\Cast;
@@ -33,6 +34,53 @@ trait ResolvesContext
         $cookie = Cast::str($request->cookie('warden_range'));
 
         return in_array($cookie, $this->ranges, true) ? $cookie : '1h';
+    }
+
+    /**
+     * Resolve an optional custom time window from `from`/`to` query params
+     * (datetime-local, `Y-m-d\TH:i`). Returns `custom=false` and null bounds
+     * when neither is present or parsing fails — the caller then falls back to
+     * the preset. When only `from` is given, the window runs to "now". A swapped
+     * pair is normalised so `start <= end`. `label` is a human-readable summary
+     * for the chrome when custom.
+     *
+     * @return array{start: ?Carbon, end: ?Carbon, custom: bool, label: string}
+     */
+    protected function window(Request $request): array
+    {
+        $none = ['start' => null, 'end' => null, 'custom' => false, 'label' => ''];
+
+        $from = trim(Cast::str($request->query('from')));
+        $to = trim(Cast::str($request->query('to')));
+
+        if ($from === '' && $to === '') {
+            return $none;
+        }
+
+        try {
+            $start = $from !== '' ? Carbon::parse($from) : null;
+            $end = $to !== '' ? Carbon::parse($to) : null;
+        } catch (\Throwable) {
+            return $none;
+        }
+
+        // A bare `to` is ambiguous as a range; require a start. Only `from` is fine.
+        if ($start === null) {
+            return $none;
+        }
+
+        $end ??= Carbon::now();
+
+        if ($start->greaterThan($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        return [
+            'start' => $start,
+            'end' => $end,
+            'custom' => true,
+            'label' => $start->format('d/m H:i').' → '.$end->format('d/m H:i'),
+        ];
     }
 
     /**

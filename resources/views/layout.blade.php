@@ -11,6 +11,12 @@
     $refresh = $refresh ?? 0;
     $ranges = $ranges ?? [];
     $currentRange = $range ?? request()->query('range', '1h');
+    $customWindow = $customWindow ?? false;
+    $customWindowLabel = $customWindowLabel ?? '';
+    // Echo back whatever the viewer typed (datetime-local format) so the inputs
+    // stay populated after submit; falls back to the parsed query values.
+    $customFrom = \VictorStochero\Warden\Support\Cast::str(request()->query('from'));
+    $customTo = \VictorStochero\Warden\Support\Cast::str(request()->query('to'));
 
     // Real-time transport (§5.4): on a project page we poll the cursor endpoint
     // and only refresh when it moves — no blind full-page reload. Other pages
@@ -265,11 +271,51 @@
                 @if(! empty($ranges) && ($showRanges ?? true))
                     <div class="flex items-center rounded-lg border border-ink-700 bg-ink-850 p-0.5">
                         @foreach($ranges as $r)
-                            <a href="{{ request()->fullUrlWithQuery(['range' => $r]) }}"
+                            {{-- Picking a preset clears any active custom window. --}}
+                            <a href="{{ request()->fullUrlWithQuery(['range' => $r, 'from' => null, 'to' => null]) }}"
                                class="rounded-md px-2.5 py-1 text-xs font-medium transition
-                               {{ $currentRange === $r ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white' }}">{{ $r }}</a>
+                               {{ ! $customWindow && $currentRange === $r ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-white' }}">{{ $r }}</a>
                         @endforeach
                     </div>
+
+                    {{-- Custom from→to window (§5b). Native datetime-local inputs, no
+                         calendar lib (zero-dep). A GET form preserves the rest of the
+                         query (level/text/warden) via hidden fields, while from/to and
+                         range are owned by the picker. --}}
+                    <details class="relative" @if($customWindow) open @endif>
+                        <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition
+                            {{ $customWindow ? 'border-brand-600 bg-brand-600/15 text-brand-200' : 'border-ink-700 bg-ink-850 text-slate-400 hover:text-white' }}">
+                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+                            <span>{{ $customWindow ? $customWindowLabel : __('warden::nav.range.custom') }}</span>
+                        </summary>
+                        <div class="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-ink-700 bg-ink-850 p-3 shadow-xl">
+                            <form method="GET" action="{{ url()->current() }}" class="space-y-2.5">
+                                @foreach(request()->except(['from', 'to', 'range', 'page']) as $qk => $qv)
+                                    @if(is_scalar($qv))
+                                        <input type="hidden" name="{{ $qk }}" value="{{ $qv }}">
+                                    @endif
+                                @endforeach
+                                <label class="block text-[11px] font-medium text-slate-400">
+                                    {{ __('warden::nav.range.from') }}
+                                    <input type="datetime-local" name="from" value="{{ $customFrom }}"
+                                           class="mt-1 w-full rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs text-white">
+                                </label>
+                                <label class="block text-[11px] font-medium text-slate-400">
+                                    {{ __('warden::nav.range.to') }}
+                                    <input type="datetime-local" name="to" value="{{ $customTo }}"
+                                           class="mt-1 w-full rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs text-white">
+                                </label>
+                                <div class="flex items-center justify-between pt-1">
+                                    <button type="submit"
+                                            class="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white transition hover:bg-brand-500">{{ __('warden::nav.range.apply') }}</button>
+                                    @if($customWindow)
+                                        <a href="{{ request()->fullUrlWithQuery(['from' => null, 'to' => null]) }}"
+                                           class="text-xs text-slate-400 transition hover:text-white">{{ __('warden::nav.range.clear') }}</a>
+                                    @endif
+                                </div>
+                            </form>
+                        </div>
+                    </details>
                 @endif
                 @if($refresh > 0 && ($autoRefresh ?? true))
                     <span class="flex items-center gap-1.5 text-[11px] text-slate-500">

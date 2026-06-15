@@ -44,4 +44,12 @@ return [
     'help' => 'Getting started',
     'language' => 'Language',
     'toggle_sidebar' => 'Toggle sidebar',
+
+    'range' => [
+        'custom' => 'Custom',
+        'from' => 'From',
+        'to' => 'To',
+        'apply' => 'Apply',
+        'clear' => 'Clear',
+    ],
 ];

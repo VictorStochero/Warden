@@ -59,10 +59,35 @@ class DashboardRepository
      */
     protected array $rowsCache = [];
 
+    /**
+     * Optional custom window (§5b). When set, it overrides the preset on both
+     * ends: `rangeStart()` returns `$windowStart` instead of parsing the preset,
+     * and `rangeEnd()` caps reads at `$windowEnd`. The repository is resolved
+     * fresh per request (not a singleton), so this never leaks across requests;
+     * the controller calls `withWindow()` once, before any read.
+     */
+    protected ?Carbon $windowStart = null;
+
+    protected ?Carbon $windowEnd = null;
+
     public function __construct(
         protected Connection $db,
         protected DatabaseWardenRepository $reader,
     ) {}
+
+    /**
+     * Bound every subsequent read to an explicit [start, end] window, overriding
+     * the preset. Returns `$this` so callers can chain before a read. A null
+     * start leaves the preset in charge of the lower bound; a null end means
+     * "until now". Resolve the window once per request in the controller.
+     */
+    public function withWindow(?Carbon $start, ?Carbon $end): static
+    {
+        $this->windowStart = $start;
+        $this->windowEnd = $end;
+
+        return $this;
+    }
 
     // -------------------------------------------------------- overview
 
@@ -252,6 +277,7 @@ class DashboardRepository
             ->where('project_id', $projectId)
             ->where('type', 'query')
             ->where('occurred_at', '>=', $this->rangeStart($range))
+            ->when($this->rangeEnd() !== null, fn (Builder $q): Builder => $q->where('occurred_at', '<=', $this->rangeEnd()))
             ->orderByDesc('id')
             ->limit($limit)
             ->get(['trace_id', 'duration_us', 'payload'])
@@ -749,6 +775,12 @@ class DashboardRepository
             $query->where('occurred_at', '>=', $this->rangeStart($range));
         }
 
+        // The ceiling is applied even when $range is null: "N most recent" reads have no
+        // floor by design, but the custom window still caps them at rangeEnd().
+        if (($end = $this->rangeEnd()) !== null) {
+            $query->where('occurred_at', '<=', $end);
+        }
+
         return $query->orderByDesc('id')
             ->limit($limit)
             ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload', 'release'])
@@ -973,6 +1005,10 @@ class DashboardRepository
             $query->where('occurred_at', '>=', $this->rangeStart($range));
         }
 
+        if (($end = $this->rangeEnd()) !== null) {
+            $query->where('occurred_at', '<=', $end);
+        }
+
         if ($level !== null) {
             $query->where('payload->level', $level);
         }
@@ -1025,6 +1061,7 @@ class DashboardRepository
             ->where('project_id', $projectId)
             ->whereNotNull('release')
             ->where('occurred_at', '>=', $this->rangeStart($range))
+            ->when($this->rangeEnd() !== null, fn (Builder $q): Builder => $q->where('occurred_at', '<=', $this->rangeEnd()))
             ->groupBy('release')
             ->orderByRaw('min(occurred_at) asc')
             ->get([
@@ -1071,12 +1108,21 @@ class DashboardRepository
     /** @return Collection<int, AggRow> */
     protected function rows(int $projectId, string $type, string $range): Collection
     {
-        $key = "{$projectId}.{$type}.{$range}";
+        // The custom window must be part of the cache key: a request slice with a
+        // window is a different result set than the same (project, type, range)
+        // preset, and two distinct windows must not collide either. Without a
+        // window the suffix is empty, so preset behaviour and keys are unchanged.
+        $end = $this->rangeEnd();
+        $window = $this->windowStart !== null || $end !== null
+            ? '.'.($this->windowStart?->getTimestamp() ?? '').'-'.($end?->getTimestamp() ?? '')
+            : '';
+        $key = "{$projectId}.{$type}.{$range}{$window}";
 
         return $this->rowsCache[$key] ??= $this->db->table('wdn_aggregates')
             ->where('project_id', $projectId)
             ->where('type', $type)
             ->where('bucket', '>=', $this->rangeStart($range))
+            ->when($end !== null, fn (Builder $q): Builder => $q->where('bucket', '<=', $end))
             ->get()
             ->map(fn (\stdClass $r): array => [
                 'bucket' => Cast::str($r->bucket),
@@ -1161,6 +1207,10 @@ class DashboardRepository
 
     protected function rangeStart(string $range): Carbon
     {
+        if ($this->windowStart !== null) {
+            return $this->windowStart;
+        }
+
         if (! preg_match('/^(\d+)([mhd])$/', $range, $m)) {
             return Carbon::now()->subHour();
         }
@@ -1168,5 +1218,11 @@ class DashboardRepository
         $unitSeconds = ['m' => 60, 'h' => 3600, 'd' => 86400];
 
         return Carbon::now()->subSeconds($unitSeconds[$m[2]] * (int) $m[1]);
+    }
+
+    /** Upper bound for reads when a custom window is active, null otherwise. */
+    protected function rangeEnd(): ?Carbon
+    {
+        return $this->windowEnd;
     }
 }
