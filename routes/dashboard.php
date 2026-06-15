@@ -9,6 +9,7 @@ use VictorStochero\Warden\Http\Controllers\Dashboard\OverviewController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\ProjectAdminController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\ProjectController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\SettingsController;
+use VictorStochero\Warden\Http\Controllers\Dashboard\StreamController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\TraceController;
 use VictorStochero\Warden\Http\Middleware\Authorize;
 
@@ -19,6 +20,10 @@ use VictorStochero\Warden\Http\Middleware\Authorize;
 Route::get('/', [OverviewController::class, 'index'])->name('warden.overview');
 
 Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('warden.project');
+
+// Real-time transport (§5.4): cursor-based conditional GET, JSON deltas + 304.
+Route::get('/projects/{project}/stream', [StreamController::class, 'project'])->name('warden.project.stream');
+
 Route::get('/projects/{project}/{section}', [ProjectController::class, 'show'])
     ->whereIn('section', ['requests', 'errors', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'])
     ->name('warden.project.section');
