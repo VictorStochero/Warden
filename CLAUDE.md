@@ -75,3 +75,14 @@ A **self-monitoring parent** (`parent.self_monitor`, default on) runs the same r
 ## Local environment (per global rules)
 
 Laravel Herd Pro on Windows. Run `php`/`composer`/`pint`/`phpstan` via **PowerShell**, not the Bash tool (Herd PATH isn't in Git Bash). Use the Bash tool only for `git`. Per-step self-validation (Pint → smoke test → Pest/PHPUnit regression → PHPStan) is expected before declaring a step done.
+
+## Agent environment setup
+
+How an agent prepares this repo so the test/lint/static-analysis toolchain is runnable. **Always `composer install` first** on a fresh checkout — `vendor/` is git-ignored, so `phpunit`/`pint`/`phpstan` don't exist until dependencies are installed.
+
+- **Web sessions (Claude Code on the web):** a `SessionStart` hook (`.claude/hooks/session-start.sh`, registered in `.claude/settings.json`) runs `composer install` automatically before the session starts, so the toolchain is ready. It's guarded by `CLAUDE_CODE_REMOTE`, so it only runs in the remote container. Merge it to the default branch so every future web session inherits it.
+- **Local agent / fresh clone:** run `composer install` once, then validate with `vendor/bin/pint --test`, `vendor/bin/phpunit`, and `vendor/bin/phpstan analyse`. On Windows/Herd route these through PowerShell (above); on Linux/macOS `php`/`composer` are already on PATH and run directly. The two audit-related tests (`AuditCommandTest`, `XssHardeningTest::test_audit_command_keeps_http_advisory_links`) require network access to the advisory registry and fail in sandboxed/offline environments — that's expected, not a regression.
+
+## Releasing (Packagist is tag-driven)
+
+A GitHub Release / pushed SemVer tag syncs to Packagist automatically, so **be deliberate**: a stable tag (e.g. `v0.3.0`) publishes a stable version everyone resolves. For something testable, publish a **pre-release** — a SemVer tag with a `-beta.N`/`-RC.N` suffix (e.g. `v0.3.0-beta.1`) or a GitHub Release marked *pre-release*. Packagist treats it as **non-stable**, so only consumers with a permissive `minimum-stability` pick it up; the default `minimum-stability: stable` shields everyone else. Pushing tags is not possible from the remote web container (the git proxy only accepts the assigned branch) — create the tag/Release locally or from the GitHub UI.
