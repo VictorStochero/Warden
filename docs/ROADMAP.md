@@ -27,6 +27,25 @@ Esse é o nosso wedge. **Toda feature abaixo serve a essa tese** e respeita a ba
 
 ### Entregue
 
+#### dev-main (rumo a 0.3.0)
+
+- **Confiabilidade do caminho de captura ("o host nunca quebra"):** kill-switch global
+  `WARDEN_ENABLED` (lido em runtime; desligado = overhead zero, nem middleware nem recorders
+  são instalados); isolação estrutural por-recorder + circuit breaker por-processo
+  (`RecorderHealth`); verificação de Octane (reset por-boundary, sem vazamento entre requests
+  no mesmo worker); boundary de fila (cada job drena seu batch sem herdar o anterior); e jobs
+  de CI de **runtime real** (Octane RoadRunner sob carga + worker) além da matriz PHPUnit.
+- **#27 — Dashboard em tempo real:** transporte de polling coalescido por cursor com GET
+  condicional (`304 Not Modified`) — no projeto e no overview da frota. JSON, sem build step,
+  sem WebSocket; substitui o meta-refresh de página cheia. SSE opt-in fica como evolução.
+- **#30 — Canais Slack / Discord / webhook genérico:** canais de alerta sobre HTTP puro
+  (zero-dep), config-driven por URL, com piso de severidade, best-effort (nunca quebram o
+  evaluate) e suprimidos contra auto-observação.
+- **#33 (parcial) — Ciclo de vida de issue:** resolver / ignorar / reabrir / **atribuir** /
+  **snooze** pela UI (gated por `manageWarden`), reabertura automática de resolvida que
+  recorre, e snooze que silencia o alerta de verdade. _Abertos:_ comentários por issue,
+  usuários impactados e Apdex por rota.
+
 - **#16 — Multilíngue (pt-BR, es, en):** dashboard traduzido nos três idiomas via arquivos
   `lang/` do Laravel + `__()` nas views, namespace de tradução `warden::` no provider,
   middleware que resolve o locale (cookie `warden_locale` > `Accept-Language` > `config`) e
@@ -47,10 +66,10 @@ depois que `warden:audit` roda no child **e** é shippado (via `audit_due` no ci
   sem `package.json`? ship não disparou?).
 - Reduzir a latência para near-real-time (ex.: ship imediato após o audit, ou push direto).
 
-### #27 — Dashboard em tempo real
-Dashboard do parent com atualização em tempo real (hoje é meta-refresh por intervalo). Avaliar
-polling leve via `fetch`/JSON, SSE ou WebSocket — mantendo o lema "no build step / zero deps"
-do pacote.
+### #27 — Dashboard em tempo real — ✅ ENTREGUE (dev-main)
+Entregue como polling coalescido por cursor + GET condicional (`304`) no projeto e no overview
+(ver "Entregue"). Resta apenas o **upgrade opt-in para SSE** sobre o mesmo payload, mantendo o
+lema "no build step / zero deps".
 
 ---
 
@@ -71,11 +90,10 @@ Warden já é multi-app por design. É _a_ imagem que vende o projeto.
 
 ### Table-stakes — sem isso o dev não confia em rodar em prod / não converte
 
-#### #30 — Canais Slack / Discord / webhook genérico
-Hoje só DB, log e e-mail. Adicionar canais de alerta sobre **HTTP puro (zero-dep)**:
-- Canal webhook genérico (payload JSON configurável) — cobre Slack/Discord/Teams/Telegram.
-- Atalhos prontos para Slack e Discord (formatação de mensagem).
-- Gerenciável por UI junto com o #28 (página de Alerts/Settings).
+#### #30 — Canais Slack / Discord / webhook genérico — ✅ ENTREGUE (dev-main)
+Entregue: canal webhook genérico (payload JSON) + atalhos Slack (`{"text"}`) e Discord
+(`{"content"}`), sobre HTTP puro (zero-dep), config-driven por URL com piso de severidade.
+_Resta:_ gerenciamento por UI junto com o #28 (hoje é config/env).
 
 #### #31 — Onboarding de 2 minutos
 Reduzir o tempo até o primeiro "wow":
@@ -93,10 +111,10 @@ regressão (issue resolvida que reaparece após um deploy → reabre + alerta).
 
 ### Depth — sinaliza que é projeto sério, não brinquedo
 
-#### #33 — Ciclo de vida de issue (nível Sentry)
-Assign, snooze, ignore, resolve e **reabertura automática** quando uma issue resolvida reaparece
-(+ alerta). Comentários por issue. **Usuários impactados** (quantos usuários distintos bateram
-numa exceção) e Apdex por rota.
+#### #33 — Ciclo de vida de issue (nível Sentry) — 🟡 PARCIAL (dev-main)
+Entregue: assign, snooze, ignore, resolve e **reabertura automática** quando uma issue resolvida
+reaparece (+ alerta), com snooze que silencia o alerta. _Abertos:_ comentários por issue,
+**usuários impactados** (quantos usuários distintos bateram numa exceção) e Apdex por rota.
 
 #### #34 — Regras de alerta configuráveis
 Motor de regras de threshold gerenciável pela UI: _"error rate > 5% em 5min"_, _"p95 da rota X >

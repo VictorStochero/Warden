@@ -6,6 +6,39 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Global kill-switch `WARDEN_ENABLED`.** A single live flag (read at runtime by
+  `Warden::capturing()`) disables all capture without a redeploy. When off, neither the trace
+  middleware nor the recorders are even wired — disabled means zero overhead, not "registered
+  but quiet" — and the host keeps running untouched (RNF-2).
+- **Structural per-recorder isolation + per-process circuit breaker.** A recorder whose listener
+  throws is caught at a single guarded chokepoint (`AbstractRecorder::listen()`) so it can never
+  reach the host; repeated failures trip a per-process breaker (`RecorderHealth`) that survives
+  the per-request Octane reset and prevents log-storms.
+- **Real-time dashboard (no build step, no WebSocket).** A cursor-based conditional-GET transport
+  streams the live KPIs/fleet counters as JSON and coalesces idle polls into `304 Not Modified`,
+  so the heavy aggregate read only runs when something changed. Wired on both the project pages
+  and the fleet overview, replacing the blind full-page meta-refresh. SSE remains a future opt-in
+  over the same payload.
+- **Slack, Discord and generic webhook alert channels.** Three new `AlertChannel`s over plain
+  zero-dependency HTTP, config-driven by a webhook URL with a per-channel severity floor. The
+  outbound POST runs suppressed (so a self-monitoring parent doesn't observe its own alerts) and
+  is best-effort — a dead webhook can never break the evaluate run. Registered by default and
+  self-silencing when no URL is set.
+- **Issue collaboration workflow.** Resolve / ignore / reopen / **assign** / **snooze** an issue
+  from the dashboard (manage-gated), with `resolved_at` / `snoozed_until` tracked. A snoozed
+  issue is genuinely muted — the evaluator skips it when opening incidents until the window
+  passes — while the existing recurrence engine still auto-reopens a resolved issue that fires
+  again.
+
+### Changed
+
+- **Octane / queue safety is now proven, not asserted.** Added verification tests for the
+  per-boundary Octane reset (no state leak across requests on a shared worker) and the queue
+  boundary (each job drains its own batch without inheriting the previous one), plus CI jobs that
+  exercise a **real** Octane (RoadRunner) server under load and a real queue worker.
+
 ## [0.2.4] - 2026-06-11
 
 ### Added

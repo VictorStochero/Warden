@@ -209,6 +209,7 @@ overrides with sane defaults. This is the practical surface per role — see
 | Variable | Required | Default | What it does |
 |---|---|---|---|
 | `WARDEN_MODE` | **yes** | `child` | `parent` or `child` — the one flag that decides the role |
+| `WARDEN_ENABLED` | no | `true` | Global kill-switch, read at runtime. Set `false` to disable all capture without a redeploy — middleware and recorders aren't even wired (zero overhead) |
 | `WARDEN_CONNECTION` | no | _(default)_ | Dedicated DB connection name for the `wdn_` tables (must point at the same database) |
 
 ### Parent (collector + dashboard)
@@ -229,7 +230,10 @@ Common parent overrides (all optional): `WARDEN_ROUTE_PREFIX` (`warden`), `WARDE
 `WARDEN_RAW_RETENTION_DAYS` (`7`), `WARDEN_AGG_RETENTION_DAYS` (`90`), `WARDEN_PARTITIONING`
 (`true`), `WARDEN_SLOW_REQUEST_MS` (`1000`), `WARDEN_SLOW_QUERY_MS` (`100`),
 `WARDEN_INGEST_RATE_LIMIT` (`300,1`), `WARDEN_MAX_BODY_BYTES` (`1048576`), `WARDEN_MAX_EVENTS`
-(`5000`), `WARDEN_ALERT_EMAILS`, `WARDEN_ALERT_COOLDOWN` (`300`).
+(`5000`), `WARDEN_ALERT_EMAILS`, `WARDEN_ALERT_COOLDOWN` (`300`), `WARDEN_ALERT_SLACK_WEBHOOK`,
+`WARDEN_ALERT_DISCORD_WEBHOOK`, `WARDEN_ALERT_WEBHOOK_URL` (chat/webhook alert channels — each
+self-silences when its URL is unset), `WARDEN_DASHBOARD_REFRESH` (`15`, the real-time poll
+interval in seconds).
 
 ### Child (observed app)
 
@@ -331,6 +335,13 @@ use Illuminate\Support\Facades\Gate;
 Gate::define('manageWarden', fn ($user) => $user->isAdmin());
 ```
 
+The dashboard updates in **real time** without a build step or a WebSocket: a cursor-based
+conditional-GET poller fetches the live KPIs/fleet counters as JSON and a `304 Not Modified`
+when nothing changed, so an idle dashboard costs one cheap request per interval instead of a
+full-page reload (tune with `WARDEN_DASHBOARD_REFRESH`). **Issues** carry a collaboration
+workflow — resolve, ignore, reopen, **assign**, and **snooze** (a snoozed issue is muted from
+alerting until its window passes), on top of the automatic reopen when a resolved issue recurs.
+
 Beyond the aggregate views, each section has a **drill-down** of recent raw events
 (the actual log message, mail recipient, job error, outgoing URL + status, per-request
 status…), **incidents** are clickable with a detail page, KPI cards link to their
@@ -354,6 +365,16 @@ WARDEN_ALERT_EMAILS=ops@example.com,oncall@example.com
 ```php
 // config/warden.php — warden.alerts.channels
 \VictorStochero\Warden\Alerting\Channels\MailAlertChannel::class,
+```
+
+**Chat & webhook channels** ship too — Slack, Discord and a vendor-neutral generic webhook
+(PagerDuty/Opsgenie/Zapier/n8n), over plain zero-dependency HTTP. They're registered by default
+and self-silence until you set a URL; each takes an optional `min_severity` floor:
+
+```dotenv
+WARDEN_ALERT_SLACK_WEBHOOK=https://hooks.slack.com/services/T000/B000/xxxx
+WARDEN_ALERT_DISCORD_WEBHOOK=https://discord.com/api/webhooks/000/xxxx
+WARDEN_ALERT_WEBHOOK_URL=https://ops.example.com/warden-hook
 ```
 
 ## Security audits
@@ -492,14 +513,23 @@ See [`config/warden.php`](config/warden.php) for the full configuration surface 
 
 ## Roadmap
 
-Warden ships incrementally — each release adds one focused capability. Planned next
-(see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full picture and positioning):
+Warden ships incrementally — each release adds one focused capability
+(see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full picture and positioning).
+
+**Recently shipped** (on `dev-main`, toward `0.3.0`):
 
 - **Multilingual dashboard** — English, Português, Español.
-- **Alerts center** — e-mail plus Slack / Discord / generic webhook channels, managed from the UI.
-- **Fleet-wide distributed tracing** — one request crossing apps becomes a single trace.
+- **Real-time dashboard** — cursor-based conditional-GET polling (`304` when idle), no build step.
+- **Slack / Discord / generic webhook** alert channels, alongside e-mail.
+- **Issue collaboration** — resolve / ignore / reopen / assign / snooze.
+- **Global kill-switch** (`WARDEN_ENABLED`) and proven Octane / queue capture safety.
+
+**Planned next:**
+
+- **Fleet-wide distributed tracing** — one request crossing apps becomes a single trace (the hero).
 - **Release / deploy tracking** — "errors since this deploy" and regression detection.
-- **Real-time dashboard**, configurable uptime windows, and a configurable alert-rule engine.
+- **Configurable alert-rule engine** and UI management for the alert channels.
+- **SSE** as an opt-in upgrade over the same real-time payload.
 
 ## License
 
