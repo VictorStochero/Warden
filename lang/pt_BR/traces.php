@@ -22,6 +22,7 @@ return [
         'heading' => 'Linha do tempo do Trace',
         'back' => '← Traces',
         'summary' => ':count spans · :duration total',
+        'cross_app' => 'Entre apps:',
         'n_plus_one_label' => 'N+1 ×:count',
         'n_plus_one_title' => 'Repetido :count× neste trace',
     ],

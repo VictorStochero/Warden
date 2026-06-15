@@ -30,6 +30,14 @@
         <span class="font-mono text-[12px] text-slate-500">{{ $trace_id }}</span>
         <span class="ml-auto text-sm text-slate-400">{{ __('warden::traces.detail.summary', ['count' => $rows->count(), 'duration' => Format::dur((int) round($span * 1_000_000))]) }}</span>
         @if($errored)<span class="rounded bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-400">{{ __('warden::traces.badge.errored') }}</span>@endif
+        @if($crossApp ?? false)
+            <span class="flex flex-wrap items-center gap-1 text-xs text-slate-400">
+                {{ __('warden::traces.detail.cross_app') }}
+                @foreach($apps as $a)
+                    <span class="rounded bg-brand-500/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-300">{{ $a->name }}</span>
+                @endforeach
+            </span>
+        @endif
     </div>
 
     <div class="overflow-hidden rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10">
@@ -55,6 +63,9 @@
                     <div class="col-span-5 flex items-center gap-2 min-w-0">
                         <span class="h-2 w-2 shrink-0 rounded-sm" style="background: {{ $color }}"></span>
                         <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-16">{{ $e['type'] }}</span>
+                        @if(!empty($e['project_name']))
+                            <span class="shrink-0 rounded bg-brand-500/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-300" title="{{ $e['project_name'] }}">{{ $e['project_name'] }}</span>
+                        @endif
                         <span class="truncate font-mono text-[12px] {{ $e['type'] === 'exception' ? 'text-rose-400' : 'text-slate-300' }}">{{ trim($label) }}</span>
                         @if(!empty($e['n_plus_one']))
                             <span class="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400" title="{{ __('warden::traces.detail.n_plus_one_title', ['count' => $e['repeat_count'] ?? '']) }}">{{ __('warden::traces.detail.n_plus_one_label', ['count' => $e['repeat_count'] ?? '']) }}</span>

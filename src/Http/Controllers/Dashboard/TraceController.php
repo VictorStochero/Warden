@@ -25,7 +25,16 @@ class TraceController
     public function show(Request $request, DashboardRepository $repo, string $project, string $traceId): View
     {
         $model = $repo->project($project);
-        $spans = $repo->trace($model->id, $traceId);
+
+        // Fleet stitching (§29): if the trace was propagated across apps, gather
+        // all of them into one waterfall labelled by app; otherwise the single
+        // project's spans as before.
+        $apps = $repo->traceProjects($traceId);
+        $crossApp = $apps->count() > 1;
+
+        $spans = $crossApp
+            ? $repo->distributedTrace($traceId, $apps)
+            : $repo->trace($model->id, $traceId);
 
         abort_if($spans->isEmpty(), 404);
 
@@ -33,6 +42,8 @@ class TraceController
             'project' => $model,
             'trace_id' => $traceId,
             'spans' => $spans,
+            'crossApp' => $crossApp,
+            'apps' => $apps,
         ]));
     }
 }

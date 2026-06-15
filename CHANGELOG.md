@@ -8,6 +8,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Fleet-wide distributed tracing.** A request that crosses Warden apps now becomes a single
+  trace: the child stamps its current trace (id + span + sampling) onto every outgoing HTTP
+  request via an `X-Warden-Trace` header, and the inbound trace middleware continues that trace
+  instead of forking a new one. The trace viewer detects a trace that spans multiple projects and
+  stitches all of them into one waterfall, labelling each span with its origin app. (A Warden-
+  native header is used because Warden's 32-hex ids don't fit W3C `traceparent`'s field widths; a
+  non-Warden service simply ignores it.)
+
 - **Global kill-switch `WARDEN_ENABLED`.** A single live flag (read at runtime by
   `Warden::capturing()`) disables all capture without a redeploy. When off, neither the trace
   middleware nor the recorders are even wired — disabled means zero overhead, not "registered

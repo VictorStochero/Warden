@@ -22,6 +22,7 @@ return [
         'heading' => 'Trace timeline',
         'back' => '← Traces',
         'summary' => ':count spans · :duration total',
+        'cross_app' => 'Across apps:',
         'n_plus_one_label' => 'N+1 ×:count',
         'n_plus_one_title' => 'Repeated :count× in this trace',
     ],

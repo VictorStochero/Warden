@@ -83,13 +83,13 @@ técnica isolada. Os números (#NN) são provisórios — abrir issues ao destri
 
 ### Hero — o diferencial que vira screenshot de campanha
 
-#### #29 — Tracing distribuído pela frota
-Propagar um `trace_id` via header HTTP entre apps child: uma request no app A que chama o app B
-vira **um trace só**, atravessando apps. Ninguém self-hosted faz isso bem em Laravel, e o
-Warden já é multi-app por design. É _a_ imagem que vende o projeto.
-- Header de propagação (W3C `traceparent` ou header próprio) injetado no client HTTP do child.
-- Parent costura spans de múltiplos projetos numa única waterfall.
-- Visualização cross-app no trace viewer existente.
+#### #29 — Tracing distribuído pela frota — ✅ ENTREGUE (dev-main)
+Entregue: header próprio `X-Warden-Trace` (trace_id + span + sampled) injetado em todo HTTP de
+saída do child (`Http::globalRequestMiddleware`); o middleware de entrada continua o trace em vez
+de forkar; e o trace viewer detecta um trace multi-projeto e costura tudo numa waterfall única,
+com cada span rotulado pelo app de origem. _Resta:_ medir/representar o "salto de rede" (latência
+entre apps) como um span próprio. (Header próprio porque os ids de 32-hex do Warden não cabem no
+`traceparent` W3C; serviço não-Warden ignora o header.)
 
 ### Table-stakes — sem isso o dev não confia em rodar em prod / não converte
 

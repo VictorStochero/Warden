@@ -419,6 +419,54 @@ class DashboardRepository
     }
 
     /**
+     * The apps a trace touches (§29). Once a trace is propagated across the
+     * fleet the same trace_id lands under several projects; this lists them so
+     * the viewer can stitch a cross-app waterfall.
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function traceProjects(string $traceId): Collection
+    {
+        return $this->db->table('wdn_events')
+            ->join('wdn_projects', 'wdn_projects.id', '=', 'wdn_events.project_id')
+            ->where('wdn_events.trace_id', $traceId)
+            ->distinct()
+            ->orderBy('wdn_projects.name')
+            ->get(['wdn_projects.id', 'wdn_projects.name', 'wdn_projects.slug']);
+    }
+
+    /**
+     * Gather a propagated trace's spans across every app it touches into one
+     * timeline, each span tagged with its origin app. N+1 detection still runs
+     * per app (a query storm is an in-app concern).
+     *
+     * @param  Collection<int, \stdClass>  $projects
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function distributedTrace(string $traceId, Collection $projects): Collection
+    {
+        return $projects
+            ->flatMap(fn (\stdClass $project): Collection => $this->reader->trace(Cast::int($project->id), $traceId)
+                ->map(fn (array $span): array => $this->tagSpanApp($span, $project)))
+            ->sortBy([['occurred_at', 'asc'], ['id', 'asc']])
+            ->values();
+    }
+
+    /**
+     * Tag a span with its origin app for the cross-app waterfall.
+     *
+     * @param  array<string, mixed>  $span
+     * @return array<string, mixed>
+     */
+    private function tagSpanApp(array $span, \stdClass $project): array
+    {
+        $span['project_name'] = Cast::str($project->name);
+        $span['project_slug'] = Cast::str($project->slug);
+
+        return $span;
+    }
+
+    /**
      * Recent raw events of one type for the per-section drill-down panels. Reads
      * wdn_events directly — scoped to project+type and hard-limited — the same
      * controlled raw access trace() uses, backed by the (project_id, type, id)
