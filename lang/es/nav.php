@@ -26,6 +26,15 @@ return [
         'security' => 'Seguridad',
         'delivery' => 'Entrega',
         'uptime' => 'Disponibilidad',
+        'database' => 'Base de datos',
+    ],
+
+    'groups' => [
+        'overview' => 'Resumen',
+        'performance' => 'Rendimiento',
+        'reliability' => 'Fiabilidad',
+        'diagnostics' => 'Diagnóstico',
+        'system' => 'Sistema',
     ],
 
     'issues' => 'Issues',

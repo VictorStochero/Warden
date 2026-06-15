@@ -66,9 +66,15 @@ class DashboardTest extends TestCase
 
         $this->get(route('warden.project', 'demo'))->assertOk()->assertSee('Throughput');
 
-        foreach (['requests', 'errors', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'] as $section) {
+        foreach (['requests', 'errors', 'database', 'jobs', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'] as $section) {
             $this->get(route('warden.project.section', ['project' => 'demo', 'section' => $section]))
                 ->assertOk();
+        }
+
+        // queries e cache redirecionam para database.
+        foreach (['queries', 'cache'] as $section) {
+            $this->get(route('warden.project.section', ['project' => 'demo', 'section' => $section]))
+                ->assertRedirect(route('warden.project.section', ['project' => 'demo', 'section' => 'database']));
         }
     }
 

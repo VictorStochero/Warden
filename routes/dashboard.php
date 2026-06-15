@@ -31,7 +31,7 @@ Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('war
 Route::get('/projects/{project}/stream', [StreamController::class, 'project'])->name('warden.project.stream');
 
 Route::get('/projects/{project}/{section}', [ProjectController::class, 'show'])
-    ->whereIn('section', ['requests', 'errors', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'])
+    ->whereIn('section', ['requests', 'errors', 'database', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'])
     ->name('warden.project.section');
 
 Route::get('/projects/{project}/issues/list', [IssueController::class, 'index'])->name('warden.issues');

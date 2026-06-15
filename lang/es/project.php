@@ -135,6 +135,12 @@ return [
         'sent_avg' => ':count enviados · :avg promedio',
     ],
 
+    // ── sections/database.blade.php ─────────────────────────────────────
+    'database' => [
+        'queries_heading' => 'Queries',
+        'cache_heading' => 'Caché',
+    ],
+
     // ── sections/queries.blade.php ───────────────────────────────────────
     'queries' => [
         'slowest_title' => 'Queries más lentas (por promedio)',

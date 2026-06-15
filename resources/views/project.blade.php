@@ -13,7 +13,7 @@
         $reqUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'requests', 'range' => $range]);
         $errorsUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'errors', 'range' => $range]);
         $jobsUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'jobs', 'range' => $range]);
-        $cacheUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'cache', 'range' => $range]);
+        $cacheUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'database', 'range' => $range]);
         $issuesUrl = route('warden.issues', $project->slug);
         $incidentsUrl = route('warden.incidents', $project->slug);
         $uptimeUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'uptime', 'range' => $range]);
@@ -30,6 +30,6 @@
     </div>
 
     <div class="mt-6 space-y-6">
-        @include('warden::partials.sections.' . (in_array($section, ['requests','errors','queries','jobs','cache','schedule','http','logs','mail','host','security','delivery','uptime']) ? $section : 'overview'))
+        @include('warden::partials.sections.' . (in_array($section, ['requests','errors','database','jobs','schedule','http','logs','mail','host','security','delivery','uptime']) ? $section : 'overview'))
     </div>
 @endsection

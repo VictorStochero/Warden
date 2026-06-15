@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Http\Controllers\Dashboard;
 
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View as ViewFactory;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
@@ -13,8 +14,15 @@ class ProjectController
 {
     use ResolvesContext;
 
-    public function show(Request $request, DashboardRepository $repo, string $project, string $section = 'overview'): View
+    public function show(Request $request, DashboardRepository $repo, string $project, string $section = 'overview'): View|RedirectResponse
     {
+        if ($section === 'queries' || $section === 'cache') {
+            return redirect()->route('warden.project.section', array_merge($request->query(), [
+                'project' => $project,
+                'section' => 'database',
+            ]));
+        }
+
         $model = $repo->project($project);
         $range = $this->range($request);
         $showWarden = $this->showWarden($request);
@@ -41,15 +49,15 @@ class ProjectController
                 'releases' => $repo->releases($id),
                 'activeRelease' => $release,
             ],
-            'queries' => [
+            'database' => [
                 'slow' => $repo->slowQueries($id, $range, 25),
                 'frequent' => $repo->frequentQueries($id, $range, 25),
+                'stores' => $repo->cacheStores($id, $range),
             ],
             'jobs' => [
                 'queues' => $repo->queues($id, $range),
                 'recent' => $repo->recentEvents($id, 'job', 60),
             ],
-            'cache' => ['stores' => $repo->cacheStores($id, $range)],
             'http' => [
                 'hosts' => $repo->httpHosts($id, $range),
                 'recent' => $repo->recentEvents($id, 'http', 60),
