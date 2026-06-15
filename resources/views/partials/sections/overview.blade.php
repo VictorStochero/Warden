@@ -27,17 +27,17 @@
 
         {{-- Top routes --}}
         @include('warden::partials.card-open', ['title' => __('warden::project.overview.top_routes'), 'action' => [__('warden::project.overview.requests_action'), route('warden.project.section', ['project' => $project->slug, 'section' => 'requests', 'range' => $range])]])
-            @include('warden::partials.route-table', ['routes' => $routes])
+            @include('warden::partials.route-table', ['routes' => $routes, 'project' => $project])
         @include('warden::partials.card-close')
 
         {{-- Slow queries --}}
         @include('warden::partials.card-open', ['title' => __('warden::project.overview.slowest_queries'), 'action' => [__('warden::project.overview.queries_action'), route('warden.project.section', ['project' => $project->slug, 'section' => 'queries', 'range' => $range])]])
-            @include('warden::partials.query-table', ['queries' => $slow])
+            @include('warden::partials.query-table', ['queries' => $slow, 'project' => $project])
         @include('warden::partials.card-close')
 
         {{-- Queues --}}
         @include('warden::partials.card-open', ['title' => __('warden::project.overview.queues'), 'action' => null])
-            @include('warden::partials.queue-table', ['queues' => $queues])
+            @include('warden::partials.queue-table', ['queues' => $queues, 'project' => $project])
         @include('warden::partials.card-close')
     </div>
 

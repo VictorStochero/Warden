@@ -39,7 +39,7 @@
 
 <div class="mt-6">
     @include('warden::partials.card-open', ['title' => __('warden::project.requests.routes_title'), 'action' => $panelToggle])
-        @include('warden::partials.route-table', ['routes' => $routes])
+        @include('warden::partials.route-table', ['routes' => $routes, 'project' => $project])
     @include('warden::partials.card-close')
 </div>
 

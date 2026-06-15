@@ -17,6 +17,18 @@ return [
         'errored' => 'errored',
     ],
 
+    'filter' => [
+        'active' => 'Filtering by :dim: :value',
+        'clear' => 'clear',
+        'dim' => [
+            'route' => 'route',
+            'query' => 'query',
+            'http' => 'HTTP host',
+            'job' => 'job',
+            'cache' => 'cache store',
+        ],
+    ],
+
     'detail' => [
         'title' => 'Trace',
         'heading' => 'Trace timeline',

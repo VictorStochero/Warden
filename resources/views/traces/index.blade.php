@@ -9,6 +9,13 @@
         {!! __('warden::traces.intro') !!}
     </p>
 
+    @if(!empty($filter))
+        <div class="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-brand-500/30 bg-brand-500/5 px-4 py-2.5 text-[12px]">
+            <span class="text-slate-300">{!! __('warden::traces.filter.active', ['dim' => __('warden::traces.filter.dim.'.$filter['type']), 'value' => '<span class="font-mono text-brand-300">'.e($filter['value']).'</span>']) !!}</span>
+            <a href="{{ route('warden.traces', ['project' => $project->slug]) }}" class="text-slate-500 underline-offset-2 hover:text-brand-400 hover:underline">{{ __('warden::traces.filter.clear') }}</a>
+        </div>
+    @endif
+
     @php $typeColor = ['request' => 'text-brand-400', 'command' => 'text-sky-400', 'schedule' => 'text-violet-400', 'job' => 'text-emerald-400']; @endphp
     <div class="overflow-x-auto rounded-2xl border border-ink-700/70">
         @if($traces->isEmpty())

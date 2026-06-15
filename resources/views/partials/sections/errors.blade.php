@@ -20,7 +20,7 @@
     @if($errorRoutes->isEmpty())
         <p class="px-4 py-10 text-center text-sm text-emerald-400">{{ __('warden::project.errors.routes_empty') }}</p>
     @else
-        @include('warden::partials.route-table', ['routes' => $errorRoutes])
+        @include('warden::partials.route-table', ['routes' => $errorRoutes, 'project' => $project])
     @endif
 @include('warden::partials.card-close')
 

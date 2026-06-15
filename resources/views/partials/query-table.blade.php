@@ -1,4 +1,4 @@
-@php use VictorStochero\Warden\Dashboard\Format; @endphp
+@php use VictorStochero\Warden\Dashboard\Format; use Illuminate\Support\Str; @endphp
 @if($queries->isEmpty())
     <p class="px-4 py-8 text-center text-sm text-slate-600">{{ __('warden::project.query_table.empty') }}</p>
 @else
@@ -16,7 +16,9 @@
                 @foreach($queries as $q)
                     <tr class="align-top transition hover:bg-ink-850/50">
                         <td class="px-4 py-3">
-                            <p class="line-clamp-2 max-w-xl font-mono text-[12px] leading-snug text-slate-300">{{ $q['sql'] }}</p>
+                            <a href="{{ route('warden.traces', ['project' => $project->slug, 'query' => Str::after($q['key'], 'q_')]) }}" class="block">
+                                <p class="line-clamp-2 max-w-xl font-mono text-[12px] leading-snug text-slate-300 hover:text-brand-400">{{ $q['sql'] }}</p>
+                            </a>
                             @if(($q['slow'] ?? 0) > 0)
                                 <span class="mt-1 inline-block rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">{{ __('warden::project.query_table.slow_badge', ['count' => Format::num($q['slow'])]) }}</span>
                             @endif

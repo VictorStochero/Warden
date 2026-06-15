@@ -17,6 +17,18 @@ return [
         'errored' => 'com erro',
     ],
 
+    'filter' => [
+        'active' => 'Filtrando por :dim: :value',
+        'clear' => 'limpar',
+        'dim' => [
+            'route' => 'rota',
+            'query' => 'query',
+            'http' => 'host HTTP',
+            'job' => 'job',
+            'cache' => 'store de cache',
+        ],
+    ],
+
     'detail' => [
         'title' => 'Trace',
         'heading' => 'Linha do tempo do Trace',

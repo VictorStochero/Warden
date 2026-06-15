@@ -15,7 +15,7 @@
             <tbody class="divide-y divide-ink-700/70">
                 @foreach($hosts as $h)
                     <tr class="transition hover:bg-ink-850/50">
-                        <td class="px-4 py-3 font-mono text-[12px] text-slate-200">{{ $h['key'] }}</td>
+                        <td class="px-4 py-3 font-mono text-[12px] text-slate-200"><a href="{{ route('warden.traces', ['project' => $project->slug, 'http' => $h['key']]) }}" class="hover:text-brand-400">{{ $h['key'] }}</a></td>
                         <td class="px-4 py-3 text-right text-slate-300">{{ Format::num($h['count']) }}</td>
                         <td class="px-4 py-3 text-right {{ $h['errors'] ? 'text-rose-400' : 'text-slate-600' }}">{{ Format::num($h['errors']) }}</td>
                         <td class="px-4 py-3 text-right text-slate-400">{{ Format::dur($h['avg']) }}</td>

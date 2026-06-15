@@ -7,6 +7,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use VictorStochero\Warden\Analysis\QueryHealthAnalyzer;
+use VictorStochero\Warden\Issues\Fingerprint;
 use VictorStochero\Warden\Models\Incident;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Repository\DatabaseWardenRepository;
@@ -439,6 +440,131 @@ class DashboardRepository
             ->limit($limit * 4)
             ->get(['type', 'trace_id', 'occurred_at', 'duration_us', 'payload']);
 
+        return $this->traceRowsFromEntries($rows)->take($limit)->values();
+    }
+
+    /**
+     * Traces whose entry point is an HTTP request on `$route`. Reads a bounded
+     * window of the most recent request entries and filters by the route name in
+     * PHP (driver-portable — no JSON `where`). The window is `$limit × 8` so a
+     * route that is rare among recent traffic still surfaces a full page.
+     *
+     * @return Collection<int, TraceRow>
+     */
+    public function tracesByRoute(int $projectId, string $route, int $limit = 60): Collection
+    {
+        $rows = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('type', 'request')
+            ->whereNotNull('trace_id')
+            ->orderByDesc('id')
+            ->limit($limit * 8)
+            ->get(['type', 'trace_id', 'occurred_at', 'duration_us', 'payload']);
+
+        $matches = $rows->filter(function (\stdClass $e) use ($route): bool {
+            $payload = Json::decode($e->payload ?? null);
+
+            return Cast::str($payload['route'] ?? $payload['path'] ?? null, 'unknown') === $route;
+        });
+
+        return $this->traceRowsFromEntries($matches)->take($limit)->values();
+    }
+
+    /**
+     * Traces that contain at least one `$type` event whose dimension equals
+     * `$value`. `$type` ∈ {query, http, job, cache}; for query, `$value` is the
+     * fingerprint hash (no `q_` prefix). Reads a bounded sample of the latest
+     * `$type` events (config `warden.parent.query_health_sample`, default 2000),
+     * derives each event's dimension the same way `DatabaseAggregator::keyFor()`
+     * does, collects up to `$limit` distinct matching trace ids, then loads those
+     * traces' entry points. The sample is deliberately capped (not silent): an
+     * event older than the window is not reachable from this drill-down.
+     *
+     * @return Collection<int, TraceRow>
+     */
+    public function tracesContaining(int $projectId, string $type, string $value, int $limit = 60): Collection
+    {
+        $sample = Cast::int(config('warden.parent.query_health_sample'), 2000);
+
+        $events = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('type', $type)
+            ->whereNotNull('trace_id')
+            ->orderByDesc('id')
+            ->limit($sample)
+            ->get(['trace_id', 'payload']);
+
+        $traceIds = [];
+        foreach ($events as $event) {
+            $payload = Json::decode($event->payload ?? null);
+
+            if ($this->dimensionFor($type, $payload) !== $value) {
+                continue;
+            }
+
+            $traceId = Cast::str($event->trace_id);
+            $traceIds[$traceId] = true;
+
+            if (count($traceIds) >= $limit) {
+                break;
+            }
+        }
+
+        return $this->traceRowsForTraceIds($projectId, array_keys($traceIds));
+    }
+
+    /**
+     * The drill-down dimension for one raw event, mirroring
+     * `DatabaseAggregator::keyFor()` minus the `q_` prefix on queries (the
+     * dashboard links carry the bare fingerprint hash).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function dimensionFor(string $type, array $payload): string
+    {
+        return match ($type) {
+            'query' => substr(sha1(Fingerprint::normalize(Cast::str($payload['sql'] ?? null))), 0, 16),
+            'job' => Cast::str($payload['class'] ?? null, 'unknown'),
+            'cache' => Cast::str($payload['store'] ?? null, 'default'),
+            'http' => Cast::str($payload['host'] ?? null, 'unknown'),
+            default => '',
+        };
+    }
+
+    /**
+     * Load the entry-point traces for a set of trace ids and shape them as
+     * TraceRows. Same projection as `recentTraces()` but scoped to specific
+     * traces — the shared core of every filtered drill-down.
+     *
+     * @param  list<string>  $traceIds
+     * @return Collection<int, TraceRow>
+     */
+    private function traceRowsForTraceIds(int $projectId, array $traceIds): Collection
+    {
+        if ($traceIds === []) {
+            return new Collection;
+        }
+
+        $rows = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->whereIn('type', ['request', 'command', 'schedule', 'job'])
+            ->whereIn('trace_id', $traceIds)
+            ->orderByDesc('id')
+            ->get(['type', 'trace_id', 'occurred_at', 'duration_us', 'payload']);
+
+        return $this->traceRowsFromEntries($rows);
+    }
+
+    /**
+     * Collapse raw entry-point rows into one TraceRow per trace (the first/most
+     * recent entry wins), newest first. The query that feeds this must already
+     * be ordered by id desc so `first()` is the latest entry.
+     *
+     * @param  Collection<int, \stdClass>  $rows
+     * @return Collection<int, TraceRow>
+     */
+    private function traceRowsFromEntries(Collection $rows): Collection
+    {
         return $rows->groupBy('trace_id')->map(function (Collection $events): array {
             /** @var \stdClass $entry */
             $entry = $events->first();
@@ -453,7 +579,7 @@ class DashboardRepository
                 'occurred_at' => isset($entry->occurred_at) ? Cast::str($entry->occurred_at) : null,
                 'errored' => Cast::int($payload['status'] ?? null) >= 500,
             ];
-        })->sortByDesc('occurred_at')->take($limit)->values();
+        })->sortByDesc('occurred_at')->values();
     }
 
     /** @return Collection<int, TraceSpan> the trace spans (see WardenRepository::trace) */

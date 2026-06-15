@@ -1,5 +1,5 @@
 @include('warden::partials.card-open', ['title' => __('warden::project.jobs.title'), 'action' => null])
-    @include('warden::partials.queue-table', ['queues' => $queues])
+    @include('warden::partials.queue-table', ['queues' => $queues, 'project' => $project])
 @include('warden::partials.card-close')
 
 <div class="mt-6">

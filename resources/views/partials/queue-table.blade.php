@@ -15,7 +15,7 @@
             <tbody class="divide-y divide-ink-700/70">
                 @foreach($queues as $q)
                     <tr class="transition hover:bg-ink-850/50">
-                        <td class="px-4 py-3"><span class="font-mono text-[12px] text-slate-200">{{ class_basename($q['key']) }}</span></td>
+                        <td class="px-4 py-3"><a href="{{ route('warden.traces', ['project' => $project->slug, 'job' => $q['key']]) }}" class="font-mono text-[12px] text-slate-200 hover:text-brand-400">{{ class_basename($q['key']) }}</a></td>
                         <td class="px-4 py-3 text-right text-slate-300">{{ Format::num($q['processed']) }}</td>
                         <td class="px-4 py-3 text-right {{ $q['failures'] ? 'text-rose-400' : 'text-slate-600' }}">{{ Format::num($q['failures']) }}</td>
                         <td class="px-4 py-3 text-right text-slate-400">{{ Format::dur($q['avg']) }}</td>
