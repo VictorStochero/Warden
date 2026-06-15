@@ -31,6 +31,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   issue is genuinely muted — the evaluator skips it when opening incidents until the window
   passes — while the existing recurrence engine still auto-reopens a resolved issue that fires
   again.
+- **Release/deploy tracking groundwork.** A child stamps a configurable release marker
+  (`WARDEN_RELEASE`, falling back to `APP_VERSION`) onto every event, and the parent persists it
+  to a new `wdn_events.release` column — the data pipeline for "errors since this deploy" and
+  post-deploy regression detection.
 
 ### Changed
 

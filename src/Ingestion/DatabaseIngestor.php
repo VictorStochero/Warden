@@ -88,6 +88,8 @@ class DatabaseIngestor implements Ingestor
 
             $occurredAt = $this->parseTime($event['occurred_at'] ?? null) ?? $now;
 
+            $release = isset($event['release']) ? trim(Cast::str($event['release'])) : '';
+
             $rows[] = [
                 'project_id' => $projectId,
                 'type' => Cast::str($event['type'] ?? null, 'unknown'),
@@ -99,6 +101,7 @@ class DatabaseIngestor implements Ingestor
                 'received_at' => $now,
                 'duration_us' => isset($event['duration_us']) ? Cast::int($event['duration_us']) : null,
                 'payload' => isset($event['payload']) ? Json::encode($event['payload']) : null,
+                'release' => $release !== '' ? $release : null,
             ];
         }
 

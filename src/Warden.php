@@ -334,7 +334,7 @@ class Warden
                 return;
             }
 
-            $events = $this->buffer->all();
+            $events = $this->stampRelease($this->buffer->all());
             $batchId = Ids::generate();
 
             $this->withoutRecording(function () use ($trace, $events, $batchId) {
@@ -378,6 +378,31 @@ class Warden
     {
         $this->trace = null;
         $this->buffer->clear();
+    }
+
+    /**
+     * Stamp the configured release/deploy marker onto every event (§5.6). Stays
+     * null when unconfigured, so the parent's release column is simply empty.
+     *
+     * @param  array<int, array<string, mixed>>  $events
+     * @return array<int, array<string, mixed>>
+     */
+    protected function stampRelease(array $events): array
+    {
+        $release = $this->release();
+
+        foreach (array_keys($events) as $i) {
+            $events[$i]['release'] = $release;
+        }
+
+        return $events;
+    }
+
+    protected function release(): ?string
+    {
+        $release = trim(Cast::str($this->config->get('warden.child.release')));
+
+        return $release !== '' ? $release : null;
     }
 
     protected function applySlowKeep(TraceContext $trace): void

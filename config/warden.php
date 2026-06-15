@@ -63,6 +63,11 @@ return [
         'token' => env('WARDEN_TOKEN'),
         'secret' => env('WARDEN_SECRET'),
 
+        // Release/deploy marker stamped on every event (§5.6) so the parent can
+        // show "errors since this deploy" and flag a regression after one. Set it
+        // in the deploy script (git SHA or tag); falls back to the app version.
+        'release' => env('WARDEN_RELEASE', env('APP_VERSION')),
+
         // Delivery transport for the outbox. "scheduler" auto-registers
         // `warden:ship --once` every minute (needs only the scheduler cron).
         // "daemon" expects a supervised `warden:ship` process instead.
