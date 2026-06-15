@@ -946,33 +946,55 @@ class DashboardRepository
 
     /**
      * Recent log events, optionally filtered to a single level (driven by the
-     * clickable "Logs by level" breakdown) and optionally scoped to a time range
-     * so the list stays consistent with the "Logs by level" card. Filters in PHP
-     * so it stays portable across drivers; fetches a wider window when a level is
-     * selected.
+     * clickable "Logs by level" breakdown), a free-text message substring, and a
+     * time range. Goes to the database — scoped to project + type + time window —
+     * so it finds logs anywhere in the range, not just whatever sits in a recent
+     * in-memory batch.
+     *
+     * Time, level, and message text are all filtered in SQL — scoped to project +
+     * type + time window — so the result set is exactly the matching rows, ordered
+     * newest-first and capped at `$limit`. The level uses a portable `payload->level`
+     * JSON-where; the message substring uses a driver-specific `lower(...) like ?`
+     * against the JSON message expression (json_extract / json_unquote / ->>) with a
+     * parameterised binding, so an old log that matches the text is found anywhere in
+     * the range — not just within a recent batch.
      *
      * @return Collection<int, \stdClass>
      */
     public function recentLogs(int $projectId, ?string $level, int $limit = 100, ?string $range = null, ?string $search = null): Collection
     {
         $search = $search !== null ? trim($search) : '';
-        $scan = $level !== null || $search !== '';
 
-        $events = $this->recentEvents($projectId, 'log', $scan ? 500 : $limit, $range);
+        $query = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('type', 'log');
+
+        if ($range !== null) {
+            $query->where('occurred_at', '>=', $this->rangeStart($range));
+        }
 
         if ($level !== null) {
-            $events = $events->filter(fn (\stdClass $e): bool => (is_array($e->payload) ? ($e->payload['level'] ?? null) : null) === $level);
+            $query->where('payload->level', $level);
         }
 
         if ($search !== '') {
-            $needle = mb_strtolower($search);
-            $events = $events->filter(fn (\stdClass $e): bool => str_contains(
-                mb_strtolower(Cast::str(is_array($e->payload) ? ($e->payload['message'] ?? '') : '')),
-                $needle
-            ));
+            $expr = match ($this->db->getDriverName()) {
+                'pgsql' => "payload->>'message'",
+                'mysql', 'mariadb' => "json_unquote(json_extract(payload, '$.message'))",
+                default => "json_extract(payload, '$.message')",
+            };
+            $query->whereRaw('lower('.$expr.') like ?', ['%'.mb_strtolower($search).'%']);
         }
 
-        return $scan ? $events->take($limit)->values() : $events;
+        return $query->orderByDesc('id')
+            ->limit($limit)
+            ->get(['id', 'trace_id', 'span_id', 'occurred_at', 'duration_us', 'payload', 'release'])
+            ->map(function (\stdClass $e): \stdClass {
+                $e->payload = Json::decode($e->payload ?? null);
+
+                return $e;
+            })
+            ->values();
     }
 
     /**

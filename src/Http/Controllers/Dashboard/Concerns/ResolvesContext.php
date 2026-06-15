@@ -3,19 +3,36 @@
 namespace VictorStochero\Warden\Http\Controllers\Dashboard\Concerns;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Support\Cast;
 
 trait ResolvesContext
 {
     /** @var list<string> */
-    protected array $ranges = ['15m', '1h', '6h', '24h', '7d'];
+    protected array $ranges = ['15m', '1h', '6h', '24h', '7d', '30d'];
 
+    /**
+     * Resolve the active time range, persisting the viewer's choice across
+     * sections. Precedence: a valid `?range` from the query (which the user just
+     * picked) > the `warden_range` cookie (their last choice) > the `1h` default.
+     * The cookie is only (re)written when the range arrives explicitly in the
+     * query, so a plain page load never churns it.
+     */
     protected function range(Request $request): string
     {
-        $range = Cast::str($request->query('range', '1h'), '1h');
+        $queried = Cast::str($request->query('range', ''));
 
-        return in_array($range, $this->ranges, true) ? $range : '1h';
+        if ($queried !== '' && in_array($queried, $this->ranges, true)) {
+            // One year, in minutes — same lax UI-preference cookie as the locale.
+            Cookie::queue('warden_range', $queried, 525600);
+
+            return $queried;
+        }
+
+        $cookie = Cast::str($request->cookie('warden_range'));
+
+        return in_array($cookie, $this->ranges, true) ? $cookie : '1h';
     }
 
     /**
