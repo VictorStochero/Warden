@@ -23,7 +23,7 @@ class IssueController
             ? Cast::str($request->query('status'))
             : 'open';
 
-        return ViewFactory::make('warden::issues.index', array_merge($this->chrome(), [
+        return ViewFactory::make('warden::issues.index', array_merge($this->chrome(), $this->related($repo, $model->id), [
             'project' => $model,
             'status' => $status,
             'issues' => $repo->issues($model->id, ['status' => $status, 'limit' => 200]),
@@ -37,7 +37,9 @@ class IssueController
 
         abort_if($row === null, 404);
 
-        return ViewFactory::make('warden::issues.show', array_merge($this->chrome(), [
+        $traceId = isset($row->last_trace_id) ? (Cast::str($row->last_trace_id) ?: null) : null;
+
+        return ViewFactory::make('warden::issues.show', array_merge($this->chrome(), $this->related($repo, $model->id, $traceId), [
             'project' => $model,
             'issue' => $row,
         ]));

@@ -589,6 +589,87 @@ class DashboardRepository
     }
 
     /**
+     * Context for the "Related" side panel. With a `$traceId` it summarises that
+     * trace (entry point, a count per child type, and the grouped issues its
+     * exception spans belong to). Without one it falls back to the project's
+     * recent traces / open issues / incidents. All raw reads stay in this read
+     * layer (RNF-6); the view just renders the shaped result.
+     *
+     * @return array{
+     *   trace_id: string|null,
+     *   entry: array{type:string,label:string}|null,
+     *   counts: array<string,int>,
+     *   issues: list<array{class:string, id:int|null}>,
+     *   recent_traces: Collection<int,TraceRow>,
+     *   open_issues: Collection<int,\stdClass>,
+     *   incidents: Collection<int,\stdClass>,
+     * }
+     */
+    public function relatedContext(int $projectId, ?string $traceId = null): array
+    {
+        if ($traceId === null) {
+            return [
+                'trace_id' => null,
+                'entry' => null,
+                'counts' => [],
+                'issues' => [],
+                'recent_traces' => $this->recentTraces($projectId, 8),
+                'open_issues' => $this->recentIssues($projectId, 6),
+                'incidents' => $this->incidents($projectId, 6),
+            ];
+        }
+
+        $spans = $this->trace($projectId, $traceId);
+
+        $entry = null;
+        $counts = [];
+        $issues = [];
+        $seenFingerprints = [];
+
+        foreach ($spans as $span) {
+            $type = $span['type'];
+            $payload = $span['payload'];
+
+            // First entry-point span wins as the trace's heading; it is NOT
+            // counted in `counts` (mirrors request/command/schedule which are not
+            // in the counts list at all — keeps entry-point spans out of child counts).
+            if ($entry === null && in_array($type, ['request', 'command', 'schedule', 'job'], true)) {
+                $entry = ['type' => $type, 'label' => $this->traceLabel($type, $payload)];
+
+                continue;
+            }
+
+            if (in_array($type, ['query', 'http', 'cache', 'log', 'exception', 'job'], true)) {
+                $counts[$type] = ($counts[$type] ?? 0) + 1;
+            }
+
+            if ($type === 'exception') {
+                $fingerprint = Fingerprint::forPayload($payload);
+                if (isset($seenFingerprints[$fingerprint])) {
+                    continue;
+                }
+                $seenFingerprints[$fingerprint] = true;
+
+                $issue = $this->issueByFingerprint($projectId, $fingerprint);
+                $issues[] = [
+                    'class' => Cast::str($payload['class'] ?? null, 'Exception'),
+                    'id' => $issue !== null ? Cast::int($issue->id) : null,
+                ];
+            }
+        }
+
+        return [
+            'trace_id' => $traceId,
+            'entry' => $entry,
+            'counts' => $counts,
+            'issues' => $issues,
+            'recent_traces' => new Collection,
+            'open_issues' => new Collection,
+            'incidents' => new Collection,
+        ];
+    }
+
+    /**
      * The dashboard audit trail (§5.7), newest first.
      *
      * @return Collection<int, \stdClass>

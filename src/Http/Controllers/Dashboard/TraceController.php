@@ -25,7 +25,7 @@ class TraceController
 
         [$traces, $filter] = $this->filteredTraces($request, $repo, $model->id);
 
-        return ViewFactory::make('warden::traces.index', array_merge($this->chrome(), [
+        return ViewFactory::make('warden::traces.index', array_merge($this->chrome(), $this->related($repo, $model->id), [
             'project' => $model,
             'traces' => $traces,
             'filter' => $filter,
@@ -73,7 +73,7 @@ class TraceController
 
         abort_if($spans->isEmpty(), 404);
 
-        return ViewFactory::make('warden::traces.show', array_merge($this->chrome(), [
+        return ViewFactory::make('warden::traces.show', array_merge($this->chrome(), $this->related($repo, $model->id, $traceId), [
             'project' => $model,
             'trace_id' => $traceId,
             'spans' => $spans,

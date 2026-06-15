@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Http\Controllers\Dashboard\Concerns;
 
 use Illuminate\Http\Request;
+use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Support\Cast;
 
 trait ResolvesContext
@@ -34,5 +35,16 @@ trait ResolvesContext
             'ranges' => $this->ranges,
             'refresh' => Cast::int(config('warden.dashboard.refresh', 15), 15),
         ];
+    }
+
+    /**
+     * View data for the "Related" side panel — a trace summary when `$traceId`
+     * is given, the project-context fallback otherwise.
+     *
+     * @return array<string, mixed>
+     */
+    protected function related(DashboardRepository $repo, int $projectId, ?string $traceId = null): array
+    {
+        return ['related' => $repo->relatedContext($projectId, $traceId)];
     }
 }

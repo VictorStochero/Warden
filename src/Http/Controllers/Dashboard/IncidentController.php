@@ -18,7 +18,7 @@ class IncidentController
     {
         $model = $repo->project($project);
 
-        return ViewFactory::make('warden::incidents.index', array_merge($this->chrome(), [
+        return ViewFactory::make('warden::incidents.index', array_merge($this->chrome(), $this->related($repo, $model->id), [
             'project' => $model,
             'incidents' => $repo->incidents($model->id, 100),
         ]));
@@ -38,10 +38,10 @@ class IncidentController
         $issueId = $row->meta['issue_id'] ?? null;
         if ($issueId !== null) {
             $issue = $repo->issue($model->id, Cast::int($issueId));
-            $errorTraceId = $issue?->last_trace_id ?: null;
+            $errorTraceId = $issue !== null ? (Cast::str($issue->last_trace_id ?? null) ?: null) : null;
         }
 
-        return ViewFactory::make('warden::incidents.show', array_merge($this->chrome(), [
+        return ViewFactory::make('warden::incidents.show', array_merge($this->chrome(), $this->related($repo, $model->id, $errorTraceId), [
             'project' => $model,
             'incident' => $row,
             'errorTraceId' => $errorTraceId,

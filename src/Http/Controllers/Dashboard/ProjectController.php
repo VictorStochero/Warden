@@ -102,7 +102,7 @@ class ProjectController
             ],
         };
 
-        return ViewFactory::make('warden::project', array_merge($this->chrome(), $data, [
+        return ViewFactory::make('warden::project', array_merge($this->chrome(), $this->related($repo, $id), $data, [
             'project' => $model,
             'range' => $range,
         ]));
