@@ -114,6 +114,18 @@ return [
         'min_severity_inherit' => 'Inherit global',
     ],
 
+    'audit' => [
+        'title' => 'Audit log',
+        'heading' => 'Audit log',
+        'subheading' => 'Who did what in the dashboard',
+        'empty' => 'No actions recorded yet.',
+        'col_when' => 'When',
+        'col_actor' => 'Actor',
+        'col_action' => 'Action',
+        'col_target' => 'Target',
+        'col_ip' => 'IP',
+    ],
+
     'maintenance' => [
         'title' => 'Maintenance',
         'heading' => 'Maintenance',

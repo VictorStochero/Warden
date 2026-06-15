@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use VictorStochero\Warden\Http\Controllers\Dashboard\AuditController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\EventController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\IncidentController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\IssueController;
@@ -11,6 +12,7 @@ use VictorStochero\Warden\Http\Controllers\Dashboard\ProjectController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\SettingsController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\StreamController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\TraceController;
+use VictorStochero\Warden\Http\Middleware\AuditManageActions;
 use VictorStochero\Warden\Http\Middleware\Authorize;
 
 /*
@@ -43,7 +45,9 @@ Route::get('/projects/{project}/traces/{traceId}', [TraceController::class, 'sho
 Route::get('/projects/{project}/incidents/list', [IncidentController::class, 'index'])->name('warden.incidents');
 Route::get('/projects/{project}/incidents/{incident}', [IncidentController::class, 'show'])->name('warden.incident');
 
-Route::middleware(Authorize::class.':manageWarden')->group(function () {
+Route::middleware([Authorize::class.':manageWarden', AuditManageActions::class])->group(function () {
+    Route::get('/admin/audit', [AuditController::class, 'index'])->name('warden.admin.audit');
+
     Route::get('/admin/projects', [ProjectAdminController::class, 'index'])->name('warden.admin.projects');
     Route::post('/admin/projects', [ProjectAdminController::class, 'store'])->name('warden.admin.projects.store');
     Route::get('/admin/projects/{project}/edit', [ProjectAdminController::class, 'edit'])->name('warden.admin.projects.edit');

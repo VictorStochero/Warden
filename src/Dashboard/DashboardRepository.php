@@ -419,6 +419,19 @@ class DashboardRepository
     }
 
     /**
+     * The dashboard audit trail (§5.7), newest first.
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function auditLog(int $limit = 200): Collection
+    {
+        return $this->db->table('wdn_audit_log')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
      * The apps a trace touches (§29). Once a trace is propagated across the
      * fleet the same trace_id lands under several projects; this lists them so
      * the viewer can stitch a cross-app waterfall.

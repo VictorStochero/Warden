@@ -31,6 +31,7 @@ class WardenTables
             'wdn_tags',
             'wdn_project_tag',
             'wdn_alert_settings',
+            'wdn_audit_log',
         ];
     }
 }

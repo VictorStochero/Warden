@@ -51,6 +51,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Log search.** The Logs section gains a free-text search across log messages (`?q=`),
   composable with the existing level filter — so you can find a specific line, not just a level.
+- **Audit log.** Every successful manage action (project create/rotate/delete, issue transitions,
+  maintenance, settings, incident resolve, …) is recorded — actor, action, target, method, IP —
+  by a single middleware on the manage routes, and surfaced on a new manage-gated **Audit log**
+  page. Accountability for a multi-operator parent, captured structurally instead of per
+  controller.
 - **Configurable threshold alert rules.** A `warden.alerts.rules` list lets you alert on KPIs —
   e.g. `error_rate > 5` over `1h`, `p95 > 500`, `failed_jobs > 10` — each opening/resolving a
   `rule:<name>` incident through the same channel pipeline (e-mail, Slack, Discord, webhook). The

@@ -114,6 +114,18 @@ return [
         'min_severity_inherit' => 'Heredar global',
     ],
 
+    'audit' => [
+        'title' => 'Registro de auditoría',
+        'heading' => 'Registro de auditoría',
+        'subheading' => 'Quién hizo qué en el panel',
+        'empty' => 'Aún no hay acciones registradas.',
+        'col_when' => 'Cuándo',
+        'col_actor' => 'Actor',
+        'col_action' => 'Acción',
+        'col_target' => 'Objetivo',
+        'col_ip' => 'IP',
+    ],
+
     'maintenance' => [
         'title' => 'Mantenimiento',
         'heading' => 'Mantenimiento',
