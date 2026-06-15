@@ -19,6 +19,9 @@ class IssueWorkflow
         $issue->forceFill([
             'status' => 'resolved',
             'resolved_at' => Carbon::now(),
+            // Snapshot the release it was resolved on, so a later recurrence on a
+            // newer release is recognised as a regression (§5.6).
+            'resolved_release' => $issue->last_release,
         ])->save();
     }
 
@@ -32,6 +35,7 @@ class IssueWorkflow
         $issue->forceFill([
             'status' => 'open',
             'resolved_at' => null,
+            'resolved_release' => null,
             'snoozed_until' => null,
         ])->save();
     }

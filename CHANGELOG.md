@@ -36,6 +36,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `wdn_events.release` column. The dashboard surfaces it: the event detail shows the release, and
   the **Errors** section gains a **"since this deploy"** filter (release chips) that slices the
   recent 5xx list by release.
+- **Deploy-aware regression detection.** A resolved issue that recurs now reopens only when it
+  returns on a **newer release** than the one it was resolved on — a genuine post-deploy
+  regression — while the same fault on the already-triaged deploy stays resolved (no alert churn).
+  With no release information it falls back to the historical reopen-on-recurrence behaviour.
 
 ### Changed
 

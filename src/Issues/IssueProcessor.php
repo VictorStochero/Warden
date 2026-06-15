@@ -44,7 +44,7 @@ class IssueProcessor
                     return;
                 }
 
-                /** @var array<string, array{class:string,message:string,stack:array<array-key,mixed>|null,count:int,users:array<string,bool>,first:string|null,last:string|null,last_trace:string|null}> $groups */
+                /** @var array<string, array{class:string,message:string,stack:array<array-key,mixed>|null,count:int,users:array<string,bool>,first:string|null,last:string|null,last_trace:string|null,last_release:string|null}> $groups */
                 $groups = [];
                 $maxId = $from;
 
@@ -60,13 +60,16 @@ class IssueProcessor
                     $groups[$fp] ??= [
                         'class' => $class, 'message' => $message, 'stack' => $stack,
                         'count' => 0, 'users' => [], 'first' => null, 'last' => null,
-                        'last_trace' => null,
+                        'last_trace' => null, 'last_release' => null,
                     ];
                     $groups[$fp]['count']++;
                     $occurred = Cast::str($event->occurred_at);
                     $groups[$fp]['first'] = $groups[$fp]['first'] === null ? $occurred : min($groups[$fp]['first'], $occurred);
                     $groups[$fp]['last'] = $groups[$fp]['last'] === null ? $occurred : max($groups[$fp]['last'], $occurred);
                     $groups[$fp]['last_trace'] = Cast::str($event->trace_id ?? null) ?: $groups[$fp]['last_trace'];
+                    // Events arrive ordered by id, so the last non-empty release
+                    // wins — the release of the most recent occurrence.
+                    $groups[$fp]['last_release'] = Cast::str($event->release ?? null) ?: $groups[$fp]['last_release'];
                     if (($payload['user_id'] ?? null) !== null) {
                         $groups[$fp]['users'][Cast::str($payload['user_id'])] = true;
                     }
@@ -82,7 +85,7 @@ class IssueProcessor
     }
 
     /**
-     * @param  array{class:string,message:string,stack:array<array-key,mixed>|null,count:int,users:array<string,bool>,first:string|null,last:string|null,last_trace:string|null}  $group
+     * @param  array{class:string,message:string,stack:array<array-key,mixed>|null,count:int,users:array<string,bool>,first:string|null,last:string|null,last_trace:string|null,last_release:string|null}  $group
      */
     protected function upsert(int $projectId, string $fingerprint, array $group): void
     {
@@ -108,6 +111,7 @@ class IssueProcessor
                     'first_seen_at' => $group['first'],
                     'last_seen_at' => $group['last'],
                     'status' => 'open',
+                    'last_release' => $group['last_release'],
                     'stack' => Json::encode($group['stack']),
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -121,10 +125,33 @@ class IssueProcessor
                 'users_affected' => Cast::int($existing->users_affected) + $newUsers,
                 'last_trace_id' => $group['last_trace'] ?? $existing->last_trace_id,
                 'last_seen_at' => max(Cast::str($existing->last_seen_at), Cast::str($group['last'])),
-                // Recurrence reopens a resolved issue; ignored stays ignored.
-                'status' => $existing->status === 'resolved' ? 'open' : $existing->status,
+                'last_release' => $group['last_release'] ?? $existing->last_release,
+                // Deploy-aware recurrence (§5.6): a resolved issue reopens only when
+                // it returns on a release other than the one it was resolved on (a
+                // real regression). No release info → fall back to reopen-on-recurrence.
+                // Ignored stays ignored.
+                'status' => $this->recurrenceStatus($existing, $group['last_release']),
                 'updated_at' => $now,
             ]);
         });
+    }
+
+    /**
+     * Status of a recurring issue. A resolved issue reopens only on a release
+     * other than the one it was resolved on (a regression after a deploy); with
+     * no release info it falls back to the historical reopen-on-recurrence. An
+     * open issue stays open and an ignored one stays ignored.
+     */
+    protected function recurrenceStatus(\stdClass $existing, ?string $newRelease): string
+    {
+        $status = Cast::str($existing->status);
+
+        if ($status !== 'resolved') {
+            return $status;
+        }
+
+        $resolvedRelease = $existing->resolved_release !== null ? Cast::str($existing->resolved_release) : null;
+
+        return ($resolvedRelease === null || $newRelease !== $resolvedRelease) ? 'open' : 'resolved';
     }
 }

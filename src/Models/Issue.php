@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  * @property string $status
  * @property string|null $priority
  * @property string|null $assignee
+ * @property string|null $last_release
+ * @property string|null $resolved_release
  * @property Carbon|null $resolved_at
  * @property Carbon|null $snoozed_until
  * @property array<int, mixed>|null $stack

@@ -42,9 +42,12 @@ Esse é o nosso wedge. **Toda feature abaixo serve a essa tese** e respeita a ba
   (zero-dep), config-driven por URL, com piso de severidade, best-effort (nunca quebram o
   evaluate) e suprimidos contra auto-observação.
 - **#33 (parcial) — Ciclo de vida de issue:** resolver / ignorar / reabrir / **atribuir** /
-  **snooze** pela UI (gated por `manageWarden`), reabertura automática de resolvida que
-  recorre, e snooze que silencia o alerta de verdade. _Abertos:_ comentários por issue,
-  usuários impactados e Apdex por rota.
+  **snooze** pela UI (gated por `manageWarden`), e snooze que silencia o alerta de verdade.
+  _Abertos:_ comentários por issue, usuários impactados e Apdex por rota.
+- **#32 (parcial) — Release/deploy tracking:** child carimba a release em cada evento
+  (`WARDEN_RELEASE`/`APP_VERSION`); badge no evento + filtro "erros desde o deploy"; e
+  **detecção de regressão deploy-aware** — issue resolvida só reabre se recorre numa release
+  nova. _Abertos:_ marcador de deploy nas timelines, integração Envoyer/Forge.
 
 - **#16 — Multilíngue (pt-BR, es, en):** dashboard traduzido nos três idiomas via arquivos
   `lang/` do Laravel + `__()` nas views, namespace de tradução `warden::` no provider,
@@ -102,12 +105,12 @@ Reduzir o tempo até o primeiro "wow":
 - **Demo público read-only** (instância nossa, dados fictícios) linkada no README — "ver antes
   de instalar" multiplica conversão.
 
-#### #32 — Release / deploy tracking
-O child envia a versão/SHA do deploy; o dashboard mostra **"erros desde este deploy"** e detecta
-regressão (issue resolvida que reaparece após um deploy → reabre + alerta).
-- Captura automática da versão (git SHA / tag / `APP_VERSION`).
+#### #32 — Release / deploy tracking — 🟡 PARCIAL (dev-main)
+Entregue: o child carimba a release (`WARDEN_RELEASE`/`APP_VERSION`) em cada evento; o dashboard
+mostra **"erros desde este deploy"** (filtro por release) e detecta **regressão deploy-aware**
+(issue resolvida só reabre se reaparece numa release nova). _Abertos:_
 - Marcador de deploy nas timelines (erros, throughput, p95).
-- Fala a língua do público Forge/Envoyer.
+- Integração com Envoyer/Forge (webhook "deploy aconteceu").
 
 ### Depth — sinaliza que é projeto sério, não brinquedo
 
