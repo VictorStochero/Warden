@@ -55,7 +55,7 @@ class IssueProcessor
                     $class = Cast::str($payload['class'] ?? null, 'Exception');
                     $message = Cast::str($payload['message'] ?? null);
                     $stack = is_array($payload['stack'] ?? null) ? $payload['stack'] : null;
-                    $fp = Fingerprint::for($class, $message, $stack);
+                    $fp = Fingerprint::forPayload($payload);
 
                     $groups[$fp] ??= [
                         'class' => $class, 'message' => $message, 'stack' => $stack,

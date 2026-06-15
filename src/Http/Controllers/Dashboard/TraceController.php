@@ -8,9 +8,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\View as ViewFactory;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
+use VictorStochero\Warden\Issues\Fingerprint;
+use VictorStochero\Warden\Support\Cast;
 
 /**
  * @phpstan-import-type TraceRow from DashboardRepository
+ * @phpstan-import-type TraceSpan from \VictorStochero\Warden\Contracts\WardenRepository
  */
 class TraceController
 {
@@ -76,6 +79,47 @@ class TraceController
             'spans' => $spans,
             'crossApp' => $crossApp,
             'apps' => $apps,
+            'issueLinks' => $this->issueLinks($repo, $model->id, $spans),
         ]));
+    }
+
+    /**
+     * Map exception spans to their grouped issue id, keyed by span identifier so
+     * the view can link a single span to its issue without touching the repo.
+     * The fingerprint is derived exactly as `IssueProcessor` does, so it lines up
+     * with `wdn_issues.fingerprint`. The read happens here (read layer), one
+     * lookup per distinct fingerprint in the waterfall.
+     *
+     * @param  Collection<int, TraceSpan>|Collection<int, array<string, mixed>>  $spans
+     * @return array<string, int> span key (span_id, else span index) → issue id
+     */
+    private function issueLinks(DashboardRepository $repo, int $projectId, Collection $spans): array
+    {
+        $links = [];
+        $resolved = [];
+
+        foreach ($spans as $index => $span) {
+            if (($span['type'] ?? null) !== 'exception') {
+                continue;
+            }
+
+            $payload = Cast::arr($span['payload'] ?? null);
+            $fingerprint = Fingerprint::forPayload($payload);
+
+            if (! array_key_exists($fingerprint, $resolved)) {
+                $issue = $repo->issueByFingerprint($projectId, $fingerprint);
+                $resolved[$fingerprint] = $issue !== null ? Cast::int($issue->id) : null;
+            }
+
+            $issueId = $resolved[$fingerprint];
+            if ($issueId === null) {
+                continue;
+            }
+
+            $key = Cast::str($span['span_id'] ?? null) ?: 'i'.$index;
+            $links[$key] = $issueId;
+        }
+
+        return $links;
     }
 }

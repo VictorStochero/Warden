@@ -66,7 +66,17 @@
                         @if(!empty($e['project_name']))
                             <span class="shrink-0 rounded bg-brand-500/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-300" title="{{ $e['project_name'] }}">{{ $e['project_name'] }}</span>
                         @endif
-                        <span class="truncate font-mono text-[12px] {{ $e['type'] === 'exception' ? 'text-rose-400' : 'text-slate-300' }}">{{ trim($label) }}</span>
+                        @php
+                            // A chave deve casar com o mapa $issueLinks montado em TraceController::issueLinks():
+                            // span_id quando disponível, senão 'i'.$loop->index — mesma coleção, mesma ordem.
+                            $issueKey = ($e['span_id'] ?? null) ?: 'i'.$loop->index;
+                            $issueId = $e['type'] === 'exception' ? (($issueLinks ?? [])[$issueKey] ?? null) : null;
+                        @endphp
+                        @if($issueId)
+                            <a href="{{ route('warden.issue', ['project' => $project->slug, 'issue' => $issueId]) }}" class="truncate font-mono text-[12px] text-rose-400 underline decoration-rose-400/40 underline-offset-2 transition hover:text-rose-300" title="{{ __('warden::traces.detail.view_issue') }}">{{ trim($label) }}</a>
+                        @else
+                            <span class="truncate font-mono text-[12px] {{ $e['type'] === 'exception' ? 'text-rose-400' : 'text-slate-300' }}">{{ trim($label) }}</span>
+                        @endif
                         @if(!empty($e['n_plus_one']))
                             <span class="shrink-0 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400" title="{{ __('warden::traces.detail.n_plus_one_title', ['count' => $e['repeat_count'] ?? '']) }}">{{ __('warden::traces.detail.n_plus_one_label', ['count' => $e['repeat_count'] ?? '']) }}</span>
                         @endif

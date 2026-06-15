@@ -8,6 +8,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View as ViewFactory;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
+use VictorStochero\Warden\Support\Cast;
 
 class IncidentController
 {
@@ -30,9 +31,20 @@ class IncidentController
 
         abort_if($row === null, 404);
 
+        // For issue-backed incidents, surface a direct jump to the trace of the
+        // last occurrence so the operator goes incident → waterfall in one click.
+        // Resolved here (read layer); the view stays query-free.
+        $errorTraceId = null;
+        $issueId = $row->meta['issue_id'] ?? null;
+        if ($issueId !== null) {
+            $issue = $repo->issue($model->id, Cast::int($issueId));
+            $errorTraceId = $issue?->last_trace_id ?: null;
+        }
+
         return ViewFactory::make('warden::incidents.show', array_merge($this->chrome(), [
             'project' => $model,
             'incident' => $row,
+            'errorTraceId' => $errorTraceId,
         ]));
     }
 

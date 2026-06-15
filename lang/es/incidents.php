@@ -21,6 +21,7 @@ return [
         'dt_last_alerted' => 'Última alerta',
         'never' => 'nunca',
         'view_related_issue' => 'Ver la issue relacionada →',
+        'view_error_trace' => 'Ver el trace del error →',
         'heartbeat_description' => 'Monitorea el heartbeat :name — una tarea programada que dejó de reportar a tiempo.',
         'view_scheduled_tasks' => 'Ver tareas programadas →',
         'details_label' => 'Detalles',

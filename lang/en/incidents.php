@@ -21,6 +21,7 @@ return [
         'dt_last_alerted' => 'Last alerted',
         'never' => 'never',
         'view_related_issue' => 'View the related issue →',
+        'view_error_trace' => 'View the error trace →',
         'heartbeat_description' => 'Tracks the heartbeat :name — a scheduled task that stopped reporting on time.',
         'view_scheduled_tasks' => 'View scheduled tasks →',
         'details_label' => 'Details',

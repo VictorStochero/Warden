@@ -62,10 +62,15 @@
         </dl>
 
         @if($isIssue && $issueId)
-            <div class="mt-6 border-t border-ink-700/70 pt-4">
+            <div class="mt-6 flex flex-wrap items-center gap-4 border-t border-ink-700/70 pt-4">
                 <a href="{{ route('warden.issue', [$project->slug, $issueId]) }}" class="inline-flex items-center gap-1.5 text-sm text-brand-400 transition hover:text-brand-300">
                     {{ __('warden::incidents.show.view_related_issue') }}
                 </a>
+                @if(!empty($errorTraceId))
+                    <a href="{{ route('warden.trace', ['project' => $project->slug, 'traceId' => $errorTraceId]) }}" class="inline-flex items-center gap-1.5 text-sm text-brand-400 transition hover:text-brand-300">
+                        {{ __('warden::incidents.show.view_error_trace') }}
+                    </a>
+                @endif
             </div>
         @elseif($isHeartbeat)
             <div class="mt-6 border-t border-ink-700/70 pt-4 text-sm text-slate-400">

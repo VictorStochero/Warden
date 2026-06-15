@@ -754,6 +754,20 @@ class DashboardRepository
         return $issue;
     }
 
+    /**
+     * The grouped issue for an exception fingerprint, or null when the
+     * aggregation pipeline has not yet produced one. Used to drill from an
+     * exception span in a trace waterfall to its issue; only the id and
+     * `last_trace_id` are needed by callers, so the lean projection is enough.
+     */
+    public function issueByFingerprint(int $projectId, string $fingerprint): ?\stdClass
+    {
+        return $this->db->table('wdn_issues')
+            ->where('project_id', $projectId)
+            ->where('fingerprint', $fingerprint)
+            ->first(['id', 'last_trace_id']);
+    }
+
     /** @return Collection<int, \stdClass> */
     public function incidents(int $projectId, int $limit = 20): Collection
     {

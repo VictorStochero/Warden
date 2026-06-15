@@ -12,6 +12,24 @@ use VictorStochero\Warden\Support\Cast;
  */
 class Fingerprint
 {
+    /**
+     * Derive a fingerprint directly from a raw exception event payload array,
+     * reading the same keys (`class`, `message`, `stack`) that IssueProcessor
+     * and TraceController both use, so the three callers stay in sync.
+     *
+     * @param  array<array-key, mixed>  $payload
+     */
+    public static function forPayload(array $payload): string
+    {
+        $stack = is_array($payload['stack'] ?? null) ? $payload['stack'] : null;
+
+        return self::for(
+            Cast::str($payload['class'] ?? null, 'Exception'),
+            Cast::str($payload['message'] ?? null),
+            $stack,
+        );
+    }
+
     /** @param array<array-key, mixed>|null $stack */
     public static function for(string $class, string $message, ?array $stack): string
     {
