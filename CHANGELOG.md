@@ -49,6 +49,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   regression — while the same fault on the already-triaged deploy stays resolved (no alert churn).
   With no release information it falls back to the historical reopen-on-recurrence behaviour.
 
+- **Custom instrumentation API.** `Warden::measure('name', fn () => …, $context)` times a block of
+  host code as a custom span and records a `custom` event with its duration, returning the
+  callback's value — turning automatic capture into an extensible platform. Safe when capture is
+  off: the callback still runs untouched.
 - **Log search.** The Logs section gains a free-text search across log messages (`?q=`),
   composable with the existing level filter — so you can find a specific line, not just a level.
 - **Audit log.** Every successful manage action (project create/rotate/delete, issue transitions,

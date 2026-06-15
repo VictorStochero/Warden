@@ -178,6 +178,7 @@ return [
                 'http' => true,
                 'user' => true,
                 'host' => true,
+                'custom' => true,
             ],
         ],
 

@@ -215,6 +215,41 @@ class Warden
         $this->trace?->pop();
     }
 
+    /**
+     * Measure a block of host code as a custom span (§35) — the public hook that
+     * turns automatic capture into an extensible platform. Opens a span, runs the
+     * callback, records a `custom` event with the elapsed time, and returns the
+     * callback's value. When not capturing (or trace-less) the callback still
+     * runs untouched — instrumentation must never change behaviour (RNF-2).
+     *
+     * @template T
+     *
+     * @param  Closure():T  $callback
+     * @param  array<string, mixed>  $context
+     * @return T
+     */
+    public function measure(string $name, Closure $callback, array $context = []): mixed
+    {
+        if (! $this->capturing() || $this->trace === null) {
+            return $callback();
+        }
+
+        $span = $this->startSpan('custom', $name);
+        $start = microtime(true);
+
+        try {
+            return $callback();
+        } finally {
+            $this->endSpan();
+            $this->record(
+                'custom',
+                ['name' => $name] + $context,
+                durationUs: (int) round((microtime(true) - $start) * 1_000_000),
+                spanId: $span?->id,
+            );
+        }
+    }
+
     // ------------------------------------------------------------ record
 
     /**

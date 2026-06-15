@@ -125,10 +125,10 @@ _"failed_jobs > N"_ — abrindo/resolvendo incidente `rule:<name>` pelos canais 
 **por config OU pela página de Settings** (tabela `wdn_alert_rules`). _Abertos:_ anomalia sobre
 baseline móvel, regra por rota.
 
-#### #35 — API de instrumentação custom + busca de logs
-- Facade para instrumentação pelo host: `Warden::measure()`, `Warden::increment()`, spans e
-  métricas de negócio. Transforma "captura automática" em **plataforma extensível**.
-- Busca full-text de logs/eventos (hoje só filtra por nível).
+#### #35 — API de instrumentação custom + busca de logs — 🟡 PARCIAL (dev-main)
+Entregue: `Warden::measure(name, callback, context)` mede um bloco do host como span `custom`
+(via facade), e a busca textual de logs na seção Logs. _Abertos:_ `Warden::increment()`/contadores
+de negócio e busca full-text sobre todos os tipos de evento.
 
 #### #36 — Seção Database dedicada
 Fingerprint de queries (SQL normalizado), tempo total × nº de chamadas, N+1 agregado por toda a
