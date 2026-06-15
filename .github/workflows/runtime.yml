@@ -1,0 +1,114 @@
+name: runtime
+
+# Testbench drives the event dispatcher, not a real long-lived runtime. These
+# jobs exercise the two environments we can't dogfood locally — a real Octane
+# worker and a real queue worker — and assert the load-bearing invariant: the
+# host never 500s, worker memory stays flat, and events are captured per
+# entry-point without leaking across the shared process (RNF-2 / §18.2).
+
+on:
+  push:
+    branches: [main, prerelease]
+  pull_request:
+
+jobs:
+  octane:
+    name: Octane (RoadRunner) smoke under load
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_sqlite, sockets
+          coverage: none
+
+      - name: Scaffold a host app with Warden as a self-monitoring parent
+        run: |
+          set -euo pipefail
+          composer create-project laravel/laravel host --no-interaction --prefer-dist
+          cd host
+          # Wire the package under test by path so the app uses this checkout.
+          composer config minimum-stability dev
+          composer config repositories.warden path ../
+          composer require victorstochero/warden:* laravel/octane spiral/roadrunner-cli --no-interaction
+          php artisan octane:install --server=roadrunner --no-interaction
+          # Self-monitoring parent on sqlite: captures its own requests straight
+          # to the local DB, so one app proves the capture path end to end.
+          touch database/database.sqlite
+          {
+            echo "DB_CONNECTION=sqlite"
+            echo "DB_DATABASE=$(pwd)/database/database.sqlite"
+            echo "WARDEN_MODE=parent"
+            echo "WARDEN_ENABLED=true"
+          } >> .env
+          php artisan migrate --force
+          php artisan vendor:publish --tag=warden-migrations --force || true
+          php artisan migrate --force
+
+      - name: Add an instrumented probe route
+        run: |
+          cd host
+          cat >> routes/web.php <<'PHP'
+
+          Route::get('/_probe', function () {
+              // Touch the DB so the query recorder has something to capture.
+              \Illuminate\Support\Facades\DB::table('migrations')->count();
+
+              return response('ok', 200);
+          });
+          PHP
+
+      - name: Boot Octane and hammer the probe
+        run: |
+          set -euo pipefail
+          cd host
+          ./vendor/bin/rr get-binary || true
+          php artisan octane:start --server=roadrunner --workers=2 --port=8009 &
+          OCTANE_PID=$!
+          # Wait for the server to accept connections.
+          for i in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:8009/_probe" >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+
+          REQUESTS=2000
+          FAILS=0
+          for i in $(seq 1 $REQUESTS); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8009/_probe" || echo 000)
+            if [ "$code" != "200" ]; then FAILS=$((FAILS+1)); fi
+          done
+          echo "non-200 responses: $FAILS / $REQUESTS"
+
+          kill $OCTANE_PID 2>/dev/null || true
+
+          # The host must never 500 under load.
+          test "$FAILS" -eq 0
+
+      - name: Assert events were captured (capture path alive under Octane)
+        run: |
+          cd host
+          COUNT=$(php artisan tinker --execute='echo \DB::table("wdn_events")->count();')
+          echo "wdn_events rows: $COUNT"
+          # We fired thousands of requests; a self-monitoring parent must have
+          # persisted some of its own events. Zero means the path is dead.
+          test "$COUNT" -gt 0
+
+  worker:
+    name: Real queue worker drains per job
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_sqlite
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Queue boundary suite (real worker, no cross-job leak)
+        run: vendor/bin/phpunit --filter QueueBoundary
