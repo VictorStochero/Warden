@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  * @property string $status
  * @property string|null $priority
  * @property string|null $assignee
+ * @property Carbon|null $resolved_at
+ * @property Carbon|null $snoozed_until
  * @property array<int, mixed>|null $stack
  */
 class Issue extends WardenModel
@@ -32,5 +34,13 @@ class Issue extends WardenModel
         'users_affected' => 'integer',
         'first_seen_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'resolved_at' => 'datetime',
+        'snoozed_until' => 'datetime',
     ];
+
+    /** Whether the issue is currently muted from alerting by a snooze window. */
+    public function isSnoozed(): bool
+    {
+        return $this->snoozed_until !== null && $this->snoozed_until->isFuture();
+    }
 }

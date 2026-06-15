@@ -164,10 +164,13 @@ class Evaluator
 
     protected function evaluateIssues(int $projectId): void
     {
-        // Open issues without an open incident -> open + alert.
+        // Open issues without an open incident -> open + alert. A snoozed issue
+        // stays open but is muted until its window passes (§5.3), so it raises
+        // no fresh incident in the meantime.
         $open = Issue::query()
             ->where('project_id', $projectId)
             ->where('status', 'open')
+            ->where(fn ($q) => $q->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', Carbon::now()))
             ->get();
 
         foreach ($open as $issue) {

@@ -25,4 +25,19 @@ return [
         'view_last_trace' => 'View last trace',
         'stack_trace' => 'Stack trace',
     ],
+
+    'actions' => [
+        'resolve' => 'Resolve',
+        'ignore' => 'Ignore',
+        'reopen' => 'Reopen',
+        'snooze' => 'Snooze',
+        'assign' => 'Assign',
+        'assignee_placeholder' => 'Assignee…',
+        'snoozed_note' => 'Muted from alerting while snoozed.',
+        'status_resolved' => 'Issue resolved.',
+        'status_ignored' => 'Issue ignored.',
+        'status_reopened' => 'Issue reopened.',
+        'status_assigned' => 'Assignee updated.',
+        'status_snoozed' => 'Issue snoozed.',
+    ],
 ];

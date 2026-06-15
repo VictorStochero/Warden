@@ -59,4 +59,11 @@ Route::middleware(Authorize::class.':manageWarden')->group(function () {
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('warden.admin.settings.update');
 
     Route::post('/projects/{project}/incidents/{incident}/resolve', [IncidentController::class, 'resolve'])->name('warden.incident.resolve');
+
+    // Issue collaboration actions (§5.3).
+    Route::post('/projects/{project}/issues/{issue}/resolve', [IssueController::class, 'resolve'])->whereNumber('issue')->name('warden.issue.resolve');
+    Route::post('/projects/{project}/issues/{issue}/ignore', [IssueController::class, 'ignore'])->whereNumber('issue')->name('warden.issue.ignore');
+    Route::post('/projects/{project}/issues/{issue}/reopen', [IssueController::class, 'reopen'])->whereNumber('issue')->name('warden.issue.reopen');
+    Route::post('/projects/{project}/issues/{issue}/assign', [IssueController::class, 'assign'])->whereNumber('issue')->name('warden.issue.assign');
+    Route::post('/projects/{project}/issues/{issue}/snooze', [IssueController::class, 'snooze'])->whereNumber('issue')->name('warden.issue.snooze');
 });

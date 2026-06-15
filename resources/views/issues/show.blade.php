@@ -38,6 +38,48 @@
         @endif
     </div>
 
+    @can('manageWarden')
+        <div class="mt-4 rounded-2xl border border-ink-700/70 bg-ink-900 p-4">
+            @if(session('warden_status'))
+                <p class="mb-3 rounded-lg border border-emerald-700/40 bg-emerald-900/20 px-3 py-1.5 text-[13px] text-emerald-200">{{ session('warden_status') }}</p>
+            @endif
+
+            <div class="flex flex-wrap items-center gap-2">
+                @if($issue->status === 'open')
+                    <form method="POST" action="{{ route('warden.issue.resolve', [$project->slug, $issue->id]) }}">@csrf
+                        <button type="submit" class="rounded-lg bg-emerald-600/90 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-600">{{ __('warden::issues.actions.resolve') }}</button>
+                    </form>
+                    <form method="POST" action="{{ route('warden.issue.ignore', [$project->slug, $issue->id]) }}">@csrf
+                        <button type="submit" class="rounded-lg border border-ink-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white">{{ __('warden::issues.actions.ignore') }}</button>
+                    </form>
+                    <form method="POST" action="{{ route('warden.issue.snooze', [$project->slug, $issue->id]) }}" class="flex items-center gap-1">@csrf
+                        <select name="minutes" class="rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-xs text-slate-300">
+                            <option value="60">1h</option>
+                            <option value="360">6h</option>
+                            <option value="1440">24h</option>
+                            <option value="10080">7d</option>
+                        </select>
+                        <button type="submit" class="rounded-lg border border-ink-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white">{{ __('warden::issues.actions.snooze') }}</button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('warden.issue.reopen', [$project->slug, $issue->id]) }}">@csrf
+                        <button type="submit" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-500">{{ __('warden::issues.actions.reopen') }}</button>
+                    </form>
+                @endif
+
+                <form method="POST" action="{{ route('warden.issue.assign', [$project->slug, $issue->id]) }}" class="ml-auto flex items-center gap-1">@csrf
+                    <input type="text" name="assignee" value="{{ $issue->assignee }}" placeholder="{{ __('warden::issues.actions.assignee_placeholder') }}"
+                           class="w-44 rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-600">
+                    <button type="submit" class="rounded-lg border border-ink-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white">{{ __('warden::issues.actions.assign') }}</button>
+                </form>
+            </div>
+
+            @if($issue->snoozed_until && \Illuminate\Support\Carbon::parse($issue->snoozed_until)->isFuture())
+                <p class="mt-3 text-[12px] text-amber-300/80">{{ __('warden::issues.actions.snoozed_note') }}</p>
+            @endif
+        </div>
+    @endcan
+
     @if(!empty($issue->stack))
         <div class="mt-5 overflow-hidden rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10">
             <div class="border-b border-ink-700/70 px-5 py-3.5"><h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::issues.show.stack_trace') }}</h3></div>
