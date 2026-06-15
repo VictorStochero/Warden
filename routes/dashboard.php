@@ -19,6 +19,9 @@ use VictorStochero\Warden\Http\Middleware\Authorize;
  */
 Route::get('/', [OverviewController::class, 'index'])->name('warden.overview');
 
+// Real-time transport for the fleet overview (§5.4).
+Route::get('/stream', [StreamController::class, 'overview'])->name('warden.overview.stream');
+
 Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('warden.project');
 
 // Real-time transport (§5.4): cursor-based conditional GET, JSON deltas + 304.

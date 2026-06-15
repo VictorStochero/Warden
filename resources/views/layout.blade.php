@@ -16,7 +16,9 @@
     // (overview, admin) fall back to the simple meta refresh below.
     $streamUrl = ($activeProject ?? null)
         ? route('warden.project.stream', ['project' => $activeProject->slug, 'range' => $currentRange])
-        : null;
+        : (request()->routeIs('warden.overview')
+            ? route('warden.overview.stream', request()->only('group', 'tag'))
+            : null);
 
     $sub = [
         'overview' => [__('warden::nav.sections.overview'), 'warden.project', []],

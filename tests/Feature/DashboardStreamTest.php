@@ -111,12 +111,37 @@ class DashboardStreamTest extends TestCase
             ->assertDontSee('http-equiv', false); // and the blind meta-refresh is gone
     }
 
-    public function test_pages_without_a_stream_keep_the_meta_refresh_fallback(): void
+    public function test_overview_stream_returns_fleet_counters_with_an_etag(): void
+    {
+        $this->seedRequest();
+
+        $res = $this->get(route('warden.overview.stream'));
+
+        $res->assertOk()
+            ->assertJsonStructure(['cursor', 'open_issues', 'open_incidents', 'throughput', 'projects']);
+
+        $this->assertNotEmpty($res->headers->get('ETag'));
+    }
+
+    public function test_overview_stream_coalesces_unchanged_state_into_a_304(): void
+    {
+        $this->seedRequest();
+
+        $first = $this->get(route('warden.overview.stream'));
+        $etag = $first->headers->get('ETag');
+
+        $this->withHeaders(['If-None-Match' => $etag])
+            ->get(route('warden.overview.stream'))
+            ->assertStatus(304);
+    }
+
+    public function test_overview_page_polls_the_fleet_cursor(): void
     {
         $this->seedRequest();
 
         $this->get(route('warden.overview'))
             ->assertOk()
-            ->assertSee('http-equiv="refresh"', false);
+            ->assertSee('If-None-Match')          // fleet poller wired
+            ->assertDontSee('http-equiv', false); // no blind full-page reload
     }
 }

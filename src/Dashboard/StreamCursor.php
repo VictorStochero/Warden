@@ -54,6 +54,28 @@ class StreamCursor
     }
 
     /**
+     * A token for the fleet overview: global aggregate sums plus open issue /
+     * incident and project counts. Moves whenever any project's numbers, the
+     * fleet's open-issue load, or the project roster changes.
+     */
+    public function forOverview(string $scope = ''): string
+    {
+        $aggregates = $this->db->table('wdn_aggregates')
+            ->selectRaw('count(*) as c, coalesce(sum(count), 0) as sc, coalesce(sum(sum_duration), 0) as sd')
+            ->first();
+
+        return $this->hash([
+            $scope,
+            Cast::int($aggregates->c ?? 0),
+            Cast::int($aggregates->sc ?? 0),
+            Cast::int($aggregates->sd ?? 0),
+            $this->db->table('wdn_issues')->where('status', 'open')->count(),
+            $this->db->table('wdn_incidents')->where('status', 'open')->count(),
+            $this->db->table('wdn_projects')->count(),
+        ]);
+    }
+
+    /**
      * @param  array<int, int|string>  $parts
      */
     protected function hash(array $parts): string

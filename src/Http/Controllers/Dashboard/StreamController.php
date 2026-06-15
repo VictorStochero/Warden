@@ -8,6 +8,7 @@ use Illuminate\Http\Response;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Dashboard\StreamCursor;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
+use VictorStochero\Warden\Support\Cast;
 
 /**
  * Real-time transport endpoint (§5.4): a single cursor-based conditional GET.
@@ -39,6 +40,39 @@ class StreamController
                 'cursor' => $token,
                 'range' => $range,
                 'kpis' => $repo->kpis($proj->id, $range),
+            ])
+            ->setEtag($token);
+    }
+
+    public function overview(Request $request, DashboardRepository $repo, StreamCursor $cursor): Response|JsonResponse
+    {
+        $group = trim(Cast::str($request->query('group')));
+        $tag = trim(Cast::str($request->query('tag')));
+
+        $token = $cursor->forOverview($group.'|'.$tag);
+
+        $probe = response('')->setEtag($token);
+        if ($probe->isNotModified($request)) {
+            return $probe;
+        }
+
+        $filters = [];
+        if ($group !== '') {
+            $filters['group'] = $group;
+        }
+        if ($tag !== '') {
+            $filters['tag'] = $tag;
+        }
+
+        $overview = $repo->overview($filters);
+
+        return response()
+            ->json([
+                'cursor' => $token,
+                'open_issues' => $overview['open_issues'],
+                'open_incidents' => $overview['open_incidents'],
+                'throughput' => $overview['throughput'],
+                'projects' => $overview['projects'],
             ])
             ->setEtag($token);
     }
