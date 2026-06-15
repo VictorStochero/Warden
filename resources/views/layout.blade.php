@@ -21,21 +21,48 @@
             ? route('warden.overview.stream', request()->only('group', 'tag'))
             : null);
 
-    $sub = [
-        'overview' => [__('warden::nav.sections.overview'), 'warden.project', []],
-        'requests' => [__('warden::nav.sections.requests'), 'warden.project.section', ['section' => 'requests']],
-        'errors'   => [__('warden::nav.sections.errors'), 'warden.project.section', ['section' => 'errors']],
-        'queries'  => [__('warden::nav.sections.queries'), 'warden.project.section', ['section' => 'queries']],
-        'jobs'     => [__('warden::nav.sections.jobs'), 'warden.project.section', ['section' => 'jobs']],
-        'cache'    => [__('warden::nav.sections.cache'), 'warden.project.section', ['section' => 'cache']],
-        'schedule' => [__('warden::nav.sections.schedule'), 'warden.project.section', ['section' => 'schedule']],
-        'http'     => [__('warden::nav.sections.http'), 'warden.project.section', ['section' => 'http']],
-        'logs'     => [__('warden::nav.sections.logs'), 'warden.project.section', ['section' => 'logs']],
-        'mail'     => [__('warden::nav.sections.mail'), 'warden.project.section', ['section' => 'mail']],
-        'host'     => [__('warden::nav.sections.host'), 'warden.project.section', ['section' => 'host']],
-        'security' => [__('warden::nav.sections.security'), 'warden.project.section', ['section' => 'security']],
-        'delivery' => [__('warden::nav.sections.delivery'), 'warden.project.section', ['section' => 'delivery']],
-        'uptime'   => [__('warden::nav.sections.uptime'), 'warden.project.section', ['section' => 'uptime']],
+    $groups = [
+        'overview' => [
+            'label' => __('warden::nav.groups.overview'),
+            'items' => [
+                'overview' => [__('warden::nav.sections.overview'), 'warden.project', []],
+            ],
+        ],
+        'performance' => [
+            'label' => __('warden::nav.groups.performance'),
+            'items' => [
+                'requests' => [__('warden::nav.sections.requests'), 'warden.project.section', ['section' => 'requests']],
+                'database' => [__('warden::nav.sections.database'), 'warden.project.section', ['section' => 'database']],
+                'jobs'     => [__('warden::nav.sections.jobs'), 'warden.project.section', ['section' => 'jobs']],
+                'http'     => [__('warden::nav.sections.http'), 'warden.project.section', ['section' => 'http']],
+                'schedule' => [__('warden::nav.sections.schedule'), 'warden.project.section', ['section' => 'schedule']],
+            ],
+        ],
+        'reliability' => [
+            'label' => __('warden::nav.groups.reliability'),
+            'items' => [
+                'errors'    => [__('warden::nav.sections.errors'), 'warden.project.section', ['section' => 'errors']],
+                'issues'    => [__('warden::nav.issues'), 'warden.issues', []],
+                'incidents' => [__('warden::nav.incidents'), 'warden.incidents', []],
+                'uptime'    => [__('warden::nav.sections.uptime'), 'warden.project.section', ['section' => 'uptime']],
+            ],
+        ],
+        'diagnostics' => [
+            'label' => __('warden::nav.groups.diagnostics'),
+            'items' => [
+                'traces' => [__('warden::nav.traces'), 'warden.traces', []],
+                'logs'   => [__('warden::nav.sections.logs'), 'warden.project.section', ['section' => 'logs']],
+            ],
+        ],
+        'system' => [
+            'label' => __('warden::nav.groups.system'),
+            'items' => [
+                'host'     => [__('warden::nav.sections.host'), 'warden.project.section', ['section' => 'host']],
+                'mail'     => [__('warden::nav.sections.mail'), 'warden.project.section', ['section' => 'mail']],
+                'security' => [__('warden::nav.sections.security'), 'warden.project.section', ['section' => 'security']],
+                'delivery' => [__('warden::nav.sections.delivery'), 'warden.project.section', ['section' => 'delivery']],
+            ],
+        ],
     ];
 @endphp
 <!DOCTYPE html>
@@ -165,30 +192,19 @@
                 </a>
 
                 @if($isActive)
-                    <div class="wdn-railhide ml-3 my-1 border-l border-ink-700 pl-2 space-y-0.5">
-                        @foreach($sub as $key => [$label, $routeName, $params])
-                            <a href="{{ route($routeName, array_merge(['project' => $p->slug], $params, ['range' => $currentRange])) }}"
-                               class="block rounded-md px-3 py-1.5 text-[13px] transition
-                               {{ ($activeSection ?? 'overview') === $key ? 'text-brand-400 font-medium' : 'text-slate-500 hover:text-slate-200' }}">
-                                {{ $label }}
-                            </a>
+                    <div class="wdn-railhide ml-3 my-1 border-l border-ink-700 pl-2 space-y-2">
+                        @foreach($groups as $group)
+                            <div class="space-y-0.5" role="group" aria-label="{{ $group['label'] }}">
+                                <p class="px-3 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-600">{{ $group['label'] }}</p>
+                                @foreach($group['items'] as $key => [$label, $routeName, $params])
+                                    <a href="{{ route($routeName, array_merge(['project' => $p->slug], $params, ['range' => $currentRange])) }}"
+                                       class="block rounded-md px-3 py-1.5 text-[13px] transition
+                                       {{ ($activeSection ?? 'overview') === $key ? 'text-brand-400 font-medium' : 'text-slate-500 hover:text-slate-200' }}">
+                                        {{ $label }}
+                                    </a>
+                                @endforeach
+                            </div>
                         @endforeach
-                        <div class="my-1 border-t border-ink-700/60"></div>
-                        <a href="{{ route('warden.issues', $p->slug) }}"
-                           class="flex items-center justify-between rounded-md px-3 py-1.5 text-[13px] transition
-                           {{ ($activeSection ?? '') === 'issues' ? 'text-rose-400 font-medium' : 'text-slate-500 hover:text-slate-200' }}">
-                            {{ __('warden::nav.issues') }}
-                        </a>
-                        <a href="{{ route('warden.incidents', $p->slug) }}"
-                           class="block rounded-md px-3 py-1.5 text-[13px] transition
-                           {{ ($activeSection ?? '') === 'incidents' ? 'text-amber-400 font-medium' : 'text-slate-500 hover:text-slate-200' }}">
-                            {{ __('warden::nav.incidents') }}
-                        </a>
-                        <a href="{{ route('warden.traces', $p->slug) }}"
-                           class="block rounded-md px-3 py-1.5 text-[13px] transition
-                           {{ ($activeSection ?? '') === 'traces' ? 'text-brand-400 font-medium' : 'text-slate-500 hover:text-slate-200' }}">
-                            {{ __('warden::nav.traces') }}
-                        </a>
                     </div>
                 @endif
             @empty
