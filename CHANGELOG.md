@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-15
+
 ### Added
 
 - **Fleet-wide distributed tracing.** A request that crosses Warden apps now becomes a single
@@ -474,7 +476,8 @@ Laravel events and ships batches to the parent).
 - CI matrix (Laravel 12/13, multiple databases), MIT license, packaging files, PHPUnit
   suite and PHPStan configuration.
 
-[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/VictorStochero/Warden/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/VictorStochero/Warden/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/VictorStochero/Warden/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/VictorStochero/Warden/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/VictorStochero/Warden/compare/v0.2.1...v0.2.2
