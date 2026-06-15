@@ -120,6 +120,8 @@ return [
         'empty' => 'Nenhum log no período',
         'recent_title' => 'Logs recentes',
         'recent_filtered_title' => 'Logs recentes · :level',
+        'search' => 'Buscar',
+        'search_placeholder' => 'Buscar nas mensagens de log…',
     ],
 
     // ── sections/mail.blade.php ──────────────────────────────────────────

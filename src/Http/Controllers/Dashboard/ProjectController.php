@@ -58,8 +58,9 @@ class ProjectController
             ],
             'logs' => [
                 'levels' => $repo->breakdown($id, 'log', $range),
-                'recent' => $repo->recentLogs($id, $logLevel = $this->logLevel($request), 100, $range),
+                'recent' => $repo->recentLogs($id, $logLevel = $this->logLevel($request), 100, $range, $logSearch = $this->logSearch($request)),
                 'activeLevel' => $logLevel,
+                'activeSearch' => $logSearch,
             ],
             'mail' => [
                 'mailers' => $repo->breakdown($id, 'mail', $range),
@@ -101,6 +102,14 @@ class ProjectController
         $release = trim(Cast::str($request->query('release')));
 
         return $release !== '' ? $release : null;
+    }
+
+    /** Free-text log search term from the query string, or null. */
+    private function logSearch(Request $request): ?string
+    {
+        $q = trim(Cast::str($request->query('q')));
+
+        return $q !== '' ? $q : null;
     }
 
     /** Validated log level from the query string, or null for "all". */

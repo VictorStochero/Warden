@@ -598,18 +598,26 @@ class DashboardRepository
      *
      * @return Collection<int, \stdClass>
      */
-    public function recentLogs(int $projectId, ?string $level, int $limit = 100, ?string $range = null): Collection
+    public function recentLogs(int $projectId, ?string $level, int $limit = 100, ?string $range = null, ?string $search = null): Collection
     {
-        $events = $this->recentEvents($projectId, 'log', $level !== null ? 500 : $limit, $range);
+        $search = $search !== null ? trim($search) : '';
+        $scan = $level !== null || $search !== '';
+
+        $events = $this->recentEvents($projectId, 'log', $scan ? 500 : $limit, $range);
 
         if ($level !== null) {
-            $events = $events
-                ->filter(fn (\stdClass $e): bool => (is_array($e->payload) ? ($e->payload['level'] ?? null) : null) === $level)
-                ->take($limit)
-                ->values();
+            $events = $events->filter(fn (\stdClass $e): bool => (is_array($e->payload) ? ($e->payload['level'] ?? null) : null) === $level);
         }
 
-        return $events;
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $events = $events->filter(fn (\stdClass $e): bool => str_contains(
+                mb_strtolower(Cast::str(is_array($e->payload) ? ($e->payload['message'] ?? '') : '')),
+                $needle
+            ));
+        }
+
+        return $scan ? $events->take($limit)->values() : $events;
     }
 
     /**

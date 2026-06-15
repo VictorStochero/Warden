@@ -120,6 +120,8 @@ return [
         'empty' => 'No logs in range',
         'recent_title' => 'Recent logs',
         'recent_filtered_title' => 'Recent logs · :level',
+        'search' => 'Search',
+        'search_placeholder' => 'Search log messages…',
     ],
 
     // ── sections/mail.blade.php ──────────────────────────────────────────

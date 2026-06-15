@@ -24,6 +24,16 @@
     @endif
 @include('warden::partials.card-close')
 
-<div class="mt-6">
+<form method="GET" class="mt-6 flex items-center gap-2">
+    @if($active)<input type="hidden" name="level" value="{{ $active }}">@endif
+    <input type="search" name="q" value="{{ $activeSearch ?? '' }}" placeholder="{{ __('warden::project.logs.search_placeholder') }}"
+           class="w-full max-w-sm rounded-lg border border-ink-700 bg-ink-850 px-3 py-1.5 text-sm text-slate-200 placeholder-slate-600">
+    <button type="submit" class="rounded-lg border border-ink-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-slate-500 hover:text-white">{{ __('warden::project.logs.search') }}</button>
+    @if($activeSearch ?? null)
+        <a href="{{ request()->fullUrlWithQuery(['q' => null]) }}" class="text-xs text-slate-500 hover:text-slate-300">{{ __('warden::project.logs.clear_filter') }}</a>
+    @endif
+</form>
+
+<div class="mt-4">
     @include('warden::partials.event-list', ['events' => $recent, 'type' => 'log', 'title' => $active ? __('warden::project.logs.recent_filtered_title', ['level' => $active]) : __('warden::project.logs.recent_title')])
 </div>
