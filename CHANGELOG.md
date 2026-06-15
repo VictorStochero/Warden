@@ -41,6 +41,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   regression — while the same fault on the already-triaged deploy stays resolved (no alert churn).
   With no release information it falls back to the historical reopen-on-recurrence behaviour.
 
+- **`warden:doctor` command.** A one-shot diagnosis (parent or child) that walks the kill-switch,
+  child credentials, delivery mode, dashboard auth and schema, printing an ok/warn/error line with
+  the fix for each and exiting non-zero on a hard problem — so an operator can self-serve "why
+  isn't anything showing up?".
+
 ### Changed
 
 - **Octane / queue safety is now proven, not asserted.** Added verification tests for the

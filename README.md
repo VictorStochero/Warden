@@ -297,6 +297,7 @@ composer remove victorstochero/warden    # then drop the package itself
 | `warden:prune` | parent | Apply retention (drop old raw events + aggregates) |
 | `warden:audit` | child | Run `composer audit` + `npm audit` and ship vulnerabilities to the parent |
 | `warden:demo` | child | Generate one of each event type to exercise the pipeline (dev/testing) |
+| `warden:doctor` | both | Diagnose the install (kill-switch, credentials, delivery, schema) and surface the fix for each problem |
 
 > The parent's maintenance schedule and the child's shipping (`scheduler` delivery)
 > are auto-registered by the package — you only need the Laravel scheduler cron

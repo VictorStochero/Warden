@@ -27,6 +27,7 @@ use VictorStochero\Warden\Config\SelfMonitorConfig;
 use VictorStochero\Warden\Console\AggregateCommand;
 use VictorStochero\Warden\Console\AuditCommand;
 use VictorStochero\Warden\Console\DemoCommand;
+use VictorStochero\Warden\Console\DoctorCommand;
 use VictorStochero\Warden\Console\EvaluateCommand;
 use VictorStochero\Warden\Console\InstallCommand;
 use VictorStochero\Warden\Console\PartitionCommand;
@@ -519,6 +520,7 @@ class WardenServiceProvider extends ServiceProvider
             ProjectCommand::class,
             DemoCommand::class,
             AuditCommand::class,
+            DoctorCommand::class,
         ]);
     }
 
