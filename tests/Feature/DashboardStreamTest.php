@@ -100,4 +100,23 @@ class DashboardStreamTest extends TestCase
             'Each range is its own conditional-GET scope'
         );
     }
+
+    public function test_project_page_polls_the_cursor_instead_of_blind_reloading(): void
+    {
+        $this->seedRequest();
+
+        $this->get(route('warden.project', 'demo'))
+            ->assertOk()
+            ->assertSee('If-None-Match')          // the coalesced poller is wired in
+            ->assertDontSee('http-equiv', false); // and the blind meta-refresh is gone
+    }
+
+    public function test_pages_without_a_stream_keep_the_meta_refresh_fallback(): void
+    {
+        $this->seedRequest();
+
+        $this->get(route('warden.overview'))
+            ->assertOk()
+            ->assertSee('http-equiv="refresh"', false);
+    }
 }

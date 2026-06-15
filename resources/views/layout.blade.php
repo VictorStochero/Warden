@@ -11,6 +11,13 @@
     $ranges = $ranges ?? [];
     $currentRange = $range ?? request()->query('range', '1h');
 
+    // Real-time transport (§5.4): on a project page we poll the cursor endpoint
+    // and only refresh when it moves — no blind full-page reload. Other pages
+    // (overview, admin) fall back to the simple meta refresh below.
+    $streamUrl = ($activeProject ?? null)
+        ? route('warden.project.stream', ['project' => $activeProject->slug, 'range' => $currentRange])
+        : null;
+
     $sub = [
         'overview' => [__('warden::nav.sections.overview'), 'warden.project', []],
         'requests' => [__('warden::nav.sections.requests'), 'warden.project.section', ['section' => 'requests']],
@@ -33,7 +40,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    @if($refresh > 0 && ($autoRefresh ?? true))
+    @if($refresh > 0 && ($autoRefresh ?? true) && ! $streamUrl)
         <meta http-equiv="refresh" content="{{ $refresh }}">
     @endif
     <title>@yield('title', 'Warden') · Warden</title>
@@ -285,6 +292,47 @@
     window.addEventListener('resize', function () { if (isDesktop()) { root.classList.remove('wdn-open'); } });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { root.classList.remove('wdn-open'); } });
 })();
+
+@if($streamUrl && $refresh > 0 && ($autoRefresh ?? true))
+// Real-time transport (§5.4): coalesced cursor polling. We poll the stream with
+// the last ETag; a 304 means nothing moved (no reload, the DB isn't even read);
+// a changed cursor refreshes the view. Replaces the blind full-page meta-refresh
+// so an idle dashboard costs one cheap conditional GET per interval, not a reload.
+(function () {
+    var url = @js($streamUrl);
+    var interval = {{ (int) $refresh }} * 1000;
+    if (!url || interval < 1000) { return; }
+
+    var etag = null, timer = null;
+
+    function schedule() { timer = setTimeout(poll, interval); }
+
+    function poll() {
+        var headers = { 'Accept': 'application/json' };
+        if (etag) { headers['If-None-Match'] = etag; }
+
+        fetch(url, { headers: headers, credentials: 'same-origin' })
+            .then(function (res) {
+                if (res.status === 304) { return; }          // unchanged — stay put
+                var next = res.headers.get('ETag');
+                if (etag && next && next !== etag) {          // moved since baseline
+                    window.location.reload();
+                    return;
+                }
+                etag = next;                                  // first poll: baseline
+            })
+            .catch(function () {})                            // never break the host UI
+            .finally(schedule);
+    }
+
+    // Don't hammer the parent while the tab is in the background.
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { clearTimeout(timer); } else { poll(); }
+    });
+
+    poll();
+})();
+@endif
 </script>
 </body>
 </html>
