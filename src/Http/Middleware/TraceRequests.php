@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Symfony\Component\HttpFoundation\Response;
+use VictorStochero\Warden\Trace\Propagation;
 use VictorStochero\Warden\Warden;
 
 /**
@@ -22,7 +23,12 @@ class TraceRequests
     public function handle(Request $request, Closure $next): Response
     {
         if ($this->warden->capturing() && ! $this->warden->hasTrace()) {
-            $this->warden->startTrace('request', name: $request->path());
+            // Fleet propagation (§29): if an upstream Warden child stamped its
+            // trace on the request, continue that trace so the call chain across
+            // apps stitches into a single waterfall. Absent/garbled → fresh trace.
+            $inherited = Propagation::parse($request->headers->get(Propagation::HEADER));
+
+            $this->warden->startTrace('request', $inherited, name: $request->path());
         }
 
         return $next($request);

@@ -15,11 +15,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Psr\Http\Message\RequestInterface;
 use Psr\Log\LoggerInterface;
 use VictorStochero\Warden\Aggregation\DatabaseAggregator;
 use VictorStochero\Warden\Config\RemoteConfig;
@@ -60,6 +62,7 @@ use VictorStochero\Warden\Repository\DatabaseWardenRepository;
 use VictorStochero\Warden\Sampling\Sampler;
 use VictorStochero\Warden\Schema\SchemaManager;
 use VictorStochero\Warden\Support\Cast;
+use VictorStochero\Warden\Trace\Propagation;
 use VictorStochero\Warden\Transport\HttpTransport;
 
 class WardenServiceProvider extends ServiceProvider
@@ -158,6 +161,18 @@ class WardenServiceProvider extends ServiceProvider
                 'wdn_span_id' => $trace->currentSpan()->id,
                 'wdn_sampled' => $trace->sampled,
             ];
+        });
+
+        // Fleet propagation over HTTP (§29): stamp the current trace onto every
+        // outgoing request so a downstream Warden child continues the same trace
+        // (a call from app A to app B becomes one cross-app waterfall). A
+        // non-Warden service simply ignores the header.
+        Http::globalRequestMiddleware(function (RequestInterface $request) use ($observer): RequestInterface {
+            $trace = $observer->capturing() ? $observer->trace() : null;
+
+            return $trace !== null
+                ? $request->withHeader(Propagation::HEADER, Propagation::header($trace))
+                : $request;
         });
     }
 
