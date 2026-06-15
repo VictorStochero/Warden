@@ -21,6 +21,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Global kill-switch
+    |--------------------------------------------------------------------------
+    |
+    | A single live switch that disables all capture (child or self-monitoring
+    | parent) without a redeploy. Read at runtime by Warden::capturing(), so the
+    | trace middleware, recorders and flush all go inert the moment it flips —
+    | the host keeps running untouched (RNF-2). Leave true in normal operation;
+    | flip false to stop Warden cold in an incident.
+    |
+    */
+
+    'enabled' => env('WARDEN_ENABLED', true),
+
+    /*
+    |--------------------------------------------------------------------------
     | Database connection
     |--------------------------------------------------------------------------
     |

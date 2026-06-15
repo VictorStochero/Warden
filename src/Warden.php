@@ -91,6 +91,12 @@ class Warden
      */
     public function capturing(): bool
     {
+        // Global kill-switch, read live (no boot-time cache) so flipping
+        // WARDEN_ENABLED in production takes effect without a redeploy.
+        if (! Cast::bool($this->config->get('warden.enabled', true))) {
+            return false;
+        }
+
         return ($this->isChild() && $this->isChildConfigured()) || $this->selfMonitoring();
     }
 

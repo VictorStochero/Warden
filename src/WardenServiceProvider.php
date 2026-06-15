@@ -116,12 +116,17 @@ class WardenServiceProvider extends ServiceProvider
             $this->registerDashboard();
         }
 
-        if ($observer->isChild() && $observer->isChildConfigured()) {
-            $this->bootChild($observer);
-        }
+        // The global kill-switch (warden.enabled) gates the whole capture
+        // pipeline: when off, neither the trace middleware nor the recorders are
+        // wired at all — disabled means zero overhead, not "registered but quiet".
+        if ($observer->capturing()) {
+            if ($observer->isChild() && $observer->isChildConfigured()) {
+                $this->bootChild($observer);
+            }
 
-        if ($observer->selfMonitoring()) {
-            $this->bootSelfMonitor($observer);
+            if ($observer->selfMonitoring()) {
+                $this->bootSelfMonitor($observer);
+            }
         }
 
         $this->registerOctaneResets($observer);
