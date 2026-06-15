@@ -283,6 +283,15 @@ return [
         // How a "slow" request/query is classified in rollups, milliseconds.
         'slow_request_ms' => env('WARDEN_SLOW_REQUEST_MS', 1000),
         'slow_query_ms' => env('WARDEN_SLOW_QUERY_MS', 100),
+
+        // Query health analysis thresholds (§ database section).
+        // n_plus_one_threshold: min repetitions of the same SQL pattern within a
+        //   trace to flag it as N+1 (matches NPlusOneDetector's default).
+        // fat_request_queries: total queries in one trace that qualifies as "fat".
+        // query_health_sample: how many recent query events to analyse per render.
+        'n_plus_one_threshold' => env('WARDEN_N_PLUS_ONE_THRESHOLD', 3),
+        'fat_request_queries' => env('WARDEN_FAT_REQUEST_QUERIES', 50),
+        'query_health_sample' => env('WARDEN_QUERY_HEALTH_SAMPLE', 2000),
     ],
 
     /*

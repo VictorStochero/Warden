@@ -6,6 +6,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use VictorStochero\Warden\Analysis\QueryHealthAnalyzer;
 use VictorStochero\Warden\Models\Incident;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Repository\DatabaseWardenRepository;
@@ -233,6 +234,44 @@ class DashboardRepository
     public function frequentQueries(int $projectId, string $range, int $limit = 15): Collection
     {
         return $this->queryGroups($projectId, $range)->sortByDesc('total')->take($limit)->values();
+    }
+
+    /**
+     * Query health analysis: reads the latest `query_health_sample` raw query
+     * events in the range, delegates to QueryHealthAnalyzer, and returns the
+     * structured findings. All raw reads stay in this read layer (RNF-6).
+     *
+     * @return array{findings: array<string, list<array<string, mixed>>>, sampled: int, limit: int}
+     */
+    public function queryHealth(int $projectId, string $range): array
+    {
+        $limit = Cast::int(config('warden.parent.query_health_sample'), 2000);
+
+        $events = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('type', 'query')
+            ->where('occurred_at', '>=', $this->rangeStart($range))
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get(['trace_id', 'duration_us', 'payload'])
+            ->map(fn (\stdClass $e): array => [
+                'trace_id' => isset($e->trace_id) ? Cast::str($e->trace_id) : '',
+                'duration_us' => isset($e->duration_us) ? Cast::int($e->duration_us) : 0,
+                'payload' => Json::decode($e->payload ?? null),
+            ])
+            ->all();
+
+        $analyzer = new QueryHealthAnalyzer(
+            nPlusOneThreshold: Cast::int(config('warden.parent.n_plus_one_threshold'), 3),
+            fatRequestThreshold: Cast::int(config('warden.parent.fat_request_queries'), 50),
+            slowQueryUs: Cast::int(config('warden.parent.slow_query_ms'), 100) * 1000,
+        );
+
+        return [
+            'findings' => $analyzer->analyze($events),
+            'sampled' => count($events),
+            'limit' => $limit,
+        ];
     }
 
     /** @return Collection<int, QueryRow> */

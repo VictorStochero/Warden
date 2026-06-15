@@ -139,6 +139,17 @@ return [
     'database' => [
         'queries_heading' => 'Queries',
         'cache_heading' => 'Cache',
+        'health' => [
+            'title' => 'Query health',
+            'empty' => 'No query problems detected in this window.',
+            'sampled' => 'Analyzed the last :count queries.',
+            'n_plus_one' => 'N+1 queries',
+            'duplicates' => 'Exact duplicates',
+            'select_star' => 'SELECT *',
+            'no_where' => 'UPDATE/DELETE without WHERE',
+            'fat_request' => 'Query-heavy requests',
+            'slow' => 'Slow queries',
+        ],
     ],
 
     // ── sections/queries.blade.php ───────────────────────────────────────

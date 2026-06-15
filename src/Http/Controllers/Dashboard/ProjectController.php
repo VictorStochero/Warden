@@ -53,6 +53,7 @@ class ProjectController
                 'slow' => $repo->slowQueries($id, $range, 25),
                 'frequent' => $repo->frequentQueries($id, $range, 25),
                 'stores' => $repo->cacheStores($id, $range),
+                'health' => $repo->queryHealth($id, $range),
             ],
             'jobs' => [
                 'queues' => $repo->queues($id, $range),
