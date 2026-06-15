@@ -117,6 +117,12 @@ return [
             'notification', 'cache', 'command', 'schedule', 'http', 'user', 'host',
         ],
 
+        // A recorder whose listener throws is isolated (the failure never
+        // reaches the host). After this many failures in one process it trips a
+        // breaker and the recorder stops for the rest of the process, which also
+        // prevents a log-storm. Per-process (per Octane worker); reset only on boot.
+        'recorder_breaker_threshold' => (int) env('WARDEN_RECORDER_BREAKER_THRESHOLD', 5),
+
         // Two-axis sampling (§18.4).
         'sample' => [
             // Axis A — head-based trace sampling, decided once per entry point

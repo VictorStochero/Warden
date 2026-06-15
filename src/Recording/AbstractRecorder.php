@@ -15,7 +15,40 @@ abstract class AbstractRecorder implements Recorder
         protected Warden $observer,
         protected Dispatcher $events,
         protected Repository $config,
+        protected RecorderHealth $health,
     ) {}
+
+    /**
+     * Register a guarded listener. EVERY recorder hooks its native Laravel
+     * event(s) through here — never via $this->events->listen() directly — so
+     * isolation is structural and impossible to forget: a listener that throws
+     * is caught (RNF-2: the failure never reaches the host), reported to
+     * RecorderHealth, and once the breaker trips the listener short-circuits
+     * for the rest of the process.
+     *
+     * @param  string  $event  the event class or name
+     * @param  callable  $handler  the recorder's listener body
+     */
+    protected function listen(string $event, callable $handler): void
+    {
+        $this->events->listen($event, function (mixed ...$args) use ($handler): void {
+            if ($this->health->isTripped($this->type())) {
+                // Breaker open: don't re-run the known-bad handler, but keep the
+                // health tally honest (and stay silent — the storm is already
+                // stopped). The handler is never executed once tripped.
+                $this->observer->withoutRecording(fn () => $this->health->skip($this->type()));
+
+                return;
+            }
+
+            try {
+                $handler(...$args);
+            } catch (\Throwable $e) {
+                // Suppress self-observation while reporting, then swallow.
+                $this->observer->withoutRecording(fn () => $this->health->fail($this->type(), $e));
+            }
+        });
+    }
 
     private ?Scrubber $scrubber = null;
 

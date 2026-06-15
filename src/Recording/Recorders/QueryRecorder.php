@@ -14,7 +14,7 @@ class QueryRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(QueryExecuted::class, function (QueryExecuted $event) {
+        $this->listen(QueryExecuted::class, function (QueryExecuted $event) {
             // Never observe the package's own dedicated connection (§18.3).
             $obsConnection = $this->config->get('warden.connection');
             if ($obsConnection !== null && $event->connectionName === $obsConnection) {

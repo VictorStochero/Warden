@@ -25,7 +25,7 @@ class UserRecorder extends AbstractRecorder
             $this->observer->setUser(is_int($id) || is_string($id) ? $id : null);
         };
 
-        $this->events->listen(Authenticated::class, $resolve);
-        $this->events->listen(Login::class, $resolve);
+        $this->listen(Authenticated::class, $resolve);
+        $this->listen(Login::class, $resolve);
     }
 }

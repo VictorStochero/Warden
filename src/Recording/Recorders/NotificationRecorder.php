@@ -15,13 +15,13 @@ class NotificationRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(NotificationSent::class, function (NotificationSent $event) {
+        $this->listen(NotificationSent::class, function (NotificationSent $event) {
             $this->log($event, 'sent');
         });
 
         // NotificationFailed exists in newer versions; listen by string so we
         // don't hard-depend on the class being present.
-        $this->events->listen('Illuminate\Notifications\Events\NotificationFailed', function (object $event) {
+        $this->listen('Illuminate\Notifications\Events\NotificationFailed', function (object $event) {
             $this->log($event, 'failed');
         });
     }

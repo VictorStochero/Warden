@@ -21,7 +21,7 @@ class HttpRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(ResponseReceived::class, function (ResponseReceived $event) {
+        $this->listen(ResponseReceived::class, function (ResponseReceived $event) {
             $url = (string) $event->request->url();
 
             if ($this->isParentHost($url)) {
@@ -40,7 +40,7 @@ class HttpRecorder extends AbstractRecorder
             ], durationUs: $duration);
         });
 
-        $this->events->listen(ConnectionFailed::class, function (ConnectionFailed $event) {
+        $this->listen(ConnectionFailed::class, function (ConnectionFailed $event) {
             $url = (string) $event->request->url();
 
             if ($this->isParentHost($url)) {

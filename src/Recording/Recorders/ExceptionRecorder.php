@@ -24,7 +24,7 @@ class ExceptionRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(MessageLogged::class, function (MessageLogged $event) {
+        $this->listen(MessageLogged::class, function (MessageLogged $event) {
             $exception = $event->context['exception'] ?? null;
 
             if (! $exception instanceof Throwable) {

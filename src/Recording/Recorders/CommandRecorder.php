@@ -32,7 +32,7 @@ class CommandRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(CommandStarting::class, function (CommandStarting $event) {
+        $this->listen(CommandStarting::class, function (CommandStarting $event) {
             if ($this->shouldIgnore($event->command)) {
                 return;
             }
@@ -43,7 +43,7 @@ class CommandRecorder extends AbstractRecorder
             $this->active = true;
         });
 
-        $this->events->listen(CommandFinished::class, function (CommandFinished $event) {
+        $this->listen(CommandFinished::class, function (CommandFinished $event) {
             if (! $this->active) {
                 return;
             }

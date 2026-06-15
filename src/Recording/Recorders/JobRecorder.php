@@ -32,11 +32,11 @@ class JobRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(JobQueued::class, fn (JobQueued $e) => $this->onQueued($e));
-        $this->events->listen(JobProcessing::class, fn (JobProcessing $e) => $this->onProcessing($e));
-        $this->events->listen(JobProcessed::class, fn (JobProcessed $e) => $this->onProcessed($e));
-        $this->events->listen(JobFailed::class, fn (JobFailed $e) => $this->onFailed($e));
-        $this->events->listen(JobReleasedAfterException::class, fn (JobReleasedAfterException $e) => $this->onReleased($e));
+        $this->listen(JobQueued::class, fn (JobQueued $e) => $this->onQueued($e));
+        $this->listen(JobProcessing::class, fn (JobProcessing $e) => $this->onProcessing($e));
+        $this->listen(JobProcessed::class, fn (JobProcessed $e) => $this->onProcessed($e));
+        $this->listen(JobFailed::class, fn (JobFailed $e) => $this->onFailed($e));
+        $this->listen(JobReleasedAfterException::class, fn (JobReleasedAfterException $e) => $this->onReleased($e));
     }
 
     protected function onQueued(JobQueued $event): void

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Psr\Log\LoggerInterface;
 use VictorStochero\Warden\Aggregation\DatabaseAggregator;
 use VictorStochero\Warden\Config\RemoteConfig;
 use VictorStochero\Warden\Config\SelfMonitorConfig;
@@ -52,6 +53,7 @@ use VictorStochero\Warden\Outbox\DatabaseOutbox;
 use VictorStochero\Warden\Outbox\Outbox;
 use VictorStochero\Warden\Outbox\RedisOutbox;
 use VictorStochero\Warden\Projects\ProjectManager;
+use VictorStochero\Warden\Recording\RecorderHealth;
 use VictorStochero\Warden\Recording\RecorderManager;
 use VictorStochero\Warden\Repository\DatabaseWardenRepository;
 use VictorStochero\Warden\Sampling\Sampler;
@@ -66,6 +68,11 @@ class WardenServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/warden.php', 'warden');
 
         $this->app->singleton(Sampler::class);
+
+        $this->app->singleton(RecorderHealth::class, fn (Application $app) => new RecorderHealth(
+            $app->make(Repository::class),
+            $app->make(LoggerInterface::class),
+        ));
 
         $this->app->singleton(DashboardAuth::class, fn (Application $app) => new DashboardAuth($app->make(Repository::class)));
 

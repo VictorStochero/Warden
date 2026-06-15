@@ -15,7 +15,7 @@ class LogRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(MessageLogged::class, function (MessageLogged $event) {
+        $this->listen(MessageLogged::class, function (MessageLogged $event) {
             // The package's own alert log channel is excluded (§18.3); it logs
             // through a dedicated "warden" channel, tagged in the context.
             if (($event->context['warden'] ?? false) === true) {

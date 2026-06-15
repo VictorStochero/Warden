@@ -25,22 +25,22 @@ class ScheduleRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(ScheduledTaskStarting::class, function (ScheduledTaskStarting $event) {
+        $this->listen(ScheduledTaskStarting::class, function (ScheduledTaskStarting $event) {
             $this->startedAt = microtime(true);
             $this->observer->reset();
             $this->observer->startTrace('schedule', name: $this->taskName($event->task));
         });
 
-        $this->events->listen(ScheduledTaskFinished::class, function (ScheduledTaskFinished $event) {
+        $this->listen(ScheduledTaskFinished::class, function (ScheduledTaskFinished $event) {
             $this->complete($event, 'finished');
         });
 
-        $this->events->listen(ScheduledTaskFailed::class, function (ScheduledTaskFailed $event) {
+        $this->listen(ScheduledTaskFailed::class, function (ScheduledTaskFailed $event) {
             $this->observer->keep();
             $this->complete($event, 'failed', $event->exception->getMessage());
         });
 
-        $this->events->listen(ScheduledTaskSkipped::class, function (ScheduledTaskSkipped $event) {
+        $this->listen(ScheduledTaskSkipped::class, function (ScheduledTaskSkipped $event) {
             $this->complete($event, 'skipped');
         });
     }

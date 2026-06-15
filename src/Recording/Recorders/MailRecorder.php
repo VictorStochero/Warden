@@ -25,11 +25,11 @@ class MailRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(MessageSending::class, function () {
+        $this->listen(MessageSending::class, function () {
             $this->startedAt = microtime(true);
         });
 
-        $this->events->listen(MessageSent::class, function (MessageSent $event) {
+        $this->listen(MessageSent::class, function (MessageSent $event) {
             $duration = $this->startedAt ? (int) round((microtime(true) - $this->startedAt) * 1_000_000) : null;
             $this->startedAt = null;
 

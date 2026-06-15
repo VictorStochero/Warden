@@ -31,8 +31,8 @@ class HostRecorder extends AbstractRecorder
 
     public function register(): void
     {
-        $this->events->listen(RequestHandled::class, fn () => $this->sample());
-        $this->events->listen(CommandStarting::class, fn () => $this->sample());
+        $this->listen(RequestHandled::class, fn () => $this->sample());
+        $this->listen(CommandStarting::class, fn () => $this->sample());
     }
 
     public function sample(): void
