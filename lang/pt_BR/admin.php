@@ -167,6 +167,11 @@ return [
         'cooldown_help' => 'Intervalo mínimo entre alertas repetidos para o mesmo incidente.',
 
         'save_btn' => 'Salvar configurações',
+        'rules_title' => 'Regras de alerta',
+        'rules_help' => 'Abre um incidente quando uma métrica cruza um limiar numa janela. Avaliadas junto com as regras do config.',
+        'rules_name' => 'Nome da regra',
+        'rules_add' => 'Adicionar regra',
+        'rules_remove' => 'Remover',
     ],
 
     'confirm_modal' => [

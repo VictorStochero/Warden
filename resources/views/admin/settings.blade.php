@@ -67,4 +67,34 @@
             <x-warden::button :href="route('warden.overview')" variant="ghost">{{ __('warden::common.cancel') }}</x-warden::button>
         </div>
     </form>
+
+    <div class="mt-8 rounded-2xl border border-ink-700/70 bg-ink-900 p-5 shadow-lg shadow-black/10">
+        <h2 class="text-sm font-semibold text-white">{{ __('warden::admin.settings.rules_title') }}</h2>
+        <p class="mb-4 mt-1 text-xs text-slate-500">{{ __('warden::admin.settings.rules_help') }}</p>
+
+        @if($rules->isNotEmpty())
+            <div class="mb-4 divide-y divide-ink-700/60 rounded-xl border border-ink-700/70">
+                @foreach($rules as $r)
+                    <div class="flex flex-wrap items-center gap-3 px-3 py-2 text-[13px]">
+                        <span class="font-medium text-slate-200">{{ $r->name }}</span>
+                        <span class="font-mono text-xs text-slate-400">{{ $r->metric }} {{ $r->op }} {{ $r->threshold }} · {{ $r->window }}</span>
+                        <span class="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] uppercase text-slate-400">{{ $r->severity }}</span>
+                        <form method="POST" action="{{ route('warden.admin.settings.rules.delete', $r->id) }}" class="ml-auto">@csrf
+                            <button type="submit" class="text-xs text-rose-400 transition hover:text-rose-300">{{ __('warden::admin.settings.rules_remove') }}</button>
+                        </form>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('warden.admin.settings.rules.store') }}" class="grid grid-cols-2 gap-3 sm:grid-cols-6">@csrf
+            <input type="text" name="name" placeholder="{{ __('warden::admin.settings.rules_name') }}" class="col-span-2 rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-sm text-white outline-none focus:border-brand-500">
+            <select name="metric" class="rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-white">@foreach($metrics as $m)<option value="{{ $m }}">{{ $m }}</option>@endforeach</select>
+            <select name="op" class="rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-white">@foreach($ops as $o)<option value="{{ $o }}">{{ $o }}</option>@endforeach</select>
+            <input type="number" step="any" name="threshold" placeholder="0" class="rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-sm text-white outline-none focus:border-brand-500">
+            <select name="window" class="rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-white">@foreach($windows as $w)<option value="{{ $w }}">{{ $w }}</option>@endforeach</select>
+            <select name="severity" class="rounded-lg border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-white">@foreach($severities as $sev)<option value="{{ $sev }}">{{ ucfirst($sev) }}</option>@endforeach</select>
+            <div class="col-span-2 sm:col-span-6"><x-warden::button type="submit" variant="ghost">{{ __('warden::admin.settings.rules_add') }}</x-warden::button></div>
+        </form>
+    </div>
 @endsection

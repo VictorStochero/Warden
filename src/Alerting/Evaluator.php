@@ -7,6 +7,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Carbon;
 use VictorStochero\Warden\Contracts\AlertChannel;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
+use VictorStochero\Warden\Models\AlertRule;
 use VictorStochero\Warden\Models\AlertSetting;
 use VictorStochero\Warden\Models\Heartbeat;
 use VictorStochero\Warden\Models\Incident;
@@ -204,7 +205,7 @@ class Evaluator
      */
     protected function evaluateRules(int $projectId): void
     {
-        $rules = Cast::arr($this->config->get('warden.alerts.rules', []));
+        $rules = $this->rules();
 
         if ($rules === []) {
             return;
@@ -213,10 +214,6 @@ class Evaluator
         $repo = $this->app->make(DashboardRepository::class);
 
         foreach ($rules as $rule) {
-            if (! is_array($rule)) {
-                continue;
-            }
-
             $name = trim(Cast::str($rule['name'] ?? ''));
             $metric = trim(Cast::str($rule['metric'] ?? ''));
 
@@ -247,6 +244,36 @@ class Evaluator
                 $this->resolveIncident($projectId, $subject);
             }
         }
+    }
+
+    /**
+     * The threshold rules to evaluate: config-defined (warden.alerts.rules)
+     * merged with the enabled UI-managed rules (wdn_alert_rules).
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    protected function rules(): array
+    {
+        $rules = [];
+
+        foreach (Cast::arr($this->config->get('warden.alerts.rules', [])) as $rule) {
+            if (is_array($rule)) {
+                $rules[] = $rule;
+            }
+        }
+
+        foreach (AlertRule::query()->where('enabled', true)->get() as $rule) {
+            $rules[] = [
+                'name' => $rule->name,
+                'metric' => $rule->metric,
+                'op' => $rule->op,
+                'threshold' => $rule->threshold,
+                'window' => $rule->window,
+                'severity' => $rule->severity,
+            ];
+        }
+
+        return $rules;
     }
 
     /**

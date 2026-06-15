@@ -167,6 +167,11 @@ return [
         'cooldown_help' => 'Minimum gap between repeat alerts for the same incident.',
 
         'save_btn' => 'Save settings',
+        'rules_title' => 'Alert rules',
+        'rules_help' => 'Open an incident when a metric crosses a threshold over a window. Evaluated alongside config-defined rules.',
+        'rules_name' => 'Rule name',
+        'rules_add' => 'Add rule',
+        'rules_remove' => 'Remove',
     ],
 
     'confirm_modal' => [

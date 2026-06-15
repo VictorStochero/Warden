@@ -56,10 +56,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   by a single middleware on the manage routes, and surfaced on a new manage-gated **Audit log**
   page. Accountability for a multi-operator parent, captured structurally instead of per
   controller.
-- **Configurable threshold alert rules.** A `warden.alerts.rules` list lets you alert on KPIs —
-  e.g. `error_rate > 5` over `1h`, `p95 > 500`, `failed_jobs > 10` — each opening/resolving a
-  `rule:<name>` incident through the same channel pipeline (e-mail, Slack, Discord, webhook). The
-  evaluator computes the metric over the window and the rule is inert until configured.
+- **Configurable threshold alert rules.** Alert on KPIs — e.g. `error_rate > 5` over `1h`,
+  `p95 > 500`, `failed_jobs > 10` — each opening/resolving a `rule:<name>` incident through the
+  same channel pipeline (e-mail, Slack, Discord, webhook). Rules can be defined in config
+  (`warden.alerts.rules`) **or managed from the Settings page** (stored in `wdn_alert_rules`); both
+  sources are evaluated together.
 - **`warden:doctor` command.** A one-shot diagnosis (parent or child) that walks the kill-switch,
   child credentials, delivery mode, dashboard auth and schema, printing an ok/warn/error line with
   the fix for each and exiting non-zero on a hard problem — so an operator can self-serve "why

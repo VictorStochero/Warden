@@ -64,6 +64,8 @@ Route::middleware([Authorize::class.':manageWarden', AuditManageActions::class])
 
     Route::get('/admin/settings', [SettingsController::class, 'index'])->name('warden.admin.settings');
     Route::post('/admin/settings', [SettingsController::class, 'update'])->name('warden.admin.settings.update');
+    Route::post('/admin/settings/rules', [SettingsController::class, 'storeRule'])->name('warden.admin.settings.rules.store');
+    Route::post('/admin/settings/rules/{rule}/delete', [SettingsController::class, 'deleteRule'])->whereNumber('rule')->name('warden.admin.settings.rules.delete');
 
     Route::post('/projects/{project}/incidents/{incident}/resolve', [IncidentController::class, 'resolve'])->name('warden.incident.resolve');
 

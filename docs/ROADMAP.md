@@ -120,9 +120,10 @@ reaparece (+ alerta), com snooze que silencia o alerta. _Abertos:_ comentários 
 **usuários impactados** (quantos usuários distintos bateram numa exceção) e Apdex por rota.
 
 #### #34 — Regras de alerta configuráveis — 🟡 PARCIAL (dev-main)
-Entregue: motor de regras de threshold config-driven (`warden.alerts.rules`) — _"error_rate > 5
-em 1h"_, _"p95 > 500"_, _"failed_jobs > N"_ — abrindo/resolvendo incidente `rule:<name>` pelos
-canais do #30. _Abertos:_ gestão pela UI, anomalia sobre baseline móvel, regra por rota.
+Entregue: motor de regras de threshold — _"error_rate > 5 em 1h"_, _"p95 > 500"_,
+_"failed_jobs > N"_ — abrindo/resolvendo incidente `rule:<name>` pelos canais do #30, definíveis
+**por config OU pela página de Settings** (tabela `wdn_alert_rules`). _Abertos:_ anomalia sobre
+baseline móvel, regra por rota.
 
 #### #35 — API de instrumentação custom + busca de logs
 - Facade para instrumentação pelo host: `Warden::measure()`, `Warden::increment()`, spans e
