@@ -6,6 +6,60 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-15
+
+A dashboard **information-architecture** release: the same telemetry, reorganised so a Laravel
+developer finds the right thing in seconds, jumps between related data, and diagnoses query and
+Livewire problems that used to slip through. Zero new runtime dependencies; no build step.
+
+### Added
+
+- **Functional navigation + unified Database section.** The flat ~14-section project sidebar is
+  regrouped into labelled groups (Overview · Performance · Reliability · Diagnostics · System),
+  and Issues / Incidents / Traces / Logs move into those groups instead of dangling at the end.
+  **Queries and Cache are merged into one "Database" section**; the old `queries`/`cache` routes
+  redirect there (old links keep working).
+- **Query health audit.** A "Query health" view inside Database flags six problems, each linking
+  to the affected traces: **N+1** (same normalised query repeated within a trace), **exact
+  duplicates** (same SQL *and* bindings), **`SELECT *`**, **`UPDATE`/`DELETE` without `WHERE`**,
+  **query-heavy requests**, and **slow queries**. Pure static + per-trace analysis over already
+  captured data — thresholds in `config('warden.parent.*')`.
+- **Bidirectional drill-down.** Aggregate tables (routes, queries, outgoing HTTP, queues, cache
+  stores) are now clickable and open the trace list filtered by that dimension; an exception span
+  in the waterfall links to its grouped Issue, and an incident links straight to the trace of its
+  error.
+- **"Related" side panel.** A collapsible, state-persisted panel anchored on the current trace
+  (entry, query/HTTP/cache/log counts, linked issues) on entity pages, with a project-context
+  fallback (recent traces, open issues, incidents) elsewhere.
+- **Global command palette (⌘K / Ctrl-K).** A zero-dependency overlay that searches projects,
+  routes, issues and traces and navigates to them, backed by a read-only `warden.search` endpoint.
+- **Time controls.** A `30d` preset, a **custom from→to range** (native `datetime-local`, applied
+  to every project read), the selected range **persisted across sections** (cookie), and Logs that
+  **search the database** (level + text + interval) instead of only the recent in-memory batch.
+- **Real route behind `livewire/update`.** Livewire interactions are no longer all bucketed as the
+  technical `livewire.update` route: the child resolves the originating page's route from the
+  `Referer` (best-effort, in-memory, never throws) and relabels the request so Top Routes and
+  traces show the actual page. Only the resolved route name is stored — the raw Referer URL is
+  never persisted (privacy by design).
+- **Privacy & capture from the dashboard.** A "Privacy & capture" section on the project edit page
+  exposes the `capture.pii` and `capture.mail_body` toggles (each with a hint and a confirmation
+  when enabling PII), keeps the dangerous `disable_credential_scrub` **out of the UI** (`.env`-only,
+  with an explanatory notice), and honestly shows when a knob is **pinned by the child's `.env`**
+  ("ignored by .env" badge + disabled control). The child reports which knobs its `.env` fixes; the
+  parent stores them per project (`wdn_projects.env_overrides`). `.env` > dashboard > default
+  precedence is unchanged.
+- **Dashboard version in the footer**, **parent self-audit on the schedule**, and the dashboard's
+  own `warden.*` requests are **hidden from the Requests list** by default (less self-observation
+  noise).
+
+### Fixed
+
+- **Config checkboxes rendered as literal text.** The behaviour-config checkboxes (recorders, and
+  the new capture toggles) used `@checked`/`@disabled` Blade directives *inside* an
+  `<x-warden::checkbox>` component tag, which the component-tag compiler does not parse — the tag
+  shipped as literal markup instead of a real `<input>`. Switched to bound `:checked` / `:disabled`
+  attributes so they compile correctly. (The recorders checkbox was affected since 0.3.0.)
+
 ## [0.3.0] - 2026-06-15
 
 ### Added
