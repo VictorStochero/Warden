@@ -175,7 +175,7 @@
 
     @include('warden::partials.confirm-modal')
 
-    <script>
+    <script nonce="{{ $wardenCspNonce ?? '' }}">
     // Kebab overflow menus on the project rows. The panel is position:fixed and
     // placed by JS so the table's overflow never clips it.
     (function () {
@@ -205,7 +205,7 @@
     })();
     </script>
 
-    <script>
+    <script nonce="{{ $wardenCspNonce ?? '' }}">
     (function () {
         function toggle(id, show) {
             var el = document.getElementById(id);

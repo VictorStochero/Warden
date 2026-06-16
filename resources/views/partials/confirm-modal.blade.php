@@ -20,7 +20,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $wardenCspNonce ?? '' }}">
 (function () {
     var modal = document.getElementById('obs-confirm');
     if (!modal) return;

@@ -324,7 +324,7 @@
         </div>
     </form>
 
-    <script>
+    <script nonce="{{ $wardenCspNonce ?? '' }}">
     (function () {
         var freq = document.getElementById('wdn-audit-frequency');
         if (!freq) { return; }

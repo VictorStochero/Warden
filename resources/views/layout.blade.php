@@ -394,7 +394,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ $wardenCspNonce ?? '' }}">
 // Command palette (⌘K / Ctrl-K): vanilla, zero-dep. Opens an overlay, queries
 // the read-only search endpoint debounced, renders grouped links, and supports
 // arrow-key + enter navigation. Every step is defensive — it must never throw
