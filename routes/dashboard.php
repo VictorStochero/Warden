@@ -34,6 +34,9 @@ Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('war
 // Real-time transport (§5.4): cursor-based conditional GET, JSON deltas + 304.
 Route::get('/projects/{project}/stream', [StreamController::class, 'project'])->name('warden.project.stream');
 
+// SSE upgrade (§5.4), opt-in via warden.dashboard.transport=sse (404 otherwise).
+Route::get('/projects/{project}/sse', [StreamController::class, 'projectSse'])->name('warden.project.sse');
+
 Route::get('/projects/{project}/{section}', [ProjectController::class, 'show'])
     ->whereIn('section', ['requests', 'errors', 'database', 'queries', 'jobs', 'cache', 'schedule', 'http', 'logs', 'mail', 'host', 'security', 'delivery', 'uptime'])
     ->name('warden.project.section');

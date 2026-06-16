@@ -446,6 +446,20 @@ return [
     'dashboard' => [
         'enabled' => env('WARDEN_DASHBOARD', true),
 
+        // Real-time transport (§5.4). 'poll' (default) is the universal
+        // cursor-based conditional GET (304 when idle) — zero-dep, runs on plain
+        // PHP-FPM. 'sse' upgrades to a single Server-Sent-Events connection per
+        // viewer (one long-lived worker each), best paired with Octane or a
+        // dedicated process. The payload is identical for both, so the same
+        // frontend renders either.
+        'transport' => env('WARDEN_DASHBOARD_TRANSPORT', 'poll'),
+        'sse' => [
+            // Safety bounds for the SSE loop: how many ticks before the stream
+            // closes (the client reconnects), and the gap between ticks.
+            'max_ticks' => (int) env('WARDEN_SSE_MAX_TICKS', 600),
+            'interval_ms' => (int) env('WARDEN_SSE_INTERVAL_MS', 3000),
+        ],
+
         // The middleware group wrapping the dashboard AND the built-in login
         // routes. In the "password" auth mode below this MUST include session +
         // CSRF protection — i.e. StartSession + VerifyCsrfToken, normally bundled
