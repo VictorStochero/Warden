@@ -31,7 +31,7 @@
         @include('warden::partials.card-close')
 
         {{-- Slow queries --}}
-        @include('warden::partials.card-open', ['title' => __('warden::project.overview.slowest_queries'), 'action' => [__('warden::project.overview.queries_action'), route('warden.project.section', ['project' => $project->slug, 'section' => 'queries', 'range' => $range])]])
+        @include('warden::partials.card-open', ['title' => __('warden::project.overview.slowest_queries'), 'action' => [__('warden::project.overview.queries_action'), route('warden.project.section', ['project' => $project->slug, 'section' => 'database', 'range' => $range])]])
             @include('warden::partials.query-table', ['queries' => $slow, 'project' => $project])
         @include('warden::partials.card-close')
 
