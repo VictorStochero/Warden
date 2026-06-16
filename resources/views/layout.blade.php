@@ -268,6 +268,15 @@
             </div>
 
             <div class="ml-auto flex items-center gap-3">
+                {{-- Global search trigger (⌘K / Ctrl-K). Opens the command palette
+                     overlay defined below. Discreet pill that hints the shortcut. --}}
+                <button type="button" data-wdn-palette-open
+                    aria-label="{{ __('warden::search.open') }}" title="{{ __('warden::search.open') }}"
+                    class="flex items-center gap-2 rounded-lg border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-xs text-slate-400 transition hover:border-brand-500/60 hover:text-white">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                    <span class="hidden sm:inline">{{ __('warden::search.open') }}</span>
+                    <kbd class="hidden rounded border border-ink-700 bg-ink-900 px-1.5 py-0.5 font-mono text-[10px] text-slate-500 sm:inline">⌘K</kbd>
+                </button>
                 @if(! empty($ranges) && ($showRanges ?? true))
                     <div class="flex items-center rounded-lg border border-ink-700 bg-ink-850 p-0.5">
                         @foreach($ranges as $r)
@@ -351,7 +360,204 @@
         </div>
     </div>
 </div>
+
+{{-- Command palette (⌘K / Ctrl-K): a zero-dep overlay that queries the
+     read-only search endpoint and lets the viewer jump to projects, routes,
+     issues and traces. Group labels are passed to the JS via data-attrs so the
+     rendered headers stay translated. Hidden until opened. --}}
+<div data-wdn-palette hidden role="dialog" aria-modal="true" aria-label="{{ __('warden::search.open') }}"
+     class="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]"
+     data-search-url="{{ route('warden.search') }}"
+     data-search-slug="{{ $activeProject?->slug ?? '' }}"
+     data-empty="{{ __('warden::search.empty') }}"
+     data-label-projects="{{ __('warden::search.groups.projects') }}"
+     data-label-routes="{{ __('warden::search.groups.routes') }}"
+     data-label-issues="{{ __('warden::search.groups.issues') }}"
+     data-label-traces="{{ __('warden::search.groups.traces') }}">
+    <div data-wdn-palette-backdrop class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <div class="glass relative w-full max-w-xl overflow-hidden rounded-xl border border-ink-700 shadow-2xl shadow-black/60">
+        <div class="flex items-center gap-3 border-b border-ink-700 px-4">
+            <svg class="h-4 w-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            <input type="text" data-wdn-palette-input autocomplete="off" spellcheck="false"
+                   placeholder="{{ __('warden::search.placeholder') }}"
+                   class="w-full bg-transparent py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none">
+        </div>
+        <ul data-wdn-palette-results class="max-h-[50vh] overflow-y-auto py-1.5 text-sm"></ul>
+    </div>
+</div>
+
 <script>
+// Command palette (⌘K / Ctrl-K): vanilla, zero-dep. Opens an overlay, queries
+// the read-only search endpoint debounced, renders grouped links, and supports
+// arrow-key + enter navigation. Every step is defensive — it must never throw
+// into the host UI. Output is inserted via textContent (never innerHTML) so
+// labels coming from the JSON can't inject markup.
+(function () {
+    var root = document.querySelector('[data-wdn-palette]');
+    if (!root) { return; }
+
+    var input = root.querySelector('[data-wdn-palette-input]');
+    var list = root.querySelector('[data-wdn-palette-results]');
+    var backdrop = root.querySelector('[data-wdn-palette-backdrop]');
+    var searchUrl = root.getAttribute('data-search-url') || '';
+    var slug = root.getAttribute('data-search-slug') || '';
+    var labels = {
+        projects: root.getAttribute('data-label-projects') || 'Projects',
+        routes: root.getAttribute('data-label-routes') || 'Routes',
+        issues: root.getAttribute('data-label-issues') || 'Issues',
+        traces: root.getAttribute('data-label-traces') || 'Traces'
+    };
+    var emptyText = root.getAttribute('data-empty') || '';
+
+    var debounce = null;
+    var reqId = 0;
+    var items = [];   // flat list of selectable {url, el}
+    var selected = -1;
+
+    function isOpen() { return !root.hasAttribute('hidden'); }
+
+    var lastFocused = null;
+
+    function open() {
+        if (isOpen()) { return; }
+        lastFocused = document.activeElement;
+        root.removeAttribute('hidden');
+        input.value = '';
+        clearResults();
+        // Focus after the element is shown.
+        setTimeout(function () { try { input.focus(); } catch (e) {} }, 0);
+    }
+
+    function close() {
+        if (!isOpen()) { return; }
+        root.setAttribute('hidden', '');
+        clearResults();
+        if (lastFocused && lastFocused.focus) { try { lastFocused.focus(); } catch (e) {} }
+    }
+
+    function clearResults() {
+        list.textContent = '';
+        items = [];
+        selected = -1;
+    }
+
+    function setSelected(i) {
+        if (!items.length) { selected = -1; return; }
+        if (i < 0) { i = items.length - 1; }
+        if (i >= items.length) { i = 0; }
+        items.forEach(function (it, idx) {
+            if (idx === i) {
+                it.el.classList.add('bg-brand-600/15', 'text-white');
+                it.el.setAttribute('aria-selected', 'true');
+                try { it.el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+            } else {
+                it.el.classList.remove('bg-brand-600/15', 'text-white');
+                it.el.removeAttribute('aria-selected');
+            }
+        });
+        selected = i;
+    }
+
+    function navigate(url) {
+        if (url) { window.location = url; }
+    }
+
+    function renderEmpty() {
+        clearResults();
+        var li = document.createElement('li');
+        li.className = 'px-4 py-6 text-center text-xs text-slate-500';
+        li.textContent = emptyText;
+        list.appendChild(li);
+    }
+
+    function render(groups) {
+        clearResults();
+        var any = false;
+
+        (groups || []).forEach(function (group) {
+            var groupItems = (group && group.items) || [];
+            if (!groupItems.length) { return; }
+            any = true;
+
+            var header = document.createElement('li');
+            header.className = 'px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600';
+            header.textContent = labels[group.type] || group.type || '';
+            list.appendChild(header);
+
+            groupItems.forEach(function (item) {
+                var li = document.createElement('li');
+                var a = document.createElement('a');
+                a.href = item.url || '#';
+                a.className = 'flex flex-col gap-0.5 px-4 py-2 text-slate-300 transition hover:bg-brand-600/15 hover:text-white';
+
+                var label = document.createElement('span');
+                label.className = 'truncate text-[13px] font-medium';
+                label.textContent = item.label || '';
+                a.appendChild(label);
+
+                if (item.sublabel) {
+                    var sub = document.createElement('span');
+                    sub.className = 'truncate text-[11px] text-slate-500';
+                    sub.textContent = item.sublabel;
+                    a.appendChild(sub);
+                }
+
+                var record = { url: item.url, el: a };
+                a.addEventListener('mousemove', function () {
+                    setSelected(items.indexOf(record));
+                });
+                li.appendChild(a);
+                list.appendChild(li);
+                items.push(record);
+            });
+        });
+
+        if (!any) { renderEmpty(); return; }
+        setSelected(0);
+    }
+
+    function run(value) {
+        var v = (value || '').trim();
+        if (v.length < 2) { clearResults(); return; }
+
+        var mine = ++reqId;
+        var url = searchUrl + '?q=' + encodeURIComponent(v) + '&project=' + encodeURIComponent(slug);
+        fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then(function (res) { return res.json(); })
+            .then(function (data) { if (mine === reqId) { render(data && data.groups); } })
+            .catch(function () {});   // never break the host UI
+    }
+
+    input.addEventListener('input', function () {
+        if (debounce) { clearTimeout(debounce); }
+        var value = input.value;
+        debounce = setTimeout(function () { run(value); }, 200);
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); setSelected(selected + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setSelected(selected - 1); }
+        else if (e.key === 'Enter') {
+            if (selected >= 0 && items[selected]) { e.preventDefault(); navigate(items[selected].url); }
+        }
+    });
+
+    if (backdrop) { backdrop.addEventListener('click', close); }
+
+    document.querySelectorAll('[data-wdn-palette-open]').forEach(function (b) {
+        b.addEventListener('click', open);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.metaKey || e.ctrlKey) && e.key && e.key.toLowerCase() === 'k') {
+            e.preventDefault();
+            open();
+        } else if (e.key === 'Escape' && isOpen()) {
+            close();
+        }
+    });
+})();
+
 (function () {
     var wrap = document.querySelector('[data-wdn-help]');
     if (!wrap) { return; }
