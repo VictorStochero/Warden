@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $audit_requested_at
  * @property string|null $timezone
  * @property string $uptime_window
+ * @property int|null $raw_retention_days
+ * @property int|null $aggregate_retention_days
  * @property bool|null $alert_email_enabled
  * @property array<int, string>|null $alert_recipients
  * @property string|null $alert_min_severity
@@ -53,6 +55,8 @@ class Project extends WardenModel
         'audit_hour' => 'integer',
         'audit_requested_at' => 'datetime',
         'uptime_window' => 'string',
+        'raw_retention_days' => 'integer',
+        'aggregate_retention_days' => 'integer',
         'alert_email_enabled' => 'boolean',
         'alert_recipients' => 'array',
         'alert_min_severity' => 'string',

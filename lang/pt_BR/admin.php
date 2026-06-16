@@ -102,6 +102,11 @@ return [
         'uptime_30d' => 'Últimos 30 dias',
         'uptime_help' => 'KPI de disponibilidade em destaque na seção Uptime do projeto.',
 
+        'raw_retention_label' => 'Retenção de eventos brutos (dias)',
+        'agg_retention_label' => 'Retenção de agregados (dias)',
+        'retention_inherit' => 'Herdar global',
+        'retention_help' => 'Retenção por projeto. Deixe em branco para herdar a janela global. Um valor apenas encurta a retenção abaixo do teto global (privacidade / custo) — não pode estendê-la.',
+
         'section_alerts' => 'Alertas',
         'alerts_help' => 'Substitua as configurações globais de alerta por e-mail para este projeto. Deixe os campos em branco para herdar os padrões globais.',
 

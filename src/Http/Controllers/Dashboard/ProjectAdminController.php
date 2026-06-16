@@ -95,7 +95,7 @@ class ProjectAdminController
             'tags' => Cast::str($request->input('tags')),
         ]);
 
-        $project->forceFill(array_merge($intervals, $this->resolveAlertOverride($request)))->save();
+        $project->forceFill(array_merge($intervals, $this->resolveRetention($request), $this->resolveAlertOverride($request)))->save();
 
         $this->applyBehaviourConfig($project, $request);
 
@@ -129,6 +129,33 @@ class ProjectAdminController
                 'config_version' => Cast::int($project->config_version, 0) + 1,
             ])->save();
         }
+    }
+
+    /**
+     * Resolve the per-project retention override (§5.12). An empty field means
+     * "inherit the global window" (null); a value tightens retention below the
+     * global ceiling. Clamped to sane bounds; a non-positive value falls back to
+     * inherit.
+     *
+     * @return array{raw_retention_days: int|null, aggregate_retention_days: int|null}
+     */
+    private function resolveRetention(Request $request): array
+    {
+        return [
+            'raw_retention_days' => $this->retentionDays($request->input('raw_retention_days'), 365),
+            'aggregate_retention_days' => $this->retentionDays($request->input('aggregate_retention_days'), 3650),
+        ];
+    }
+
+    private function retentionDays(mixed $input, int $max): ?int
+    {
+        if ($input === null || $input === '') {
+            return null;
+        }
+
+        $days = Cast::int($input);
+
+        return $days < 1 ? null : min($days, $max);
     }
 
     /**

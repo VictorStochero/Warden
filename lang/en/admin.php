@@ -102,6 +102,11 @@ return [
         'uptime_30d' => 'Last 30 days',
         'uptime_help' => 'Headline availability KPI on the project\'s Uptime section.',
 
+        'raw_retention_label' => 'Raw event retention (days)',
+        'agg_retention_label' => 'Aggregate retention (days)',
+        'retention_inherit' => 'Inherit global',
+        'retention_help' => 'Per-project retention. Leave blank to inherit the global window. A value only shortens retention below the global ceiling (privacy / cost) — it cannot extend past it.',
+
         'section_alerts' => 'Alerts',
         'alerts_help' => 'Override the global e-mail alert settings for this project. Leave fields blank to inherit the global defaults.',
 

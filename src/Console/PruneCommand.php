@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use VictorStochero\Warden\Schema\SchemaManager;
 use VictorStochero\Warden\Support\Cast;
@@ -58,8 +59,55 @@ class PruneCommand extends Command
                 ->where('reported_at', '<', $deadLetterCutoff)
                 ->delete();
             $this->components->twoColumnDetail('Dead letters deleted', (string) $deadLettersRemoved);
+
+            $this->pruneByProject();
         });
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Per-project retention (§5.12): a project may keep raw events / aggregates
+     * for FEWER days than the global window. Run after the global prune as an
+     * extra scoped DELETE — the override only tightens below the global ceiling
+     * (extending past it isn't possible once the global prune dropped the rows).
+     */
+    private function pruneByProject(): void
+    {
+        $projects = Schema::db()->table('wdn_projects')
+            ->where(function (Builder $q): void {
+                $q->whereNotNull('raw_retention_days')->orWhereNotNull('aggregate_retention_days');
+            })
+            ->get(['id', 'raw_retention_days', 'aggregate_retention_days']);
+
+        $rawRemoved = 0;
+        $aggRemoved = 0;
+
+        foreach ($projects as $project) {
+            $projectId = Cast::int($project->id);
+
+            $rawDays = $project->raw_retention_days;
+            if ($rawDays !== null) {
+                $cutoff = Carbon::now()->subDays(Cast::int($rawDays));
+                $rawRemoved += Schema::db()->table('wdn_events')
+                    ->where('project_id', $projectId)
+                    ->where('occurred_at', '<', $cutoff)
+                    ->delete();
+            }
+
+            $aggDays = $project->aggregate_retention_days;
+            if ($aggDays !== null) {
+                $cutoff = Carbon::now()->subDays(Cast::int($aggDays));
+                $aggRemoved += Schema::db()->table('wdn_aggregates')
+                    ->where('project_id', $projectId)
+                    ->where('bucket', '<', $cutoff)
+                    ->delete();
+            }
+        }
+
+        if ($projects->isNotEmpty()) {
+            $this->components->twoColumnDetail('Per-project raw events deleted', (string) $rawRemoved);
+            $this->components->twoColumnDetail('Per-project aggregates deleted', (string) $aggRemoved);
+        }
     }
 }

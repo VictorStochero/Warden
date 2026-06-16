@@ -131,6 +131,25 @@
                 </select>
                 <p class="mt-1 text-xs text-slate-500">{{ __('warden::admin.edit.uptime_help') }}</p>
             </div>
+
+            {{-- Per-project retention (§5.12) --}}
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 max-w-xl">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::admin.edit.raw_retention_label') }}</label>
+                    <input type="number" name="raw_retention_days" min="1" max="365" inputmode="numeric"
+                        value="{{ old('raw_retention_days', $project->raw_retention_days) }}"
+                        placeholder="{{ __('warden::admin.edit.retention_inherit') }}"
+                        class="mt-1.5 w-full rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::admin.edit.agg_retention_label') }}</label>
+                    <input type="number" name="aggregate_retention_days" min="1" max="3650" inputmode="numeric"
+                        value="{{ old('aggregate_retention_days', $project->aggregate_retention_days) }}"
+                        placeholder="{{ __('warden::admin.edit.retention_inherit') }}"
+                        class="mt-1.5 w-full rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-white outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30">
+                </div>
+                <p class="sm:col-span-2 text-xs text-slate-500">{{ __('warden::admin.edit.retention_help') }}</p>
+            </div>
         </div>
 
         @php
