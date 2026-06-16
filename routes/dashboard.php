@@ -10,6 +10,7 @@ use VictorStochero\Warden\Http\Controllers\Dashboard\MaintenanceController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\OverviewController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\ProjectAdminController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\ProjectController;
+use VictorStochero\Warden\Http\Controllers\Dashboard\SearchController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\SettingsController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\StreamController;
 use VictorStochero\Warden\Http\Controllers\Dashboard\TraceController;
@@ -21,6 +22,9 @@ use VictorStochero\Warden\Http\Middleware\Authorize;
  * and guarded by the "viewWarden" ability. Pure Blade — no build step.
  */
 Route::get('/', [OverviewController::class, 'index'])->name('warden.overview');
+
+// Global search — read-only, available to all viewWarden users.
+Route::get('/search', [SearchController::class, 'index'])->name('warden.search');
 
 // Real-time transport for the fleet overview (§5.4).
 Route::get('/stream', [StreamController::class, 'overview'])->name('warden.overview.stream');

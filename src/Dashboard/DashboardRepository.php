@@ -1103,6 +1103,134 @@ class DashboardRepository
         return $n % 2 === 1 ? $values[$mid] : (int) round(($values[$mid - 1] + $values[$mid]) / 2);
     }
 
+    // ---------------------------------------------------------- search
+
+    /**
+     * Global search across projects, routes, issues and traces.
+     *
+     * Term must be at least 2 characters; shorter terms return all-empty groups.
+     * Routes, issues and traces are only searched when a `$projectId` is given.
+     * All LIKE comparisons use `lower(col) like ?` for portable case-insensitivity.
+     *
+     * @return array{
+     *   projects: list<array{name:string, slug:string}>,
+     *   routes: list<array{route:string}>,
+     *   issues: list<array{id:int, class:string, message:string}>,
+     *   traces: list<array{trace_id:string, label:string}>,
+     * }
+     */
+    public function search(string $term, ?int $projectId): array
+    {
+        $empty = ['projects' => [], 'routes' => [], 'issues' => [], 'traces' => []];
+
+        if (mb_strlen($term) < 2) {
+            return $empty;
+        }
+
+        $like = '%'.mb_strtolower($term).'%';
+        $prefix = mb_strtolower($term).'%';
+
+        // Projects: name or slug matches — always searched regardless of project context.
+        /** @var list<array{name:string,slug:string}> $projects */
+        $projects = array_values(
+            $this->db->table('wdn_projects')
+                ->whereRaw('lower(name) like ?', [$like])
+                ->orWhereRaw('lower(slug) like ?', [$like])
+                ->orderBy('name')
+                ->limit(5)
+                ->get(['name', 'slug'])
+                ->map(fn (\stdClass $r): array => [
+                    'name' => Cast::str($r->name),
+                    'slug' => Cast::str($r->slug),
+                ])
+                ->all()
+        );
+
+        if ($projectId === null) {
+            return array_merge($empty, ['projects' => $projects]);
+        }
+
+        // Routes: distinct keys from wdn_aggregates (type=request) matching the term.
+        // `key` is a reserved word in MySQL/MariaDB — the identifier must be quoted
+        // in the raw expression.  We use a driver match (same pattern as recentLogs)
+        // so PHPStan infers literal-string from the match arms, avoiding the
+        // literal-string|Expression constraint on whereRaw().
+        $keyRaw = match ($this->db->getDriverName()) {
+            'mysql', 'mariadb' => 'lower(`key`)',
+            'pgsql' => 'lower("key")',
+            default => 'lower("key")',
+        };
+        /** @var list<array{route:string}> $routes */
+        $routes = array_values(
+            $this->db->table('wdn_aggregates')
+                ->where('project_id', $projectId)
+                ->where('type', 'request')
+                ->whereRaw($keyRaw.' like ?', [$like])
+                ->groupBy('key')
+                ->orderBy('key')
+                ->limit(5)
+                ->pluck('key')
+                ->map(fn (mixed $k): array => ['route' => Cast::str($k)])
+                ->all()
+        );
+
+        // Issues: class or message matches.
+        /** @var list<array{id:int,class:string,message:string}> $issues */
+        $issues = array_values(
+            $this->db->table('wdn_issues')
+                ->where('project_id', $projectId)
+                ->where(function (Builder $q) use ($like): void {
+                    $q->whereRaw('lower(class) like ?', [$like])
+                        ->orWhereRaw('lower(message) like ?', [$like]);
+                })
+                ->orderByDesc('last_seen_at')
+                ->limit(5)
+                ->get(['id', 'class', 'message'])
+                ->map(fn (\stdClass $r): array => [
+                    'id' => Cast::int($r->id),
+                    'class' => Cast::str($r->class),
+                    'message' => Cast::str($r->message),
+                ])
+                ->all()
+        );
+
+        // Traces: trace_id prefix match on entry-point events, distinct, with label.
+        $traceRows = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->whereIn('type', ['request', 'command', 'schedule', 'job'])
+            ->whereNotNull('trace_id')
+            ->whereRaw('lower(trace_id) like ?', [$prefix])
+            ->orderByDesc('id')
+            ->limit(25)
+            ->get(['type', 'trace_id', 'payload']);
+
+        $seen = [];
+        /** @var list<array{trace_id:string,label:string}> $traces */
+        $traces = [];
+        foreach ($traceRows as $row) {
+            $traceId = Cast::str($row->trace_id);
+            if (isset($seen[$traceId])) {
+                continue;
+            }
+            $seen[$traceId] = true;
+            $payload = Json::decode($row->payload ?? null);
+            $traces[] = [
+                'trace_id' => $traceId,
+                'label' => $this->traceLabel(Cast::str($row->type), $payload),
+            ];
+            if (count($traces) >= 5) {
+                break;
+            }
+        }
+
+        return [
+            'projects' => $projects,
+            'routes' => $routes,
+            'issues' => $issues,
+            'traces' => $traces,
+        ];
+    }
+
     // -------------------------------------------------------- internals
 
     /** @return Collection<int, AggRow> */
