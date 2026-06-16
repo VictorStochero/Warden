@@ -289,6 +289,17 @@ return [
         'slower_ms_hint' => 'Force-keep traces above this latency, overriding sampling.',
         'recorders' => 'Recorders',
         'recorders_hint' => "Check the recorders to enable for this project. Leave all unchecked to inherit the child's own list.",
+
+        // Privacy & capture
+        'capture' => 'Privacy & capture',
+        'capture_help' => 'Control how much potentially sensitive data the child captures for this project. Off by default.',
+        'capture_pii' => 'Capture PII',
+        'capture_pii_hint' => 'PII = personally identifiable information: request input, cookies, route parameters and similar user-supplied values. When off, these payloads are dropped before they ever leave the child.',
+        'capture_mail_body' => 'Capture mail body',
+        'capture_mail_body_hint' => 'Stores the rendered HTML/text body of outgoing emails and notifications. When off, only metadata (subject, recipients, mailer) is kept.',
+        'capture_env_locked' => '⚠ ignored — pinned by the child .env',
+        'capture_credential_floor' => 'Credentials are always masked. Passwords, API tokens, secrets and document IDs are scrubbed regardless of these toggles. That floor can only be lowered on the child itself via the WARDEN_DISABLE_CREDENTIAL_SCRUB env var — never from this dashboard.',
+        'capture_pii_confirm' => 'Capturing PII means user-supplied data (request input, cookies, route parameters) will be stored. Make sure this complies with your privacy policy. Enable PII capture?',
     ],
 
 ];

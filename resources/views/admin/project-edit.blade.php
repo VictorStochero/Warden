@@ -249,6 +249,54 @@
             @endif
         </div>
 
+        @php
+            $cfgCapture = is_array($cfg['capture'] ?? null) ? $cfg['capture'] : [];
+            $envOverrides = (array) $project->env_overrides;
+            $piiLocked = in_array('capture.pii', $envOverrides, true);
+            $mailBodyLocked = in_array('capture.mail_body', $envOverrides, true);
+        @endphp
+        <div class="rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10 p-6 space-y-5">
+            <div>
+                <h3 class="text-sm font-semibold text-white">{{ __('warden::project.behaviour.capture') }}</h3>
+                <p class="mt-1 text-xs text-slate-500">{{ __('warden::project.behaviour.capture_help') }}</p>
+            </div>
+
+            {{-- Capture PII --}}
+            <div>
+                <label class="flex items-center gap-2.5">
+                    <x-warden::checkbox id="wdn-cfg-capture-pii" name="config[capture][pii]" value="1"
+                        @checked($cfgCapture['pii'] ?? null) @disabled($piiLocked) />
+                    <span class="text-sm text-slate-200">{{ __('warden::project.behaviour.capture_pii') }}</span>
+                    <span class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-ink-700 text-[10px] font-bold text-slate-300"
+                        title="{{ __('warden::project.behaviour.capture_pii_hint') }}"
+                        tabindex="0" role="img" aria-label="{{ __('warden::project.behaviour.capture_pii_hint') }}">?</span>
+                    @if($piiLocked)
+                        <span class="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">{{ __('warden::project.behaviour.capture_env_locked') }}</span>
+                    @endif
+                </label>
+            </div>
+
+            {{-- Capture mail body --}}
+            <div>
+                <label class="flex items-center gap-2.5">
+                    <x-warden::checkbox id="wdn-cfg-capture-mail-body" name="config[capture][mail_body]" value="1"
+                        @checked($cfgCapture['mail_body'] ?? null) @disabled($mailBodyLocked) />
+                    <span class="text-sm text-slate-200">{{ __('warden::project.behaviour.capture_mail_body') }}</span>
+                    <span class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-ink-700 text-[10px] font-bold text-slate-300"
+                        title="{{ __('warden::project.behaviour.capture_mail_body_hint') }}"
+                        tabindex="0" role="img" aria-label="{{ __('warden::project.behaviour.capture_mail_body_hint') }}">?</span>
+                    @if($mailBodyLocked)
+                        <span class="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 ring-1 ring-inset ring-amber-500/20">{{ __('warden::project.behaviour.capture_env_locked') }}</span>
+                    @endif
+                </label>
+            </div>
+
+            {{-- Credential floor notice — no toggle; disable_credential_scrub is .env-only. --}}
+            <div class="rounded-xl border border-ink-700/70 bg-ink-850/50 px-4 py-3 text-xs leading-relaxed text-slate-400">
+                {{ __('warden::project.behaviour.capture_credential_floor') }}
+            </div>
+        </div>
+
         <div class="flex items-center gap-2">
             <x-warden::button type="submit">
                 {{ __('warden::common.save_changes') }}
@@ -282,6 +330,17 @@
         function sync() { fields.style.display = toggle.checked ? '' : 'none'; }
         toggle.addEventListener('change', sync);
         sync();
+    })();
+
+    // Confirm before enabling PII capture; uncheck if the operator cancels.
+    (function () {
+        var pii = document.getElementById('wdn-cfg-capture-pii');
+        if (!pii) { return; }
+        pii.addEventListener('change', function () {
+            if (pii.checked && !window.confirm(@js(__('warden::project.behaviour.capture_pii_confirm')))) {
+                pii.checked = false;
+            }
+        });
     })();
     </script>
 @endsection

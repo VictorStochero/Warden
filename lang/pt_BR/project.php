@@ -289,6 +289,17 @@ return [
         'slower_ms_hint' => 'Força manter traces acima desta latência, sobrepondo a amostragem.',
         'recorders' => 'Recorders',
         'recorders_hint' => 'Marque os recorders a habilitar para este projeto. Deixe todos desmarcados para herdar a lista do child.',
+
+        // Privacidade & captura
+        'capture' => 'Privacidade & captura',
+        'capture_help' => 'Controla quanto dado potencialmente sensível o child captura para este projeto. Desligado por padrão.',
+        'capture_pii' => 'Capturar PII',
+        'capture_pii_hint' => 'PII = informação pessoal identificável: input da requisição, cookies, parâmetros de rota e valores semelhantes vindos do usuário. Quando desligado, esses dados são descartados antes mesmo de sair do child.',
+        'capture_mail_body' => 'Capturar corpo do e-mail',
+        'capture_mail_body_hint' => 'Armazena o corpo HTML/texto renderizado de e-mails e notificações enviados. Quando desligado, só os metadados (assunto, destinatários, mailer) são mantidos.',
+        'capture_env_locked' => '⚠ ignorado — fixado pelo .env do child',
+        'capture_credential_floor' => 'Credenciais são sempre mascaradas. Senhas, tokens de API, secrets e documentos (CPF) são removidos independentemente destes toggles. Esse piso só pode ser reduzido no próprio child via a variável WARDEN_DISABLE_CREDENTIAL_SCRUB — nunca por este dashboard.',
+        'capture_pii_confirm' => 'Capturar PII significa que dados do usuário (input da requisição, cookies, parâmetros de rota) serão armazenados. Garanta que isso está de acordo com sua política de privacidade. Ativar a captura de PII?',
     ],
 
 ];
