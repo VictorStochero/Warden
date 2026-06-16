@@ -240,7 +240,7 @@
                         @foreach($availableRecorders as $recorder)
                             <label class="flex items-center gap-2">
                                 <x-warden::checkbox name="config[recorders][]" value="{{ $recorder }}"
-                                    @checked(is_array($cfgRecorders) && in_array($recorder, $cfgRecorders, true)) />
+                                    :checked="is_array($cfgRecorders) && in_array($recorder, $cfgRecorders, true)" />
                                 <span class="text-sm text-slate-200">{{ $recorder }}</span>
                             </label>
                         @endforeach
@@ -265,7 +265,7 @@
             <div>
                 <label class="flex items-center gap-2.5">
                     <x-warden::checkbox id="wdn-cfg-capture-pii" name="config[capture][pii]" value="1"
-                        @checked($cfgCapture['pii'] ?? null) @disabled($piiLocked) />
+                        :checked="(bool) ($cfgCapture['pii'] ?? false)" :disabled="$piiLocked" />
                     <span class="text-sm text-slate-200">{{ __('warden::project.behaviour.capture_pii') }}</span>
                     <span class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-ink-700 text-[10px] font-bold text-slate-300"
                         title="{{ __('warden::project.behaviour.capture_pii_hint') }}"
@@ -280,7 +280,7 @@
             <div>
                 <label class="flex items-center gap-2.5">
                     <x-warden::checkbox id="wdn-cfg-capture-mail-body" name="config[capture][mail_body]" value="1"
-                        @checked($cfgCapture['mail_body'] ?? null) @disabled($mailBodyLocked) />
+                        :checked="(bool) ($cfgCapture['mail_body'] ?? false)" :disabled="$mailBodyLocked" />
                     <span class="text-sm text-slate-200">{{ __('warden::project.behaviour.capture_mail_body') }}</span>
                     <span class="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-ink-700 text-[10px] font-bold text-slate-300"
                         title="{{ __('warden::project.behaviour.capture_mail_body_hint') }}"

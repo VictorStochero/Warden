@@ -42,16 +42,19 @@ class CaptureUiTest extends TestCase
         $p = Project::create(['slug' => 'demo', 'name' => 'Demo', 'token' => 'tok-'.uniqid(), 'secret' => 'sek',
             'config' => ['capture' => ['pii' => true, 'mail_body' => false]]]);
 
-        $html = $this->get(route('warden.admin.projects.edit', $p))->assertOk()->getContent();
+        $html = (string) $this->get(route('warden.admin.projects.edit', $p))->assertOk()->getContent();
 
-        // The pii checkbox is checked, mail_body is not.
-        // Note: Blade components render as <x-warden::checkbox ... /> in the testbench HTML layer.
-        preg_match('/<x-warden::checkbox\b[^\/]*config\[capture\]\[pii\][^\/]*\/>/', (string) $html, $piiMatch);
-        $this->assertNotEmpty($piiMatch, 'pii checkbox tag not found in HTML');
+        // The component tag must have compiled — no literal <x-warden::checkbox left in the HTML.
+        $this->assertStringNotContainsString('<x-warden::checkbox', $html);
+
+        // The pii checkbox <input> is checked, mail_body is not. Assert the real compiled
+        // <input>, independent of attribute order.
+        preg_match('/<input\b[^>]*config\[capture\]\[pii\][^>]*>/', $html, $piiMatch);
+        $this->assertNotEmpty($piiMatch, 'pii checkbox <input> not found in HTML');
         $this->assertStringContainsString('checked', $piiMatch[0]);
 
-        preg_match('/<x-warden::checkbox\b[^\/]*config\[capture\]\[mail_body\][^\/]*\/>/', (string) $html, $mailMatch);
-        $this->assertNotEmpty($mailMatch, 'mail_body checkbox tag not found in HTML');
+        preg_match('/<input\b[^>]*config\[capture\]\[mail_body\][^>]*>/', $html, $mailMatch);
+        $this->assertNotEmpty($mailMatch, 'mail_body checkbox <input> not found in HTML');
         $this->assertStringNotContainsString('checked', $mailMatch[0]);
     }
 
@@ -65,14 +68,17 @@ class CaptureUiTest extends TestCase
         // The amber ".env locked" badge appears.
         $this->assertStringContainsString(__('warden::project.behaviour.capture_env_locked'), $html);
 
-        // The pii checkbox is disabled; mail_body (not overridden) is not.
-        // Note: Blade components render as <x-warden::checkbox ... /> in the testbench HTML layer.
-        preg_match('/<x-warden::checkbox\b[^\/]*config\[capture\]\[pii\][^\/]*\/>/', $html, $piiMatch);
-        $this->assertNotEmpty($piiMatch, 'pii checkbox tag not found in HTML');
+        // The component tag must have compiled — no literal <x-warden::checkbox left in the HTML.
+        $this->assertStringNotContainsString('<x-warden::checkbox', $html);
+
+        // The pii checkbox <input> is disabled; mail_body (not overridden) is not.
+        // Assert the real compiled <input>, independent of attribute order.
+        preg_match('/<input\b[^>]*config\[capture\]\[pii\][^>]*>/', $html, $piiMatch);
+        $this->assertNotEmpty($piiMatch, 'pii checkbox <input> not found in HTML');
         $this->assertStringContainsString('disabled', $piiMatch[0]);
 
-        preg_match('/<x-warden::checkbox\b[^\/]*config\[capture\]\[mail_body\][^\/]*\/>/', $html, $mailMatch);
-        $this->assertNotEmpty($mailMatch, 'mail_body checkbox tag not found in HTML');
+        preg_match('/<input\b[^>]*config\[capture\]\[mail_body\][^>]*>/', $html, $mailMatch);
+        $this->assertNotEmpty($mailMatch, 'mail_body checkbox <input> not found in HTML');
         $this->assertStringNotContainsString('disabled', $mailMatch[0]);
     }
 }
