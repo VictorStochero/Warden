@@ -115,6 +115,14 @@
         .wdn-related-collapsed #wdn-related .wdn-related-body{display:none}
         .wdn-related-collapsed #wdn-related .wdn-related-only-collapsed{display:flex}
 
+        /* Command palette: the overlay carries the `flex` utility for centering,
+           which in Tailwind's cascade overrides the preflight `[hidden]{display:none}`
+           (same specificity, utilities win on source order) — so the `hidden`
+           attribute alone never hid it and the palette stayed permanently open,
+           blocking the UI (notably on mobile). This selector's specificity (0,2,0)
+           beats `.flex` (0,1,0), so the hidden state wins cleanly without !important. */
+        [data-wdn-palette][hidden]{display:none}
+
         @include('warden::partials.supplemental-css')
     </style>
 </head>
