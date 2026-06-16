@@ -4,6 +4,8 @@ use VictorStochero\Warden\Alerting\Channels\DatabaseAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\DiscordAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\LogAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\MailAlertChannel;
+use VictorStochero\Warden\Alerting\Channels\OpsgenieAlertChannel;
+use VictorStochero\Warden\Alerting\Channels\PagerDutyAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\SlackAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\WebhookAlertChannel;
 
@@ -337,6 +339,22 @@ return [
             'min_severity' => env('WARDEN_ALERT_WEBHOOK_MIN_SEVERITY', 'warning'),
         ],
 
+        // On-call paging (§5.5). Unlike the chat channels these hit a fixed API
+        // endpoint with a credential and map opened/resolved to the provider's
+        // trigger/resolve verbs (PagerDuty Events API v2, Opsgenie Alerts API).
+        // Both self-silence without their credential and default to a `critical`
+        // floor so they only page on real incidents.
+        'pagerduty' => [
+            'routing_key' => env('WARDEN_ALERT_PAGERDUTY_ROUTING_KEY'),
+            'endpoint' => env('WARDEN_ALERT_PAGERDUTY_ENDPOINT', 'https://events.pagerduty.com/v2/enqueue'),
+            'min_severity' => env('WARDEN_ALERT_PAGERDUTY_MIN_SEVERITY', 'critical'),
+        ],
+        'opsgenie' => [
+            'api_key' => env('WARDEN_ALERT_OPSGENIE_API_KEY'),
+            'endpoint' => env('WARDEN_ALERT_OPSGENIE_ENDPOINT', 'https://api.opsgenie.com/v2/alerts'),
+            'min_severity' => env('WARDEN_ALERT_OPSGENIE_MIN_SEVERITY', 'critical'),
+        ],
+
         // Threshold rules (§5.5). Each compares a KPI over a window against a
         // threshold and opens/resolves a `rule:<name>` incident through the
         // channels below. Empty by default. Example:
@@ -355,6 +373,8 @@ return [
             SlackAlertChannel::class,
             DiscordAlertChannel::class,
             WebhookAlertChannel::class,
+            PagerDutyAlertChannel::class,
+            OpsgenieAlertChannel::class,
         ],
     ],
 
