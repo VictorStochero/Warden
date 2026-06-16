@@ -20,6 +20,16 @@ use VictorStochero\Warden\Warden;
  */
 class IngestController
 {
+    /**
+     * Schema versions this parent accepts (§5.11). The fleet may run mixed
+     * package versions; this is the explicit, documented compatibility window.
+     * Widen it (don't replace it) when a new wire schema must coexist with the
+     * old one during a rolling fleet upgrade.
+     *
+     * @var list<int>
+     */
+    public const SUPPORTED_SCHEMA_VERSIONS = [2];
+
     public function __invoke(Request $request, Ingestor $ingestor, Warden $observer): JsonResponse
     {
         // Optional TLS enforcement: reject plaintext ingest before any work. The
@@ -66,8 +76,13 @@ class IngestController
             return response()->json(['error' => 'malformed'], 422);
         }
 
-        if (Cast::int($data['schema_version'] ?? 0) !== 2) {
-            return response()->json(['error' => 'unsupported_schema'], 422);
+        if (! in_array(Cast::int($data['schema_version'] ?? 0), self::SUPPORTED_SCHEMA_VERSIONS, true)) {
+            // §5.11: name the supported window so a mismatched child fails loudly
+            // and actionably (upgrade/downgrade), never silently or fatally.
+            return response()->json([
+                'error' => 'unsupported_schema',
+                'supported' => self::SUPPORTED_SCHEMA_VERSIONS,
+            ], 422);
         }
 
         if (! isset($data['batches']) || ! is_array($data['batches'])) {
