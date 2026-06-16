@@ -82,6 +82,11 @@ return [
         'exceptions_title' => 'Excepciones recientes',
         'release_filter' => 'Desde la release',
         'release_all' => 'Todas',
+        'since_deploy_title' => 'Desde el último deploy',
+        'since_deploy_throughput' => 'Solicitudes',
+        'since_deploy_errors' => 'Errores 5xx',
+        'since_deploy_error_rate' => 'Tasa de error',
+        'since_deploy_new_issues' => 'Nuevas issues',
     ],
 
     // ── sections/host.blade.php ──────────────────────────────────────────

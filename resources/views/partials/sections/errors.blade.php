@@ -8,6 +8,21 @@
     {!! __('warden::project.errors.definition_html', ['issues_url' => route('warden.issues', $project->slug), 'incidents_url' => route('warden.incidents', $project->slug)]) !!}
 </div>
 
+@if(isset($sinceDeploy) && $sinceDeploy['release'] !== null)
+    <div class="mb-6 rounded-xl border border-ink-700/70 bg-ink-900 p-4">
+        <div class="mb-3 flex items-center justify-between">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.since_deploy_title') }}</span>
+            <span class="font-mono text-xs text-slate-400">{{ $sinceDeploy['release'] }} · {{ Format::ago($sinceDeploy['since']) }}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div><p class="text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.since_deploy_throughput') }}</p><p class="mt-0.5 text-lg font-semibold text-white">{{ Format::num($sinceDeploy['throughput']) }}</p></div>
+            <div><p class="text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.since_deploy_errors') }}</p><p class="mt-0.5 text-lg font-semibold {{ $sinceDeploy['errors'] > 0 ? 'text-rose-400' : 'text-white' }}">{{ Format::num($sinceDeploy['errors']) }}</p></div>
+            <div><p class="text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.since_deploy_error_rate') }}</p><p class="mt-0.5 text-lg font-semibold {{ $sinceDeploy['error_rate'] > 0 ? 'text-rose-400' : 'text-white' }}">{{ $sinceDeploy['error_rate'] }}%</p></div>
+            <div><p class="text-[11px] uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.since_deploy_new_issues') }}</p><p class="mt-0.5 text-lg font-semibold {{ $sinceDeploy['new_issues'] > 0 ? 'text-amber-400' : 'text-white' }}">{{ Format::num($sinceDeploy['new_issues']) }}</p></div>
+        </div>
+    </div>
+@endif
+
 <div class="mb-6 rounded-xl border border-ink-700/70 bg-ink-850 p-4">
     <div class="mb-3 flex items-center justify-between">
         <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{{ __('warden::project.errors.chart_label') }}</span>

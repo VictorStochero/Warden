@@ -56,6 +56,7 @@ class ProjectController
                 'exceptions' => $repo->recentEvents($id, 'exception', 50),
                 'releases' => $repo->releases($id),
                 'activeRelease' => $release,
+                'sinceDeploy' => $repo->sinceDeploy($id, $release),
             ],
             'database' => [
                 'slow' => $repo->slowQueries($id, $range, 25),

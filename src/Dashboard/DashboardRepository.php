@@ -1084,6 +1084,93 @@ class DashboardRepository
     }
 
     /**
+     * "Since the last deploy" snapshot (§5.6): throughput, server errors, error
+     * rate, p95 (ms) and newly-seen issues since the first event of the given
+     * release (the latest one when null). Scoped raw read anchored at the deploy
+     * instant — bounded by a sample cap. Empty state when no release is known.
+     *
+     * @return array{release: string|null, since: string|null, throughput: int, errors: int, error_rate: float, p95: int, new_issues: int}
+     */
+    public function sinceDeploy(int $projectId, ?string $release = null): array
+    {
+        $empty = ['release' => null, 'since' => null, 'throughput' => 0, 'errors' => 0, 'error_rate' => 0.0, 'p95' => 0, 'new_issues' => 0];
+
+        $release = ($release !== null && $release !== '')
+            ? $release
+            : Cast::str($this->releases($projectId, 1)->first() ?? '');
+
+        if ($release === '') {
+            return $empty;
+        }
+
+        $since = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('release', $release)
+            ->min('occurred_at');
+
+        if ($since === null) {
+            return array_merge($empty, ['release' => $release]);
+        }
+
+        $since = Cast::str($since);
+
+        $requests = $this->db->table('wdn_events')
+            ->where('project_id', $projectId)
+            ->where('type', 'request')
+            ->where('occurred_at', '>=', $since)
+            ->limit(20000)
+            ->get(['duration_us', 'payload']);
+
+        $total = $requests->count();
+        $errors = 0;
+        $durations = [];
+
+        foreach ($requests as $row) {
+            $payload = Json::decode($row->payload ?? null);
+            if (Cast::int($payload['status'] ?? 0) >= 500) {
+                $errors++;
+            }
+            if ($row->duration_us !== null) {
+                $durations[] = Cast::int($row->duration_us);
+            }
+        }
+
+        $newIssues = $this->db->table('wdn_issues')
+            ->where('project_id', $projectId)
+            ->where('first_seen_at', '>=', $since)
+            ->count();
+
+        return [
+            'release' => $release,
+            'since' => $since,
+            'throughput' => $total,
+            'errors' => $errors,
+            'error_rate' => $total > 0 ? round($errors / $total * 100, 2) : 0.0,
+            'p95' => $this->p95Micros($durations),
+            'new_issues' => $newIssues,
+        ];
+    }
+
+    /**
+     * p95 of raw durations (microseconds in → milliseconds out), computed in PHP
+     * over the bounded sample. Returns 0 when there are no timed requests.
+     *
+     * @param  list<int>  $durationsUs
+     */
+    protected function p95Micros(array $durationsUs): int
+    {
+        if ($durationsUs === []) {
+            return 0;
+        }
+
+        sort($durationsUs);
+        $idx = (int) ceil(0.95 * count($durationsUs)) - 1;
+        $idx = max(0, min($idx, count($durationsUs) - 1));
+
+        return intdiv($durationsUs[$idx], 1000);
+    }
+
+    /**
      * Distinct release markers seen for a project, most recent first — feeds the
      * "errors since this deploy" filter (§5.6).
      *
