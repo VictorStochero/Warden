@@ -6,8 +6,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-16
+
 A batch closing the code-actionable gaps from the competitive plan (Pulse + Nightwatch
-self-hosted for a fleet). No new runtime dependencies; no build step.
+self-hosted for a fleet) plus a Fase 0 reliability suite. No new runtime dependencies; no build step.
 
 ### Added
 
