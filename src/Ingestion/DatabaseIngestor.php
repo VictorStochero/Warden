@@ -2,10 +2,15 @@
 
 namespace VictorStochero\Warden\Ingestion;
 
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Connection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Throwable;
+use VictorStochero\Warden\Bridge\NullEventForwarder;
+use VictorStochero\Warden\Contracts\EventForwarder;
 use VictorStochero\Warden\Contracts\Ingestor;
+use VictorStochero\Warden\Events\EventsIngested;
 use VictorStochero\Warden\Models\Project;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\Json;
@@ -22,6 +27,8 @@ class DatabaseIngestor implements Ingestor
     public function __construct(
         protected Warden $observer,
         protected Connection $db,
+        protected ?EventForwarder $forwarder = null,
+        protected ?Dispatcher $events = null,
     ) {}
 
     public function ingest(string $project, array $batches): int
@@ -32,7 +39,10 @@ class DatabaseIngestor implements Ingestor
             return 0;
         }
 
-        return $this->observer->withoutRecording(function () use ($projectModel, $batches): int {
+        /** @var list<array<array-key, mixed>> $forwarded */
+        $forwarded = [];
+
+        $accepted = $this->observer->withoutRecording(function () use ($projectModel, $batches, &$forwarded): int {
             $now = Carbon::now('UTC');
             $accepted = 0;
 
@@ -52,11 +62,37 @@ class DatabaseIngestor implements Ingestor
 
                 $this->insertEvents(Cast::int($projectModel->id), $events, $now);
                 $accepted += count($events);
+
+                foreach ($events as $event) {
+                    $forwarded[] = $event;
+                }
             }
 
             $projectModel->forceFill(['last_seen_at' => $now])->save();
 
             return $accepted;
+        });
+
+        // §9.2 Bridge seam: hand the persisted events to the configured forwarder
+        // and fire the Laravel event. Best-effort + suppressed — a forwarder that
+        // throws (or no listeners) must never break the ingest (RNF-2).
+        if ($forwarded !== []) {
+            $this->forward(Cast::str($projectModel->slug), $forwarded);
+        }
+
+        return $accepted;
+    }
+
+    /** @param list<array<array-key, mixed>> $events */
+    protected function forward(string $projectSlug, array $events): void
+    {
+        $this->observer->withoutRecording(function () use ($projectSlug, $events): void {
+            try {
+                ($this->forwarder ?? new NullEventForwarder)->forward($projectSlug, $events);
+                $this->events?->dispatch(new EventsIngested($projectSlug, $events));
+            } catch (Throwable) {
+                // Best-effort: the Bridge seam must never break the ingest.
+            }
         });
     }
 
@@ -120,7 +156,7 @@ class DatabaseIngestor implements Ingestor
             // Children stamp occurred_at as a naive UTC instant (Warden::microNow);
             // parse it as UTC so it is stored and compared consistently (§timezone).
             return Carbon::parse($value, 'UTC');
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return null;
         }
     }

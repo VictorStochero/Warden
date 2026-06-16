@@ -24,6 +24,7 @@ use Illuminate\Support\ServiceProvider;
 use Psr\Http\Message\RequestInterface;
 use Psr\Log\LoggerInterface;
 use VictorStochero\Warden\Aggregation\DatabaseAggregator;
+use VictorStochero\Warden\Bridge\NullEventForwarder;
 use VictorStochero\Warden\Config\RemoteConfig;
 use VictorStochero\Warden\Config\SelfMonitorConfig;
 use VictorStochero\Warden\Console\AggregateCommand;
@@ -39,6 +40,7 @@ use VictorStochero\Warden\Console\ShipCommand;
 use VictorStochero\Warden\Console\SwitchCommand;
 use VictorStochero\Warden\Console\UninstallCommand;
 use VictorStochero\Warden\Contracts\Aggregator;
+use VictorStochero\Warden\Contracts\EventForwarder;
 use VictorStochero\Warden\Contracts\Ingestor;
 use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Contracts\WardenRepository;
@@ -96,7 +98,15 @@ class WardenServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(Transport::class, HttpTransport::class);
-        $this->app->bind(Ingestor::class, fn (Application $app) => new DatabaseIngestor($app->make(Warden::class), $this->connection()));
+        $this->app->bind(EventForwarder::class, fn (Application $app) => $app->make(
+            Cast::str($app->make(Repository::class)->get('warden.bridge.forwarder', NullEventForwarder::class), NullEventForwarder::class)
+        ));
+        $this->app->bind(Ingestor::class, fn (Application $app) => new DatabaseIngestor(
+            $app->make(Warden::class),
+            $this->connection(),
+            $app->make(EventForwarder::class),
+            $app->make(Dispatcher::class),
+        ));
         $this->app->bind(Aggregator::class, fn (Application $app) => new DatabaseAggregator($app->make(Warden::class), $this->connection(), $app->make(Repository::class)));
         $this->app->bind(WardenRepository::class, fn (Application $app) => new DatabaseWardenRepository($this->connection()));
         $this->app->singleton(SchemaManager::class, fn (Application $app) => SchemaManager::make($this->connection(), $app->make(Repository::class)));

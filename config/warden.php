@@ -8,6 +8,7 @@ use VictorStochero\Warden\Alerting\Channels\OpsgenieAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\PagerDutyAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\SlackAlertChannel;
 use VictorStochero\Warden\Alerting\Channels\WebhookAlertChannel;
+use VictorStochero\Warden\Bridge\NullEventForwarder;
 
 return [
 
@@ -376,6 +377,27 @@ return [
             PagerDutyAlertChannel::class,
             OpsgenieAlertChannel::class,
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Bridge (§9.2)
+    |--------------------------------------------------------------------------
+    |
+    | Optional post-ingest forwarder seam. After the parent persists a batch into
+    | wdn_events it hands the same canonical (schema_version 2) events to this
+    | forwarder, so a satellite package can re-emit them downstream (e.g. an OTLP
+    | exporter to a columnar SaaS for overflow/mirror) WITHOUT touching the core.
+    |
+    | Default is the no-op NullEventForwarder: zero overhead, no runtime dep — the
+    | "zero-dep until you opt in" contract. Point `forwarder` at a class
+    | implementing VictorStochero\Warden\Contracts\EventForwarder to enable it. A
+    | host can also subscribe to the EventsIngested event instead.
+    |
+    */
+
+    'bridge' => [
+        'forwarder' => env('WARDEN_BRIDGE_FORWARDER', NullEventForwarder::class),
     ],
 
     /*
