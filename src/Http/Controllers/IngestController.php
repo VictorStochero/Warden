@@ -106,6 +106,11 @@ class IngestController
         // write is never self-observed (§18.3).
         $observer->withoutRecording(fn () => $this->syncTimezone($project, $data));
 
+        // Record which knobs the child reports as pinned by its own .env, so the
+        // dashboard can flag overridden toggles. Best-effort and suppressed: a
+        // failure here must never break the ingest (RNF-2).
+        $observer->withoutRecording(fn () => $this->syncEnvOverrides($project, $data));
+
         // Control channel: tell the child to run a dependency audit when the
         // parent-configured interval has elapsed (M: parent-driven scheduling),
         // plus the sparse config push via a version handshake.
@@ -143,6 +148,32 @@ class IngestController
         }
 
         $project->forceFill(['timezone' => $tz])->save();
+    }
+
+    /**
+     * Persist the .env-pinned knob list the child reports (env_overrides). Only
+     * non-empty strings survive. The row is touched only when the list actually
+     * changes so a steady stream of identical reports never writes. Best-effort:
+     * any failure is swallowed so it can never break the ingest (RNF-2).
+     *
+     * @param  array<array-key, mixed>  $data
+     */
+    protected function syncEnvOverrides(Project $project, array $data): void
+    {
+        try {
+            $overrides = array_values(array_filter(
+                Cast::arr($data['env_overrides'] ?? []),
+                fn ($v) => is_string($v) && $v !== '',
+            ));
+
+            if ($overrides === ($project->env_overrides ?? [])) {
+                return;
+            }
+
+            $project->forceFill(['env_overrides' => $overrides])->save();
+        } catch (\Throwable) {
+            // resilience: never let override bookkeeping break the ingest
+        }
     }
 
     /**

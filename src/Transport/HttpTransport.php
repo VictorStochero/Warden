@@ -7,6 +7,7 @@ use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use VictorStochero\Warden\Config\ConfigCache;
+use VictorStochero\Warden\Config\KnobMap;
 use VictorStochero\Warden\Contracts\Transport;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Support\Compression;
@@ -67,6 +68,7 @@ class HttpTransport implements Transport
                     'sent_at' => time(),
                     'app_timezone' => Cast::str($this->config->get('app.timezone'), 'UTC'),
                     'config_version' => ConfigCache::version(),
+                    'env_overrides' => $this->detectEnvOverrides(),
                     'batches' => array_values($batches),
                 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
@@ -118,6 +120,25 @@ class HttpTransport implements Transport
                 return false; // resilience: swallow and retry later
             }
         });
+    }
+
+    /**
+     * The knobs whose value is pinned by this child's own .env. Reported to the
+     * parent so the dashboard can honestly flag a toggle as ignored locally
+     * (precedence .env > dashboard > default).
+     *
+     * @return list<string>
+     */
+    protected function detectEnvOverrides(): array
+    {
+        $out = [];
+        foreach (KnobMap::all() as $knob => $envVar) {
+            if ($envVar !== null && getenv($envVar) !== false) {
+                $out[] = $knob;
+            }
+        }
+
+        return $out;
     }
 
     public function reportDeadLetter(string $batchId, string $reason, int $attempts): bool

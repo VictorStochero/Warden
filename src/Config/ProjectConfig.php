@@ -83,6 +83,26 @@ final class ProjectConfig
             $out['host_interval'] = max(1, Cast::int($input['host_interval']));
         }
 
+        if (is_array($input['capture'] ?? null)) {
+            /** @var array<string, bool> $outCapture */
+            $outCapture = [];
+
+            // Only the two privacy toggles are admin-controllable. We deliberately
+            // accept ONLY pii/mail_body and never `disable_credential_scrub`:
+            // lowering the credential-scrub floor is a dangerous, local decision
+            // that must be made on the child via its .env — never pushed from the
+            // dashboard. Any disable_credential_scrub key in the input is ignored.
+            foreach (['pii', 'mail_body'] as $k) {
+                if (array_key_exists($k, $input['capture'])) {
+                    $outCapture[$k] = Cast::bool($input['capture'][$k]);
+                }
+            }
+
+            if ($outCapture !== []) {
+                $out['capture'] = $outCapture;
+            }
+        }
+
         return $out;
     }
 }
