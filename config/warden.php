@@ -361,7 +361,10 @@ return [
         // channels below. Empty by default. Example:
         //   ['name' => 'error-rate', 'metric' => 'error_rate', 'op' => '>', 'threshold' => 5, 'window' => '1h', 'severity' => 'critical'],
         // metric ∈ error_rate | p95 | throughput | errors | slow | failed_jobs | cache_hit_rate
-        // op ∈ > | >= | < | <=   ·   window ∈ 15m | 1h | 6h | 24h | 7d
+        // op ∈ > | >= | < | <= | anomaly   ·   window ∈ 15m | 1h | 6h | 24h | 7d
+        // With op 'anomaly', `threshold` is the number of standard deviations
+        // above the moving baseline that trips the rule (default 3). Anomaly
+        // supports the request-derived metrics: throughput | errors | p95 | error_rate.
         'rules' => [],
 
         // MailAlertChannel is registered unconditionally; it self-silences when

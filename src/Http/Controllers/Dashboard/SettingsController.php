@@ -21,7 +21,9 @@ class SettingsController
     /** Whitelists for the UI-managed alert rules (§5.5). */
     private const METRICS = ['error_rate', 'p95', 'throughput', 'errors', 'slow', 'failed_jobs', 'cache_hit_rate'];
 
-    private const OPS = ['>', '>=', '<', '<='];
+    // 'anomaly' compares the latest window to a moving baseline (§5.5); for it
+    // the threshold field is read as a number of standard deviations.
+    private const OPS = ['>', '>=', '<', '<=', 'anomaly'];
 
     private const WINDOWS = ['15m', '1h', '6h', '24h', '7d'];
 

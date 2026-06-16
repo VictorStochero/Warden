@@ -222,15 +222,23 @@ class Evaluator
             }
 
             $window = Cast::str($rule['window'] ?? '1h', '1h');
+            $op = Cast::str($rule['op'] ?? '>', '>');
+            $threshold = (float) Cast::str($rule['threshold'] ?? '0', '0');
+            $subject = 'rule:'.$name;
+
+            // Anomaly rules compare the latest window against a moving baseline of
+            // the preceding windows, rather than against a fixed threshold (§5.5).
+            if ($op === 'anomaly') {
+                $this->evaluateAnomaly($repo, $projectId, $name, $metric, $threshold, Cast::str($rule['severity'] ?? 'warning', 'warning'), $window);
+
+                continue;
+            }
+
             $value = $this->metricValue($repo->kpis($projectId, $window), $metric);
 
             if ($value === null) {
                 continue;
             }
-
-            $op = Cast::str($rule['op'] ?? '>', '>');
-            $threshold = (float) Cast::str($rule['threshold'] ?? '0', '0');
-            $subject = 'rule:'.$name;
 
             if ($this->breached($value, $op, $threshold)) {
                 $this->openIncident(
@@ -274,6 +282,108 @@ class Evaluator
         }
 
         return $rules;
+    }
+
+    /** Minimum baseline windows required before an anomaly rule can fire. */
+    protected const ANOMALY_MIN_SAMPLES = 5;
+
+    /**
+     * Anomaly evaluation (§5.5): build a per-bucket series for the metric, treat
+     * the latest bucket as "current" and the preceding ones as the baseline, and
+     * open/resolve the rule's incident when the current value sits more than
+     * `$sigmas` standard deviations above the baseline mean. Only request-derived
+     * metrics (throughput/errors/p95/error_rate) are supported; others no-op.
+     */
+    protected function evaluateAnomaly(DashboardRepository $repo, int $projectId, string $name, string $metric, float $sigmas, string $severity, string $window): void
+    {
+        $subject = 'rule:'.$name;
+        $sigmas = $sigmas > 0 ? $sigmas : 3.0;
+
+        $points = [];
+        foreach ($repo->requestSeries($projectId, $window) as $point) {
+            $value = $this->metricFromSeriesPoint($point, $metric);
+            if ($value !== null) {
+                $points[] = ['bucket' => Cast::str($point['bucket']), 'value' => $value];
+            }
+        }
+
+        usort($points, fn (array $a, array $b): int => strcmp($a['bucket'], $b['bucket']));
+        $values = array_map(fn (array $p): float => $p['value'], $points);
+
+        // Need the baseline samples plus the current bucket.
+        if (count($values) < self::ANOMALY_MIN_SAMPLES + 1) {
+            $this->resolveIncident($projectId, $subject);
+
+            return;
+        }
+
+        /** @var float $current */
+        $current = array_pop($values);
+
+        if ($this->anomalyBreached($values, $current, $sigmas)) {
+            $mean = array_sum($values) / count($values);
+            $this->openIncident($projectId, $subject, $severity,
+                sprintf('%s anomaly: %.2f vs baseline μ=%.2f (>%.1fσ)', $metric, $current, $mean, $sigmas),
+                ['rule' => $name, 'metric' => $metric, 'value' => $current, 'baseline_mean' => round($mean, 2), 'sigmas' => $sigmas, 'window' => $window],
+            );
+        } else {
+            $this->resolveIncident($projectId, $subject);
+        }
+    }
+
+    /**
+     * Whether `$current` is an upward anomaly against the baseline samples: more
+     * than `$sigmas` standard deviations above the mean. A perfectly flat
+     * baseline (σ≈0) falls back to a 50%-jump rule so a tiny bump doesn't read as
+     * infinite sigmas. Only spikes above the mean count.
+     *
+     * @param  list<float>  $baseline
+     */
+    protected function anomalyBreached(array $baseline, float $current, float $sigmas): bool
+    {
+        $n = count($baseline);
+
+        if ($n < self::ANOMALY_MIN_SAMPLES) {
+            return false;
+        }
+
+        $mean = array_sum($baseline) / $n;
+
+        if ($current <= $mean) {
+            return false;
+        }
+
+        $variance = 0.0;
+        foreach ($baseline as $x) {
+            $variance += ($x - $mean) ** 2;
+        }
+        $sd = sqrt($variance / $n);
+
+        if ($sd <= 1e-9) {
+            return $current >= $mean * 1.5;
+        }
+
+        return (($current - $mean) / $sd) >= $sigmas;
+    }
+
+    /**
+     * Extract a comparable numeric value for `$metric` from a request-series
+     * bucket point, or null when the metric isn't request-derived.
+     *
+     * @param  array<string, mixed>  $point
+     */
+    protected function metricFromSeriesPoint(array $point, string $metric): ?float
+    {
+        $count = Cast::int($point['count'] ?? 0);
+        $errors = Cast::int($point['errors'] ?? 0);
+
+        return match ($metric) {
+            'throughput' => (float) $count,
+            'errors' => (float) $errors,
+            'p95' => (float) Cast::int($point['p95'] ?? 0),
+            'error_rate' => $count > 0 ? round($errors / $count * 100, 2) : 0.0,
+            default => null,
+        };
     }
 
     /**
