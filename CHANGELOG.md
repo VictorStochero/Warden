@@ -6,6 +6,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-15
+
+### Fixed
+
+- **Search palette stuck open, blocking the dashboard (notably on mobile).** The command-palette
+  overlay (added in 0.3.1) combined the `hidden` attribute with the `flex` utility class; in
+  Tailwind's cascade `.flex` overrides the preflight `[hidden]{display:none}`, so the `hidden`
+  attribute never actually hid the overlay — it stayed permanently open over the whole UI and
+  the backdrop's close handler short-circuited (the JS believed it was already closed). Added a
+  scoped, higher-specificity `[data-wdn-palette][hidden]{display:none}` rule so the hidden state
+  wins. Regression-tested.
+
 ## [0.3.1] - 2026-06-15
 
 A dashboard **information-architecture** release: the same telemetry, reorganised so a Laravel
