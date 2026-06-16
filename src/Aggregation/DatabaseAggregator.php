@@ -43,54 +43,97 @@ class DatabaseAggregator implements Aggregator
     public function rollup(int $projectId, string $type): void
     {
         $this->observer->withoutRecording(function () use ($projectId, $type) {
-            $name = "aggregate:{$type}";
-            $bucketSeconds = max(1, Cast::int($this->config->get('warden.parent.bucket_seconds', 60), 60));
+            // Multi-resolution (§5.8): roll the same raw events into the fine base
+            // bucket and any coarser resolutions, each on its own cursor so they
+            // advance independently. The base keeps the historical cursor name so
+            // existing deployments' positions carry over untouched.
+            $base = $this->baseResolution();
 
-            // One transaction per (project, step), holding the cursor lock so two
-            // hosts running warden:aggregate cannot double-process the same
-            // events. At per-minute cadence the backlog per run is small.
-            $this->db->transaction(function () use ($projectId, $type, $name, $bucketSeconds) {
-                $this->cursor->lock($projectId, $name);
-
-                do {
-                    $from = $this->cursor->position($projectId, $name);
-
-                    $events = $this->db->table('wdn_events')
-                        ->where('project_id', $projectId)
-                        ->where('type', $type)
-                        ->where('id', '>', $from)
-                        ->orderBy('id')
-                        ->limit(5000)
-                        ->get();
-
-                    if ($events->isEmpty()) {
-                        return;
-                    }
-
-                    /** @var array<string, array{count:int,sum:int,max:int,meta:array<string,mixed>}> $deltas */
-                    $deltas = [];
-                    $maxId = $from;
-
-                    foreach ($events as $event) {
-                        $maxId = max($maxId, Cast::int($event->id));
-                        $payload = Json::decode($event->payload);
-                        $bucket = $this->bucket(Cast::str($event->occurred_at), $bucketSeconds);
-                        $key = $this->keyFor($type, $payload);
-                        $durationUs = Cast::int($event->duration_us);
-
-                        $ck = $bucket."\0".$key;
-                        $deltas[$ck] ??= ['count' => 0, 'sum' => 0, 'max' => 0, 'meta' => []];
-                        $deltas[$ck]['count']++;
-                        $deltas[$ck]['sum'] += $durationUs;
-                        $deltas[$ck]['max'] = max($deltas[$ck]['max'], $durationUs);
-                        $this->accumulateMeta($deltas[$ck]['meta'], $type, $payload, $durationUs);
-                    }
-
-                    $this->persist($projectId, $type, $deltas);
-                    $this->cursor->advance($projectId, $name, $maxId);
-                } while ($events->count() === 5000);
-            });
+            foreach ($this->resolutions() as $resolution) {
+                $name = $resolution === $base ? "aggregate:{$type}" : "aggregate:{$type}:{$resolution}";
+                $this->rollupResolution($projectId, $type, $resolution, $name);
+            }
         });
+    }
+
+    protected function rollupResolution(int $projectId, string $type, int $resolution, string $name): void
+    {
+        // One transaction per (project, step), holding the cursor lock so two
+        // hosts running warden:aggregate cannot double-process the same
+        // events. At per-minute cadence the backlog per run is small.
+        $this->db->transaction(function () use ($projectId, $type, $name, $resolution) {
+            $this->cursor->lock($projectId, $name);
+
+            do {
+                $from = $this->cursor->position($projectId, $name);
+
+                $events = $this->db->table('wdn_events')
+                    ->where('project_id', $projectId)
+                    ->where('type', $type)
+                    ->where('id', '>', $from)
+                    ->orderBy('id')
+                    ->limit(5000)
+                    ->get();
+
+                if ($events->isEmpty()) {
+                    return;
+                }
+
+                /** @var array<string, array{count:int,sum:int,max:int,meta:array<string,mixed>}> $deltas */
+                $deltas = [];
+                $maxId = $from;
+
+                foreach ($events as $event) {
+                    $maxId = max($maxId, Cast::int($event->id));
+                    $payload = Json::decode($event->payload);
+                    $bucket = $this->bucket(Cast::str($event->occurred_at), $resolution);
+                    $key = $this->keyFor($type, $payload);
+                    $durationUs = Cast::int($event->duration_us);
+
+                    $ck = $bucket."\0".$key;
+                    $deltas[$ck] ??= ['count' => 0, 'sum' => 0, 'max' => 0, 'meta' => []];
+                    $deltas[$ck]['count']++;
+                    $deltas[$ck]['sum'] += $durationUs;
+                    $deltas[$ck]['max'] = max($deltas[$ck]['max'], $durationUs);
+                    $this->accumulateMeta($deltas[$ck]['meta'], $type, $payload, $durationUs);
+                }
+
+                $this->persist($projectId, $type, $resolution, $deltas);
+                $this->cursor->advance($projectId, $name, $maxId);
+            } while ($events->count() === 5000);
+        });
+    }
+
+    /** The fine base resolution in seconds (config bucket_seconds). */
+    protected function baseResolution(): int
+    {
+        return max(1, Cast::int($this->config->get('warden.parent.bucket_seconds', 60), 60));
+    }
+
+    /**
+     * Resolutions to roll up, base first. Coarser resolutions (default daily)
+     * make long-window reads cheap; disable via parent.rollups.enabled=false to
+     * keep only the base resolution.
+     *
+     * @return list<int>
+     */
+    protected function resolutions(): array
+    {
+        $base = $this->baseResolution();
+
+        if (! Cast::bool($this->config->get('warden.parent.rollups.enabled', true))) {
+            return [$base];
+        }
+
+        $coarse = [];
+        foreach (Cast::arr($this->config->get('warden.parent.rollups.coarse', [86400])) as $seconds) {
+            $seconds = Cast::int($seconds);
+            if ($seconds > $base) {
+                $coarse[] = $seconds;
+            }
+        }
+
+        return array_values(array_unique([$base, ...$coarse]));
     }
 
     /**
@@ -102,7 +145,7 @@ class DatabaseAggregator implements Aggregator
      * inserts/updates inside the rollup's transaction — the cursor lock already
      * serialises concurrent runs, so the per-key lockForUpdate was redundant.
      */
-    protected function persist(int $projectId, string $type, array $deltas): void
+    protected function persist(int $projectId, string $type, int $resolution, array $deltas): void
     {
         if ($deltas === []) {
             return;
@@ -116,12 +159,13 @@ class DatabaseAggregator implements Aggregator
             $keys[$key] = true;
         }
 
-        // Superset of the touched rows (bucket × key); filtered by exact compound
-        // below, so spurious cross-product matches are harmless.
+        // Superset of the touched rows (bucket × key) at this resolution; filtered
+        // by exact compound below, so spurious cross-product matches are harmless.
         $existing = [];
         $rows = $this->db->table('wdn_aggregates')
             ->where('project_id', $projectId)
             ->where('type', $type)
+            ->where('resolution', $resolution)
             ->whereIn('bucket', array_keys($buckets))
             ->whereIn('key', array_keys($keys))
             ->get();
@@ -140,6 +184,7 @@ class DatabaseAggregator implements Aggregator
                 $inserts[] = [
                     'project_id' => $projectId,
                     'type' => $type,
+                    'resolution' => $resolution,
                     'bucket' => $bucket,
                     'key' => $key,
                     'count' => $delta['count'],

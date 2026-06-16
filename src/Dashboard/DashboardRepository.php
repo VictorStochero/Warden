@@ -1344,11 +1344,40 @@ class DashboardRepository
         $window = $this->windowStart !== null || $end !== null
             ? '.'.($this->windowStart?->getTimestamp() ?? '').'-'.($end?->getTimestamp() ?? '')
             : '';
-        $key = "{$projectId}.{$type}.{$range}{$window}";
 
-        return $this->rowsCache[$key] ??= $this->db->table('wdn_aggregates')
+        // Multi-resolution (§5.8): a long window reads the coarse (daily) rollup —
+        // a handful of rows instead of thousands — while short windows keep the
+        // fine base resolution. Resolution is part of the cache key.
+        $resolution = $this->resolutionFor($range);
+        $key = "{$projectId}.{$type}.{$range}.{$resolution}{$window}";
+
+        if (isset($this->rowsCache[$key])) {
+            return $this->rowsCache[$key];
+        }
+
+        $rows = $this->queryRows($projectId, $type, $range, $resolution, $end);
+
+        // Fallback: if the coarse rollup hasn't been produced yet, read the base
+        // resolution so a long window is never silently empty.
+        $base = $this->baseResolution();
+        if ($rows->isEmpty() && $resolution !== $base) {
+            $rows = $this->queryRows($projectId, $type, $range, $base, $end);
+        }
+
+        return $this->rowsCache[$key] = $rows;
+    }
+
+    /**
+     * Read aggregate rows for a (project, type, range) at a single resolution.
+     *
+     * @return Collection<int, AggRow>
+     */
+    protected function queryRows(int $projectId, string $type, string $range, int $resolution, ?Carbon $end): Collection
+    {
+        return $this->db->table('wdn_aggregates')
             ->where('project_id', $projectId)
             ->where('type', $type)
+            ->where('resolution', $resolution)
             ->where('bucket', '>=', $this->rangeStart($range))
             ->when($end !== null, fn (Builder $q): Builder => $q->where('bucket', '<=', $end))
             ->get()
@@ -1361,6 +1390,58 @@ class DashboardRepository
                 'meta' => Json::decode($r->meta ?? null),
             ])
             ->values();
+    }
+
+    /** The fine base resolution in seconds (config bucket_seconds). */
+    protected function baseResolution(): int
+    {
+        return max(1, Cast::int(config('warden.parent.bucket_seconds', 60), 60));
+    }
+
+    /**
+     * Pick the rollup resolution for a range: the coarse (daily) resolution for
+     * windows of a week or more, the base resolution otherwise. Falls back to the
+     * base when multi-resolution rollups are disabled.
+     */
+    protected function resolutionFor(string $range): int
+    {
+        $base = $this->baseResolution();
+
+        if (! Cast::bool(config('warden.parent.rollups.enabled', true))) {
+            return $base;
+        }
+
+        if ($this->rangeSpanSeconds($range) < 604800) { // < 7 days → fine buckets
+            return $base;
+        }
+
+        $coarse = $base;
+        foreach (Cast::arr(config('warden.parent.rollups.coarse', [86400])) as $seconds) {
+            $seconds = Cast::int($seconds);
+            if ($seconds > $coarse) {
+                $coarse = $seconds;
+            }
+        }
+
+        return $coarse;
+    }
+
+    /** Span of the active read window in seconds (custom window or preset range). */
+    protected function rangeSpanSeconds(string $range): int
+    {
+        if ($this->windowStart !== null) {
+            $end = $this->windowEnd ?? Carbon::now();
+
+            return max(0, $end->getTimestamp() - $this->windowStart->getTimestamp());
+        }
+
+        if (! preg_match('/^(\d+)([mhd])$/', $range, $m)) {
+            return 3600;
+        }
+
+        $unitSeconds = ['m' => 60, 'h' => 3600, 'd' => 86400];
+
+        return $unitSeconds[$m[2]] * (int) $m[1];
     }
 
     /**

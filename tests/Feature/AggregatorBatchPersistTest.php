@@ -16,6 +16,10 @@ class AggregatorBatchPersistTest extends TestCase
 
     public function test_persist_reads_existing_aggregates_in_one_query(): void
     {
+        // This guards the base-resolution batched lookup; keep the rollup to a
+        // single resolution so the query count isn't multiplied by coarse passes.
+        config()->set('warden.parent.rollups.enabled', false);
+
         $project = Project::create(['name' => 'Demo', 'slug' => 'demo', 'token' => 't', 'secret' => 's', 'active' => true]);
 
         // Three distinct routes -> three distinct aggregate keys in one bucket.

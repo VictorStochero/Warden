@@ -296,8 +296,19 @@ return [
         'partitioning' => env('WARDEN_PARTITIONING', true),
         'partition_ahead_days' => env('WARDEN_PARTITION_AHEAD', 7),
 
-        // Rollup bucket size in seconds for aggregates.
+        // Rollup bucket size in seconds for aggregates (the fine "base" resolution).
         'bucket_seconds' => env('WARDEN_BUCKET_SECONDS', 60),
+
+        // Multi-resolution rollups (§5.8). Besides the base bucket above, the
+        // aggregator also rolls events into coarser resolutions so a long-window
+        // read (7d/30d) is served by a handful of daily rows instead of thousands
+        // of per-minute rows. Each resolution has its own cursor. Set enabled to
+        // false to keep only the base resolution. `coarse` lists the extra
+        // resolutions in seconds (default: daily).
+        'rollups' => [
+            'enabled' => env('WARDEN_MULTI_RESOLUTION', true),
+            'coarse' => [86400],
+        ],
 
         // How a "slow" request/query is classified in rollups, milliseconds.
         'slow_request_ms' => env('WARDEN_SLOW_REQUEST_MS', 1000),

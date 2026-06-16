@@ -20,6 +20,7 @@ class WardenTables
             'wdn_events',
             'wdn_aggregates',
             'wdn_issues',
+            'wdn_issue_comments',
             'wdn_heartbeats',
             'wdn_incidents',
             'wdn_outbox',
