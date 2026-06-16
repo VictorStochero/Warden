@@ -5,7 +5,9 @@ namespace VictorStochero\Warden\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Routing\Router;
 use Symfony\Component\HttpFoundation\Response;
+use VictorStochero\Warden\Http\LivewireOrigin;
 use VictorStochero\Warden\Trace\Propagation;
 use VictorStochero\Warden\Warden;
 
@@ -46,6 +48,23 @@ class TraceRequests
             $routeName = $route instanceof Route
                 ? ($route->getName() ?: '/'.ltrim($route->uri(), '/'))
                 : null;
+
+            // Livewire apps post every interaction to the technical `livewire/update`
+            // endpoint, which loses which page the user was on. Resolve the origin
+            // page's route from the Referer and relabel the request to it, so Top
+            // Routes/traces group by page (§4.8). Best-effort, in memory, inside
+            // withoutRecording() (§18.3); LivewireOrigin::resolve never throws (RNF-2).
+            // Privacy: only the resolved route name is kept, never the raw Referer.
+            if (LivewireOrigin::isLivewire($routeName, $request->path())) {
+                $origin = $this->warden->withoutRecording(fn () => LivewireOrigin::resolve(
+                    app(Router::class)->getRoutes(),
+                    $request->headers->get('referer'),
+                ));
+
+                if ($origin !== null) {
+                    $routeName = $origin.' (via Livewire)';
+                }
+            }
 
             $this->warden->record('request', [
                 'method' => $request->getMethod(),
