@@ -1,0 +1,60 @@
+<h2>Privacidade & captura — controle pelo dashboard</h2>
+<p class="subtitle">Nova seção na edição do projeto. A infra (parent→child + precedência <code>.env</code> &gt; dashboard &gt; default) já existe; falta a UI + validação + testes. Mockup e decisões abaixo.</p>
+
+<style>
+  .card { border:1px solid rgba(125,125,125,.25); border-radius:10px; padding:16px; margin:8px 0 18px; background:rgba(125,125,125,.05); max-width:600px; }
+  .toggle { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0; border-bottom:1px solid rgba(125,125,125,.15); }
+  .toggle:last-child{border-bottom:none}
+  .tlabel b{display:block} .tlabel span{font-size:11.5px;opacity:.7}
+  .sw { width:38px;height:20px;border-radius:99px;background:rgba(125,125,125,.3);position:relative;flex:none }
+  .sw.on{background:#34d399}
+  .sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+  .sw.on i{left:20px}
+  .danger{border:1px solid rgba(248,113,113,.5);background:rgba(248,113,113,.08);border-radius:8px;padding:10px 12px;font-size:12px;margin-top:6px}
+  .envwarn{display:inline-block;font-size:10px;padding:2px 7px;border-radius:6px;background:rgba(251,191,36,.2);color:#fbbf24;margin-left:8px}
+</style>
+
+<div class="card">
+  <div class="label" style="margin-bottom:6px">Privacidade & captura · projeto "API"</div>
+  <div class="toggle">
+    <div class="tlabel"><b>Capturar PII</b><span>e-mails, nomes e dados pessoais nos payloads</span></div>
+    <div class="sw"><i></i></div>
+  </div>
+  <div class="toggle">
+    <div class="tlabel"><b>Capturar corpo de e-mails</b><span>conteúdo das mensagens enviadas (mail body)</span></div>
+    <div class="sw on"><i></i></div>
+  </div>
+  <div class="toggle">
+    <div class="tlabel"><b>Capturar PII</b> <span class="envwarn">⚠ fixado pelo .env do child (true) — toggle ignorado</span></div>
+    <div class="sw on" style="opacity:.5"><i></i></div>
+  </div>
+  <div class="danger">
+    🔒 <b>Piso de credenciais</b> (senhas, tokens, CPF, API keys) é sempre mascarado. Desligar isso (<code>disable_credential_scrub</code>) grava segredos em texto puro — fica disponível <b>apenas via .env do child</b>, não no dashboard.
+  </div>
+</div>
+
+<h3>Decisões</h3>
+<div class="options" data-multiselect>
+  <div class="option" data-choice="pii-mailbody-ui" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content"><h3>Expor PII e mail_body como toggles</h3><p>Os dois flags "normais" ficam controláveis pelo dashboard.</p></div>
+  </div>
+  <div class="option" data-choice="cred-env-only" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content"><h3><code>disable_credential_scrub</code> NÃO no dashboard</h3><p>Categoria perigosa (credencial ≠ PII). Fica só via <code>.env</code>, com aviso explicativo na UI. <b>(recomendado)</b></p></div>
+  </div>
+  <div class="option" data-choice="env-feedback-real" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content"><h3>Mostrar de verdade quando o <code>.env</code> está vencendo</h3><p>O child reporta no ingest quais knobs estão fixados no <code>.env</code>; a UI marca "⚠ ignorado: definido no .env do child". Evita o toggle mentir silenciosamente. <b>(recomendado, custa um pouco mais)</b></p></div>
+  </div>
+  <div class="option" data-choice="env-feedback-generic" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content"><h3>Alternativa barata: só aviso genérico</h3><p>Sem reporte do child — apenas um texto fixo "se o .env do child definir, ele prevalece". Marque <b>em vez de</b> #3 se quiser o caminho mais simples.</p></div>
+  </div>
+  <div class="option" data-choice="confirm-toggle" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content"><h3>Confirmação ao LIGAR captura sensível</h3><p>Ligar "Capturar PII" pede confirmação (modal) — é uma ação com implicação de privacidade.</p></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px"><b>Recomendação: 1 + 2 + 3 + 5.</b> Expõe PII/mail_body com confirmação ao ligar, mantém o piso de credenciais fora do alcance da UI, e mostra honestamente quando o <code>.env</code> do child está no comando. #4 só se você preferir não mexer no payload de ingest agora.</p>

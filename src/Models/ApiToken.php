@@ -11,17 +11,26 @@ use Illuminate\Support\Str;
  *
  * @property int $id
  * @property string $name
+ * @property string $prefix
  * @property string $token
  * @property Carbon|null $last_used_at
  * @property Carbon|null $created_at
  */
 class ApiToken extends WardenModel
 {
+    /** Length of the indexable plaintext prefix kept alongside the hash (§9.5). */
+    private const PREFIX_LENGTH = 12;
+
     protected $table = 'wdn_api_tokens';
 
     public $timestamps = false;
 
-    protected $guarded = [];
+    /**
+     * Explicit allow-list (§9.5): this row carries a credential hash, so an
+     * accidental mass-assignment must never reach it. Internal Warden models use
+     * $guarded = [] by convention; the token table is the deliberate exception.
+     */
+    protected $fillable = ['name', 'prefix', 'token', 'last_used_at', 'created_at'];
 
     protected $casts = [
         'last_used_at' => 'datetime',
@@ -40,6 +49,7 @@ class ApiToken extends WardenModel
 
         $model = static::query()->create([
             'name' => $name,
+            'prefix' => mb_substr($plaintext, 0, self::PREFIX_LENGTH),
             'token' => hash('sha256', $plaintext),
             'created_at' => Carbon::now(),
         ]);
@@ -47,13 +57,42 @@ class ApiToken extends WardenModel
         return [$model, $plaintext];
     }
 
-    /** Resolve a token by its plaintext, or null when it doesn't match. */
+    /**
+     * Resolve a token by its plaintext, or null when it doesn't match (§9.5).
+     * The query narrows on the indexable prefix, then the full hash is compared
+     * with hash_equals() so the match decision is timing-safe — the database
+     * never sees (and never branches on) the secret hash itself.
+     */
     public static function findByPlaintext(string $plaintext): ?self
     {
         if ($plaintext === '') {
             return null;
         }
 
-        return static::query()->where('token', hash('sha256', $plaintext))->first();
+        $prefix = mb_substr($plaintext, 0, self::PREFIX_LENGTH);
+        $hash = hash('sha256', $plaintext);
+
+        foreach (static::query()->where('prefix', $prefix)->get() as $token) {
+            if (hash_equals((string) $token->token, $hash)) {
+                return $token;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Stamp last_used_at at most once per throttle window (§9.5), so the hot
+     * read path doesn't issue an UPDATE on every authenticated request.
+     */
+    public function touchLastUsed(int $throttleSeconds = 60): void
+    {
+        $last = $this->last_used_at;
+
+        if ($last !== null && $last->diffInSeconds(Carbon::now()) < $throttleSeconds) {
+            return;
+        }
+
+        $this->forceFill(['last_used_at' => Carbon::now()])->save();
     }
 }

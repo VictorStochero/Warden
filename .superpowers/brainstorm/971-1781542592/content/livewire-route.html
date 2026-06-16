@@ -1,0 +1,49 @@
+<h2>Rota real por trás de <code>livewire/update</code></h2>
+<p class="subtitle">Hoje toda interação Livewire vira a rota técnica <code>livewire.update</code> — você não sabe qual <b>página</b> o usuário estava. A página real está no header <code>Referer</code> (que o Warden não captura hoje). Três níveis de solução, combináveis.</p>
+
+<style>
+  .ex{border:1px solid rgba(125,125,125,.25);border-radius:8px;padding:10px 12px;margin-top:8px;font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(125,125,125,.05)}
+  .ex .bad{color:#f87171}.ex .good{color:#34d399}
+  .ready{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:5px;margin-left:8px}
+  .cost{background:rgba(251,191,36,.18);color:#fbbf24}
+  .cheap{background:rgba(52,211,153,.2);color:#34d399}
+  code{font-size:11.5px}
+</style>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="referer" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Capturar a página de origem (Referer) <span class="ready cheap">barato</span></h3>
+    <p>Gravar o <code>Referer</code> no payload da request. Mostra "veio de <code>/orders/42</code>". Base para tudo. Passa pelo Scrubber (URL pode ter PII na query string).</p>
+    <div class="ex"><span class="bad">POST livewire.update</span> &nbsp;→&nbsp; <span class="good">origem: /orders/42</span></div>
+    </div>
+  </div>
+  <div class="option" data-choice="resolve" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Resolver para a ROTA real <span class="ready cost">médio</span></h3>
+    <p>No child, casar a URL do Referer com o router (<code>Routes->match()</code>) para obter o <b>nome da rota</b> de origem (<code>orders.show</code>) — não só a URL. Vira o label e pode reagrupar as métricas por página real.</p>
+    <div class="ex"><span class="bad">livewire.update</span> &nbsp;→&nbsp; <span class="good">orders.show (via Livewire)</span></div>
+    </div>
+  </div>
+  <div class="option" data-choice="component" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content"><h3>Extrair o componente + ação Livewire <span class="ready cost">mais frágil</span></h3>
+    <p>Ler do corpo da POST o nome do componente e o método chamado (<code>OrderList::delete</code>). O mais preciso, mas depende do formato interno do snapshot Livewire (pode quebrar entre versões).</p>
+    <div class="ex"><span class="good">OrderList › delete()</span> &nbsp;@&nbsp; orders.show</div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:18px">Como exibir o agrupamento?</h3>
+<div class="options">
+  <div class="option" data-choice="regroup" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content"><h3>Reagrupar por página real</h3><p>Cada página Livewire vira sua própria linha em Top Routes (<code>orders.show</code>, <code>products.index</code>…). Você vê qual página gera mais carga/erro. Pode fragmentar se houver muitas páginas.</p></div>
+  </div>
+  <div class="option" data-choice="enrich" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content"><h3>Manter <code>livewire.update</code> + anexar origem</h3><p>A rota continua <code>livewire.update</code> nas métricas, mas cada trace/erro mostra a origem. Menos disruptivo, mas Top Routes continua "cego".</p></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px"><b>Recomendação: A + B, com agrupamento (1).</b> Captura o Referer e resolve para a rota real, reagrupando as métricas por página — é o que responde "qual página o usuário estava". <b>C</b> fica como enriquecimento opcional (preciso mas frágil). Tudo respeitando privacidade: o Referer passa pelo Scrubber e a query string sensível é redigida conforme <code>capture.pii</code>.</p>

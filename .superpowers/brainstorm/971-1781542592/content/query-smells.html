@@ -1,0 +1,50 @@
+<h2>Auditoria de queries — quais "problemas" detectar automaticamente?</h2>
+<p class="subtitle">Tudo abaixo é detectável <b>zero-dep</b> com o que o Warden já captura (SQL normalizado + bindings + trace_id + duração), via análise estática do SQL + agregação por trace. Marque os que entram na seção Database.</p>
+
+<style>
+  .sev { display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:5px;margin-left:8px;vertical-align:middle }
+  .sev.hi{background:rgba(248,113,113,.22);color:#f87171}
+  .sev.md{background:rgba(251,191,36,.2);color:#fbbf24}
+  .sev.lo{background:rgba(96,165,250,.2);color:#60a5fa}
+  .ready{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:5px;margin-left:8px;background:rgba(52,211,153,.2);color:#34d399}
+  code{font-size:11.5px}
+</style>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="nplus1" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content"><h3>N+1 <span class="sev hi">alto</span><span class="ready">detector já existe</span></h3>
+    <p>Mesma query (normalizada) repetida N× no mesmo trace. Já detectado por-trace; falta o <b>relatório de projeto</b> + listar traces afetados.</p></div>
+  </div>
+  <div class="option" data-choice="dup" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content"><h3>Queries idênticas duplicadas <span class="sev md">médio</span></h3>
+    <p>Mesma SQL <b>e mesmos bindings</b> repetida no trace — não é N+1, é desperdício puro (cache de request perdido). Ex.: a mesma <code>SELECT user 42</code> rodando 6×.</p></div>
+  </div>
+  <div class="option" data-choice="selectstar" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content"><h3>SELECT * (over-fetching) <span class="sev lo">baixo</span></h3>
+    <p>Query que puxa todas as colunas. Regex no SQL. Sinaliza hidratação desnecessária.</p></div>
+  </div>
+  <div class="option" data-choice="nowhere" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content"><h3>UPDATE/DELETE sem WHERE <span class="sev hi">crítico</span></h3>
+    <p>Escrita em massa sem cláusula WHERE — risco de apagar/alterar a tabela inteira. Regex no SQL. Raro, mas quando aparece é grave.</p></div>
+  </div>
+  <div class="option" data-choice="heavy" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content"><h3>Request "gorda" — volume de queries <span class="sev md">médio</span></h3>
+    <p>Trace com contagem total de queries acima de um limiar (ex.: &gt;50 numa request) mesmo sem N+1 — indica página/endpoint pesado.</p></div>
+  </div>
+  <div class="option" data-choice="slow" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content"><h3>Queries lentas <span class="sev md">médio</span><span class="ready">já existe</span></h3>
+    <p>Acima de <code>slow_query_ms</code> (default 100ms). Já temos; só realçar/unificar na nova visão de saúde.</p></div>
+  </div>
+</div>
+
+<div style="border:1px solid rgba(125,125,125,.25);border-radius:8px;padding:12px;margin-top:16px;font-size:12px;opacity:.85">
+  <b>Honestidade sobre limites (zero-dep):</b> detectar <b>índice ausente real</b>, <b>filesort</b> ou <b>nº de linhas retornadas</b> exigiria rodar <code>EXPLAIN</code> ou capturar row counts — o Warden não faz isso hoje (precisaria conexão ao DB do child / mais captura). Fica de fora desta versão; podemos sinalizar como heurística futura.
+</div>
+
+<p class="subtitle" style="margin-top:14px"><b>Recomendação: 1 + 2 + 4 + 6</b> (maior valor/risco, baixo custo) e <b>3 + 5</b> como complementos baratos. Apresentados juntos numa visão <b>"Saúde das queries"</b> dentro de Database, cada achado linkando para os traces afetados (usa o drill-down).</p>

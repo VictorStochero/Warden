@@ -1,0 +1,102 @@
+<h2>Quais saltos entre dados (drill-down) entram na 0.3.1?</h2>
+<p class="subtitle">O Trace (waterfall) é o hub natural — quase tudo deveria levar até ele e voltar. Abaixo, o mapa atual: <span style="color:#34d399">verde = já existe</span>, <span style="color:#f87171">vermelho tracejado = falta</span>. Selecione os saltos que faltam e que você quer na 0.3.1.</p>
+
+<style>
+  .map { border:1px solid rgba(125,125,125,.25); border-radius:12px; padding:18px; margin:6px 0 20px; background:rgba(125,125,125,.05); }
+  .map .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center; margin:8px 0; font-family:ui-monospace,monospace; font-size:12.5px; }
+  .ent { padding:6px 12px; border-radius:8px; border:1px solid rgba(125,125,125,.4); background:rgba(125,125,125,.12); white-space:nowrap; }
+  .ent.hub { border-color:#60a5fa; background:rgba(96,165,250,.18); font-weight:700; }
+  .arr { opacity:.7; }
+  .arr.ok { color:#34d399; }
+  .arr.miss { color:#f87171; }
+  .legend { text-align:center; font-size:11px; opacity:.75; margin-top:8px; }
+</style>
+
+<div class="map">
+  <div class="row">
+    <span class="ent">Top Routes</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent">Requests da rota</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent hub">TRACE (waterfall)</span>
+    <span class="arr ok">→</span>
+    <span class="ent">Span → Event bruto</span>
+  </div>
+  <div class="row">
+    <span class="ent">Slow / Frequent Query</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent">Traces onde rodou</span>
+    <span class="arr ok">→</span>
+    <span class="ent hub">TRACE</span>
+  </div>
+  <div class="row">
+    <span class="ent">Error 5xx</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent hub">TRACE</span>
+    <span class="arr miss">⇠</span>
+    <span class="ent">HTTP host / Job / Cache</span>
+  </div>
+  <div class="row">
+    <span class="ent">Exception (span no trace)</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent">Issue</span>
+    <span class="arr ok">→</span>
+    <span class="ent">Eventos da issue</span>
+    <span class="arr ok">→</span>
+    <span class="ent">Incident</span>
+  </div>
+  <div class="row">
+    <span class="ent">Incident</span>
+    <span class="arr ok">→</span>
+    <span class="ent">Issues relacionadas</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent">Trace do 1º erro</span>
+  </div>
+  <div class="row">
+    <span class="ent">Deploy / Release marker</span>
+    <span class="arr miss">⇢</span>
+    <span class="ent">Erros & issues desse deploy</span>
+  </div>
+  <div class="legend">→ salto já existe &nbsp;·&nbsp; ⇢ salto que falta</div>
+</div>
+
+<h3>Saltos faltantes — quais priorizar? (marque vários)</h3>
+<div class="options" data-multiselect>
+  <div class="option" data-choice="route-to-traces" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content"><h3>Rota → seus traces/requests</h3>
+    <p>Clicar numa linha de "Top Routes" mostra os traces recentes daquela rota. Hoje a tabela é um beco sem saída.</p></div>
+  </div>
+  <div class="option" data-choice="query-to-traces" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content"><h3>Query lenta → traces onde apareceu</h3>
+    <p>Da query lenta para os traces reais que a executaram — fecha o "onde isso roda?".</p></div>
+  </div>
+  <div class="option" data-choice="error-to-trace" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content"><h3>Erro 5xx → trace</h3>
+    <p>Cada erro recente abre direto o waterfall da request que falhou.</p></div>
+  </div>
+  <div class="option" data-choice="exception-to-issue" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content"><h3>Exception no trace ↔ Issue</h3>
+    <p>Span de exceção no waterfall linka para a Issue agrupada (e a Issue volta ao trace).</p></div>
+  </div>
+  <div class="option" data-choice="incident-to-trace" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content"><h3>Incident → trace do 1º erro</h3>
+    <p>Do incident para a evidência concreta (primeiro trace que disparou).</p></div>
+  </div>
+  <div class="option" data-choice="deploy-to-errors" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content"><h3>Deploy marker → erros/issues do deploy</h3>
+    <p>Clicar no marcador de deploy filtra erros e issues surgidos naquela release.</p></div>
+  </div>
+  <div class="option" data-choice="http-job-to-trace" onclick="toggleSelect(this)">
+    <div class="letter">7</div>
+    <div class="content"><h3>HTTP host / Job / Cache → traces</h3>
+    <p>Mesmo padrão da rota/query, para as demais tabelas de agregado.</p></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px"><b>Recomendação:</b> 1, 2, 3, 4 são os de maior retorno — transformam tabelas "mortas" em pontos de partida de investigação e fecham o ciclo <i>agregado → trace → issue</i>. 5, 6, 7 são ótimos complementos se couber no escopo.</p>

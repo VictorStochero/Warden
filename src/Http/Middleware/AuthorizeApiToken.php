@@ -24,7 +24,9 @@ class AuthorizeApiToken
             return response()->json(['message' => 'Invalid API token.'], 401);
         }
 
-        $token->forceFill(['last_used_at' => now()])->save();
+        // Throttled write (§9.5): stamp last_used_at at most once per minute so a
+        // busy automation client doesn't UPDATE the row on every read request.
+        $token->touchLastUsed();
 
         return $next($request);
     }

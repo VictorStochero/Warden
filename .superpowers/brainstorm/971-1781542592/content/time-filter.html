@@ -1,0 +1,56 @@
+<h2>Controle de tempo & filtros temporais</h2>
+<p class="subtitle">Hoje só há presets fixos (1h / 6h / 24h / 7d) no topo. Para "achar o log de uma data específica" precisamos de seleção custom. Mockup do seletor proposto + decisões abaixo.</p>
+
+<style>
+  .picker { border:1px solid rgba(125,125,125,.25); border-radius:10px; padding:14px; margin:8px 0 18px; background:rgba(125,125,125,.05); max-width:560px; }
+  .presets { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .chip { font-size:11.5px; padding:4px 11px; border-radius:7px; background:rgba(125,125,125,.14); font-family:ui-monospace,monospace; }
+  .chip.on { background:rgba(96,165,250,.28); border:1px solid #60a5fa; }
+  .custom { display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-family:ui-monospace,monospace; font-size:12px; }
+  .field { border:1px solid rgba(125,125,125,.4); border-radius:7px; padding:6px 10px; background:rgba(125,125,125,.08); }
+  .arrowto { opacity:.6; }
+  .logbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; border:1px solid rgba(96,165,250,.4); border-radius:8px; padding:8px 10px; background:rgba(96,165,250,.06); font-family:ui-monospace,monospace; font-size:11.5px; margin-top:6px; }
+</style>
+
+<div class="picker">
+  <div class="label" style="margin-bottom:6px">Atalhos rápidos</div>
+  <div class="presets">
+    <span class="chip">1h</span><span class="chip on">6h</span><span class="chip">24h</span><span class="chip">7d</span><span class="chip">30d</span><span class="chip">custom ▾</span>
+  </div>
+  <div class="label" style="margin-bottom:6px">Intervalo específico</div>
+  <div class="custom">
+    <span class="field">📅 2026-06-14 09:00</span>
+    <span class="arrowto">→</span>
+    <span class="field">📅 2026-06-14 18:00</span>
+    <span class="chip on" style="margin-left:4px">aplicar</span>
+  </div>
+</div>
+
+<h3>O que entra na 0.3.1? (marque)</h3>
+<div class="options" data-multiselect>
+  <div class="option" data-choice="custom-range" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content"><h3>Intervalo custom (de → até, data + hora)</h3><p>Seletor com data e hora de início/fim. Inputs nativos <code>datetime-local</code> — zero-dep, sem libs de calendário.</p></div>
+  </div>
+  <div class="option" data-choice="add30d" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content"><h3>Adicionar preset 30d</h3><p>Completa a régua (hoje para em 7d, mas uptime já fala em 30d).</p></div>
+  </div>
+  <div class="option" data-choice="global-persist" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content"><h3>Range vale para todas as seções do projeto</h3><p>Escolheu o intervalo numa seção, ele persiste ao navegar entre Requests/Errors/Queries/… (via query string + cookie).</p></div>
+  </div>
+  <div class="option" data-choice="logs-combo" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content"><h3>Logs: filtro combinado (texto + nível + intervalo)</h3>
+    <p>A seção Logs ganha barra única: buscar texto <b>E</b> nível <b>E</b> a janela temporal específica juntos.</p>
+    <div class="logbar">🔍 "payment failed" · <span style="color:#f87171">error</span> · 14/06 09:00→18:00</div>
+    </div>
+  </div>
+  <div class="option" data-choice="deep-logs" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content"><h3>Busca de log no banco (não só nos recentes)</h3><p>Hoje a busca de log filtra só o lote recente em memória. Para achar log de uma data passada, a query precisa ir ao banco (respeitando retenção/prune). <b>Mais robusto, requer cuidado de índice.</b></p></div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:14px"><b>Recomendação:</b> 1+2+3+4 são o coração do pedido e baratos. O item 5 é o que realmente entrega "achar log de uma data antiga" — vale incluir, mas é o de maior custo (query no banco + índice em <code>occurred_at</code>); se o escopo apertar, ele é o candidato a 0.3.2.</p>

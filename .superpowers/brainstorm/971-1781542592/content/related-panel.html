@@ -1,0 +1,80 @@
+<h2>Painel "Relacionados" ancorado no trace — é isto?</h2>
+<p class="subtitle">Exemplo: você está na tela de uma <b>Issue</b>. À direita, uma sidebar recolhível mostra TUDO que pertence ao mesmo trace, agrupado, com links bidirecionais. O mesmo painel aparece em Evento, Rota, Query, Erro, Incident, Trace.</p>
+
+<style>
+  .demo { display:flex; gap:0; border:1px solid rgba(125,125,125,.25); border-radius:12px; overflow:hidden; }
+  .demo .main { flex:1; padding:18px; min-width:0; }
+  .demo .aside { width:300px; border-left:1px solid rgba(125,125,125,.25); background:rgba(96,165,250,.06); padding:14px; font-size:12.5px; }
+  .demo h4 { margin:0 0 10px; }
+  .ph { background:rgba(125,125,125,.12); border-radius:6px; height:12px; margin:7px 0; }
+  .ph.w70{width:70%}.ph.w50{width:50%}.ph.w90{width:90%}
+  .aside .ah { display:flex; align-items:center; justify-content:space-between; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; opacity:.8; margin-bottom:10px; }
+  .chev { opacity:.6; }
+  .traceCard { border:1px solid #60a5fa; background:rgba(96,165,250,.14); border-radius:8px; padding:8px 10px; margin-bottom:12px; font-family:ui-monospace,monospace; }
+  .traceCard .tid { font-weight:700; }
+  .traceCard .meta { font-size:11px; opacity:.8; margin-top:2px; }
+  .relgrp { font-size:10px; text-transform:uppercase; letter-spacing:.04em; opacity:.6; margin:12px 0 4px; }
+  .relitem { display:flex; justify-content:space-between; gap:8px; padding:4px 7px; border-radius:6px; background:rgba(125,125,125,.08); margin:3px 0; font-family:ui-monospace,monospace; font-size:11.5px; cursor:default; }
+  .relitem .n { opacity:.6; }
+  .relitem.hot { border-left:2px solid #f87171; }
+  .badge { display:inline-block; font-size:9.5px; padding:1px 5px; border-radius:5px; background:rgba(96,165,250,.25); margin-left:6px; }
+</style>
+
+<div class="demo">
+  <div class="main">
+    <h4>Issue · <code>QueryException</code> <span class="badge">você está aqui</span></h4>
+    <div class="ph w70"></div>
+    <div class="ph w90"></div>
+    <div class="ph w50"></div>
+    <p class="subtitle" style="margin-top:14px">Stack trace, eventos, ações (resolve/ignore/snooze)…</p>
+    <div class="ph"></div>
+    <div class="ph w70"></div>
+  </div>
+  <div class="aside">
+    <div class="ah"><span>Relacionados</span><span class="chev">⟨ recolher ⟩</span></div>
+
+    <div class="traceCard">
+      <div class="tid">⛓ Trace a3f9c1…</div>
+      <div class="meta">request · GET /checkout · 842ms · <span style="color:#f87171">erro</span></div>
+    </div>
+
+    <div class="relgrp">Entrada</div>
+    <div class="relitem"><span>GET /checkout</span><span class="n">→ trace</span></div>
+
+    <div class="relgrp">Exceptions → Issues</div>
+    <div class="relitem hot"><span>QueryException</span><span class="n">esta issue</span></div>
+
+    <div class="relgrp">Incidents</div>
+    <div class="relitem"><span>Incident #12 (open)</span><span class="n">→</span></div>
+
+    <div class="relgrp">Queries <span class="n">(3)</span></div>
+    <div class="relitem"><span>SELECT … orders</span><span class="n">412ms</span></div>
+    <div class="relitem"><span>SELECT … users</span><span class="n">9ms</span></div>
+
+    <div class="relgrp">HTTP saída <span class="n">(1)</span></div>
+    <div class="relitem"><span>POST api.stripe…</span><span class="n">310ms</span></div>
+
+    <div class="relgrp">Logs <span class="n">(2)</span> · Cache <span class="n">(5)</span> · Eventos <span class="n">(11)</span></div>
+    <div class="relitem"><span>ver todos os eventos</span><span class="n">→</span></div>
+  </div>
+</div>
+
+<h3 style="margin-top:22px">Confirma o conceito? Marque o que se aplica:</h3>
+<div class="options" data-multiselect>
+  <div class="option" data-choice="confirm" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content"><h3>Sim, é exatamente isso</h3><p>Sidebar recolhível "Relacionados", ancorada no trace, em todas as telas de entidade.</p></div>
+  </div>
+  <div class="option" data-choice="default-collapsed" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content"><h3>Começar recolhida por padrão</h3><p>Abre fechada (só um botão/aba lateral); expande sob demanda. Senão, começa aberta.</p></div>
+  </div>
+  <div class="option" data-choice="persist" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content"><h3>Lembrar estado (aberta/fechada)</h3><p>Via cookie, igual ao locale/sidebar atual — persiste entre páginas.</p></div>
+  </div>
+  <div class="option" data-choice="no-trace" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content"><h3>E quando não há trace?</h3><p>Em telas sem trace único (ex.: lista de rotas agregada), o painel some ou mostra "sem trace associado". (marque se concorda em ocultar)</p></div>
+  </div>
+</div>

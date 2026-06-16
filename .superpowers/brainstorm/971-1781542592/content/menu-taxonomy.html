@@ -1,0 +1,112 @@
+<h2>Como reagrupar o menu lateral do projeto?</h2>
+<p class="subtitle">Hoje são ~14 seções planas + Issues/Traces/Incidents soltas. Três filosofias de organização. Clique na que mais combina com como você (e um dev Laravel) pensa.</p>
+
+<style>
+  .tax { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .tax .option { display:block; }
+  .tree { font-family:ui-monospace,monospace; font-size:12.5px; line-height:1.7; margin-top:10px; }
+  .tree .grp { font-weight:700; text-transform:uppercase; letter-spacing:.04em; font-size:11px; opacity:.85; margin-top:8px; }
+  .tree .grp:first-child { margin-top:0; }
+  .tree .leaf { padding-left:14px; opacity:.9; }
+  .tag { display:inline-block; font-size:10px; padding:1px 6px; border-radius:6px; background:rgba(125,125,125,.18); margin-left:6px; }
+  @media (max-width:980px){ .tax{ grid-template-columns:1fr; } }
+</style>
+
+<div class="options tax">
+
+  <div class="option" data-choice="funcional" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Funcional</h3>
+      <p>Agrupa pelo <b>tipo de telemetria</b>. Familiar para quem já usou Telescope/Pulse.</p>
+      <div class="tree">
+        <div class="grp">Visão geral</div>
+        <div class="leaf">Overview</div>
+        <div class="grp">Desempenho</div>
+        <div class="leaf">Requests</div>
+        <div class="leaf">Database <span class="tag">queries+cache</span></div>
+        <div class="leaf">Jobs</div>
+        <div class="leaf">HTTP saída</div>
+        <div class="leaf">Schedule</div>
+        <div class="grp">Confiabilidade</div>
+        <div class="leaf">Errors</div>
+        <div class="leaf">Issues</div>
+        <div class="leaf">Incidents</div>
+        <div class="leaf">Uptime</div>
+        <div class="grp">Diagnóstico</div>
+        <div class="leaf">Traces</div>
+        <div class="leaf">Logs</div>
+        <div class="grp">Sistema</div>
+        <div class="leaf">Host</div>
+        <div class="leaf">Mail</div>
+        <div class="leaf">Security</div>
+        <div class="leaf">Delivery</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tarefa" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Orientada à pergunta</h3>
+      <p>Agrupa pela <b>pergunta que o dev faz</b> ao abrir o painel (jobs-to-be-done).</p>
+      <div class="tree">
+        <div class="grp">Visão geral</div>
+        <div class="leaf">Overview</div>
+        <div class="grp">Está rápido?</div>
+        <div class="leaf">Requests</div>
+        <div class="leaf">Database</div>
+        <div class="leaf">Jobs</div>
+        <div class="leaf">HTTP saída</div>
+        <div class="grp">Está quebrando?</div>
+        <div class="leaf">Errors</div>
+        <div class="leaf">Issues</div>
+        <div class="leaf">Incidents</div>
+        <div class="grp">Está no ar?</div>
+        <div class="leaf">Uptime</div>
+        <div class="leaf">Schedule</div>
+        <div class="leaf">Host</div>
+        <div class="leaf">Delivery</div>
+        <div class="grp">Investigar</div>
+        <div class="leaf">Traces</div>
+        <div class="leaf">Logs</div>
+        <div class="grp">Outros</div>
+        <div class="leaf">Mail</div>
+        <div class="leaf">Security</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="hibrida" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Híbrida enxuta</h3>
+      <p>Poucos grupos. Separa <b>Sinais</b> (o que monitorar) de <b>Investigação</b> de <b>Config/Sistema</b>.</p>
+      <div class="tree">
+        <div class="grp">Visão geral</div>
+        <div class="leaf">Overview</div>
+        <div class="grp">Sinais</div>
+        <div class="leaf">Requests</div>
+        <div class="leaf">Errors</div>
+        <div class="leaf">Database</div>
+        <div class="leaf">Jobs</div>
+        <div class="leaf">HTTP saída</div>
+        <div class="leaf">Schedule</div>
+        <div class="leaf">Mail</div>
+        <div class="grp">Investigação</div>
+        <div class="leaf">Issues</div>
+        <div class="leaf">Incidents</div>
+        <div class="leaf">Traces</div>
+        <div class="leaf">Logs</div>
+        <div class="grp">Sistema & saúde</div>
+        <div class="leaf">Uptime</div>
+        <div class="leaf">Host</div>
+        <div class="leaf">Security</div>
+        <div class="leaf">Delivery</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:18px"><b>Minha recomendação: A (Funcional)</b> — é o modelo mental que o público-alvo (devs Laravel vindos de Telescope/Pulse) já tem, e mapeia 1:1 nos tipos de evento que o Warden captura. B é ótima para iniciantes mas mistura categorias (Host aparece em "está no ar?"). C é um meio-termo. Note que as 3 propõem <b>fundir Queries+Cache em "Database"</b> e trazer Issues/Incidents/Traces/Logs para dentro de grupos (hoje ficam soltas).</p>
