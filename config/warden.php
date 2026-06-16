@@ -166,6 +166,22 @@ return [
                 'slower_than_ms' => (int) env('WARDEN_ALWAYS_KEEP_MS', 1000),
             ],
 
+            // Adaptive head sampling (§5.8). Off by default. When enabled, an
+            // error/slow trace raises the effective head rate for the next few
+            // entry points (capture more when something's wrong) and it decays
+            // back to the base rate along the happy path. Per-process, reset on
+            // the Octane/worker boundary. Only meaningful when a base
+            // sample.traces rate is < 1.0.
+            //   boost    — extra rate added on a signal (0..1).
+            //   max_rate — ceiling for the boosted rate.
+            //   decay    — per-decision contraction toward the base (0..1).
+            'adaptive' => [
+                'enabled' => env('WARDEN_ADAPTIVE_SAMPLING', false),
+                'max_rate' => (float) env('WARDEN_ADAPTIVE_MAX_RATE', 1.0),
+                'boost' => (float) env('WARDEN_ADAPTIVE_BOOST', 1.0),
+                'decay' => (float) env('WARDEN_ADAPTIVE_DECAY', 0.5),
+            ],
+
             // Axis B — global per-type gate. false disables a category entirely.
             'type_gate' => [
                 'request' => true,

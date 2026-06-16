@@ -344,6 +344,10 @@ class Warden
     public function keep(): void
     {
         $this->trace?->forceKeep();
+
+        // Adaptive sampling (§5.8): a force-kept trace is an error/slow/important
+        // signal, so bias the next few head decisions toward keeping more.
+        $this->sampler->signalAnomaly();
     }
 
     /** Record the authenticated user for the current entry point. */
@@ -419,6 +423,7 @@ class Warden
     {
         $this->resetTrace();
         $this->suppression = 0;
+        $this->sampler->reset();
     }
 
     protected function resetTrace(): void
@@ -460,6 +465,8 @@ class Warden
 
         if ($threshold > 0 && $trace->root->elapsedUs() >= $threshold * 1000) {
             $trace->forceKeep();
+            // §5.8: a slow trace also feeds the adaptive sampler.
+            $this->sampler->signalAnomaly();
         }
     }
 
