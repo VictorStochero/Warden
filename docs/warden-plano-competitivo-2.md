@@ -296,16 +296,21 @@ sensível retém menos). Estende-se para resoluções intermediárias quando nec
 
 > Regra: cada fase só fecha quando o **portão** estiver provado por testes + demo pública.
 
-### Fase 0 — Fundação de confiança · 🔄 PARCIAL · *destrava tudo*
+### Fase 0 — Fundação de confiança · 🔄 MAJORITARIAMENTE FEITA · *destrava tudo*
 - ✅ Kill-switch `WARDEN_ENABLED` + isolação estrutural de recorder + breaker (A0.1–A0.3).
 - ✅ Releases semver + CHANGELOG (até 0.3.2).
-- ⬜ Suíte de failure-injection **completa** (§5.1): parent offline, backpressure, filas, daemon
-  (A2–A4) — ainda falta.
-- ⬜ Prova de Octane/Horizon **sob carga real em CI** (A5/A4) — wiring existe, falta o job.
-- ⬜ Overhead budget no CI + benchmark público.
-- ⬜ Instância de demo pública com dados sintéticos.
-- **Portão (ainda não cruzado):** dá para alguém colocar em produção sem medo. **Não deixe esta
-  fase para trás** — é a base do que já foi empilhado nas Fases 1/3/4.
+- ✅ **Suíte de failure-injection (§5.1):** parent offline (retém+backoff+recupera+dead-letter,
+  `ShipResilienceTest`), `flush()` nunca lança com entrega indisponível (`FlushResilienceTest`),
+  histerese de backpressure (`OutboxBackpressureTest`), buffer ambiente limitado em daemon
+  (`AmbientBufferBoundTest`) — somadas a recorder-isolation/breaker e kill-switch já existentes.
+- ✅ **Filas/Horizon sob carga:** 15 jobs num único worker long-lived sem vazamento
+  (`QueueLoadIsolationTest`) + boundary por job (`QueueBoundaryTest`); ✅ Octane via reset-boundary
+  + memória plana (`OctaneResetTest`). ⬜ Falta só a prova em **Octane real** (servidor) no CI.
+- ✅ **Overhead budget no CI:** guard determinístico de hot-path append-only — zero I/O na captura,
+  1 escrita no flush (`OverheadBudgetTest`), roda na suíte a cada CI. ⬜ Benchmark público (não-código).
+- ⬜ Instância de demo pública com dados sintéticos (infra, fora do código).
+- **Portão (quase cruzado):** o "nunca quebra o host" está agora **provado por testes** nos modos
+  de falha principais; resta só Octane-real-no-CI, o benchmark público e a demo (infra/marketing).
 
 ### Fase 1 — "Substitui o Pulse" · ✅ MAJORITARIAMENTE FEITA
 - ✅ Cards/seções equivalentes (slow requests/queries/jobs/outgoing, exceptions, cache, queues,
@@ -386,8 +391,9 @@ dev nem o modo ephemeral.
   `measure()`/`increment()`, command palette (⌘K).
 - **Falta no APM (Fase 3):** essencialmente fechado nesta leva; resta a prova de Octane/Horizon sob
   carga (cai na Fase 0) e doc de extensão de recorders/cards.
-- **Falta provar (Fase 0, inegociável):** failure-injection completa (parent offline, backpressure,
-  filas, daemon) + Octane/Horizon sob carga real em CI + overhead budget + demo pública.
+- **Fase 0 (confiabilidade) — agora PROVADA por testes:** failure-injection (parent offline,
+  backpressure/histerese, flush resiliente, daemon/ambient), filas/Horizon sob carga, overhead
+  budget append-only. ⬜ Resta só Octane-real-no-CI + benchmark público + demo (infra/marketing).
 - **Falta produto (Fase 4):** app standalone (template, sem Docker) + SSO/OIDC + multi-tenancy plena.
 - **Decidido:** RDBMS + bridge OTLP futuro (costura plantada); dois modos de deploy; nome mantido;
   Alpine+SSE/polling; **OSS puro**.

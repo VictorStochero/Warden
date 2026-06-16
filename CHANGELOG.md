@@ -44,6 +44,17 @@ self-hosted for a fleet). No new runtime dependencies; no build step.
   `SUPPORTED_SCHEMA_VERSIONS` set and rejects anything outside it with a 422 that names the
   supported window — a non-fatal mismatch across a fleet on mixed versions.
 
+### Tests
+
+- **Fase 0 reliability suite (failure injection).** Proves the "capture never breaks the host"
+  guarantee (RNF-2) across the main failure modes: an offline/5xx parent holds the batch with
+  backoff, delivers on recovery and dead-letters only past the attempt ceiling (`ShipResilienceTest`);
+  `flush()` swallows a throwing/missing outbox and resets cleanly (`FlushResilienceTest`); outbox
+  backpressure pauses at high water and resumes only below low water (`OutboxBackpressureTest`); a
+  daemon's ambient buffer ships at the threshold and stays flat (`AmbientBufferBoundTest`); many jobs
+  on one long-lived worker never cross-contaminate (`QueueLoadIsolationTest`); and the hot path does
+  zero DB I/O with the single write at flush (`OverheadBudgetTest`).
+
 ### Changed
 
 - **API tokens are timing-safe.** `ApiToken` now stores an indexable prefix and compares the full
