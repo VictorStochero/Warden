@@ -26,6 +26,13 @@ return [
         'stack_trace' => 'Stack trace',
     ],
 
+    'comments' => [
+        'heading' => 'Comments',
+        'empty' => 'No comments yet.',
+        'placeholder' => 'Add a note…',
+        'submit' => 'Comment',
+    ],
+
     'actions' => [
         'resolve' => 'Resolve',
         'ignore' => 'Ignore',
@@ -39,5 +46,6 @@ return [
         'status_reopened' => 'Issue reopened.',
         'status_assigned' => 'Assignee updated.',
         'status_snoozed' => 'Issue snoozed.',
+        'status_commented' => 'Comment added.',
     ],
 ];

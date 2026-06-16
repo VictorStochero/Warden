@@ -4,6 +4,7 @@ namespace VictorStochero\Warden\Issues;
 
 use Illuminate\Support\Carbon;
 use VictorStochero\Warden\Models\Issue;
+use VictorStochero\Warden\Models\IssueComment;
 
 /**
  * Human-driven issue transitions (§5.3): resolve, ignore, reopen, assign and
@@ -53,5 +54,26 @@ class IssueWorkflow
         $minutes = max(1, $minutes);
 
         $issue->forceFill(['snoozed_until' => Carbon::now()->addMinutes($minutes)])->save();
+    }
+
+    /**
+     * Append a triage note to the issue thread (§5.3). A blank body is a no-op
+     * so an empty form submission never creates an empty row.
+     */
+    public function comment(Issue $issue, string $author, string $body): ?IssueComment
+    {
+        $body = trim($body);
+        $author = trim($author);
+
+        if ($body === '') {
+            return null;
+        }
+
+        return IssueComment::query()->create([
+            'issue_id' => $issue->id,
+            'author' => $author === '' ? 'operator' : $author,
+            'body' => $body,
+            'created_at' => Carbon::now(),
+        ]);
     }
 }

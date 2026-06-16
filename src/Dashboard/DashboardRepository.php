@@ -868,6 +868,19 @@ class DashboardRepository
     }
 
     /**
+     * The triage comment thread for an issue (§5.3), oldest first.
+     *
+     * @return Collection<int, \stdClass>
+     */
+    public function comments(int $issueId): Collection
+    {
+        return $this->db->table('wdn_issue_comments')
+            ->where('issue_id', $issueId)
+            ->orderBy('id')
+            ->get(['author', 'body', 'created_at']);
+    }
+
+    /**
      * The grouped issue for an exception fingerprint, or null when the
      * aggregation pipeline has not yet produced one. Used to drill from an
      * exception span in a trace waterfall to its issue; only the id and

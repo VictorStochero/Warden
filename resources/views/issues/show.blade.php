@@ -80,6 +80,30 @@
         </div>
     @endcan
 
+    <div class="mt-5 overflow-hidden rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10">
+        <div class="border-b border-ink-700/70 px-5 py-3.5"><h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::issues.comments.heading') }}</h3></div>
+        <div class="divide-y divide-ink-700/60">
+            @forelse($comments as $comment)
+                <div class="px-5 py-3">
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-[13px] font-medium text-slate-200">{{ $comment->author }}</span>
+                        <span class="text-[11px] text-slate-500">{{ \VictorStochero\Warden\Dashboard\Format::ago($comment->created_at) }}</span>
+                    </div>
+                    <p class="mt-1 whitespace-pre-wrap break-words text-sm text-slate-300">{{ $comment->body }}</p>
+                </div>
+            @empty
+                <p class="px-5 py-4 text-sm text-slate-500">{{ __('warden::issues.comments.empty') }}</p>
+            @endforelse
+        </div>
+        @can('manageWarden')
+            <form method="POST" action="{{ route('warden.issue.comment', [$project->slug, $issue->id]) }}" class="flex items-start gap-2 border-t border-ink-700/70 px-5 py-3.5">@csrf
+                <textarea name="body" rows="2" placeholder="{{ __('warden::issues.comments.placeholder') }}"
+                          class="min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-slate-200 placeholder-slate-600"></textarea>
+                <button type="submit" class="shrink-0 rounded-lg bg-brand-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-brand-500">{{ __('warden::issues.comments.submit') }}</button>
+            </form>
+        @endcan
+    </div>
+
     @if(!empty($issue->stack))
         <div class="mt-5 overflow-hidden rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10">
             <div class="border-b border-ink-700/70 px-5 py-3.5"><h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::issues.show.stack_trace') }}</h3></div>

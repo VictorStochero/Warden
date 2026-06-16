@@ -42,6 +42,7 @@ class IssueController
         return ViewFactory::make('warden::issues.show', array_merge($this->chrome(), $this->related($repo, $model->id, $traceId), [
             'project' => $model,
             'issue' => $row,
+            'comments' => $repo->comments($issue),
         ]));
     }
 
@@ -80,6 +81,23 @@ class IssueController
         $workflow->snooze($this->issueModel($repo, $project, $issue), $minutes);
 
         return $this->back($project, $issue, 'snoozed');
+    }
+
+    public function comment(Request $request, DashboardRepository $repo, IssueWorkflow $workflow, string $project, int $issue): RedirectResponse
+    {
+        $body = trim(Cast::str($request->input('body')));
+        $workflow->comment($this->issueModel($repo, $project, $issue), $this->operator($request), $body);
+
+        return $this->back($project, $issue, 'commented');
+    }
+
+    /** Best-effort operator identity for the comment author: host e-mail or a label. */
+    private function operator(Request $request): string
+    {
+        $user = $request->user();
+        $email = is_object($user) && isset($user->email) ? Cast::str($user->email) : '';
+
+        return $email !== '' ? $email : 'operator';
     }
 
     /** Load the issue scoped to its project, 404 if it doesn't belong there. */

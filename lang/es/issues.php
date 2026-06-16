@@ -26,6 +26,13 @@ return [
         'stack_trace' => 'Stack trace',
     ],
 
+    'comments' => [
+        'heading' => 'Comentarios',
+        'empty' => 'Aún no hay comentarios.',
+        'placeholder' => 'Agregar una nota…',
+        'submit' => 'Comentar',
+    ],
+
     'actions' => [
         'resolve' => 'Resolver',
         'ignore' => 'Ignorar',
@@ -39,5 +46,6 @@ return [
         'status_reopened' => 'Issue reabierta.',
         'status_assigned' => 'Responsable actualizado.',
         'status_snoozed' => 'Issue silenciada.',
+        'status_commented' => 'Comentario agregado.',
     ],
 ];

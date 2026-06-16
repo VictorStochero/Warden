@@ -84,4 +84,5 @@ Route::middleware([Authorize::class.':manageWarden', AuditManageActions::class])
     Route::post('/projects/{project}/issues/{issue}/reopen', [IssueController::class, 'reopen'])->whereNumber('issue')->name('warden.issue.reopen');
     Route::post('/projects/{project}/issues/{issue}/assign', [IssueController::class, 'assign'])->whereNumber('issue')->name('warden.issue.assign');
     Route::post('/projects/{project}/issues/{issue}/snooze', [IssueController::class, 'snooze'])->whereNumber('issue')->name('warden.issue.snooze');
+    Route::post('/projects/{project}/issues/{issue}/comment', [IssueController::class, 'comment'])->whereNumber('issue')->name('warden.issue.comment');
 });
