@@ -6,6 +6,53 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+A batch closing the code-actionable gaps from the competitive plan (Pulse + Nightwatch
+self-hosted for a fleet). No new runtime dependencies; no build step.
+
+### Added
+
+- **On-call paging channels.** `PagerDutyAlertChannel` (Events API v2, trigger/resolve by a
+  stable dedup key) and `OpsgenieAlertChannel` (Alerts API, GenieKey auth, alias dedup,
+  close-by-alias on resolve, P1/P3/P5 priority). Both self-silence without a credential, default to
+  a `critical` floor, and run best-effort + suppressed like every channel.
+- **Issue comments.** A triage thread per issue (`wdn_issue_comments`): `IssueWorkflow::comment()`,
+  a `manageWarden`-gated `warden.issue.comment` route, and a rendered (escaped) thread on the issue
+  page — completing the collaboration parity (assign/resolve/ignore/reopen/snooze/comment).
+- **Baseline anomaly alerts.** Alert rules gain an `anomaly` operator: a metric
+  (throughput/errors/p95/error_rate) opens an incident when the latest bucket deviates more than N
+  standard deviations above the moving baseline of the preceding buckets, and resolves once back in
+  band. Simple statistics, zero-dep.
+- **Multi-resolution rollups.** The aggregator now rolls events into the fine base bucket **and**
+  coarse daily buckets (each on its own cursor); long-window reads (≥7d) are served by a handful of
+  daily rows instead of thousands of per-minute rows, with identical totals. Configurable via
+  `parent.rollups.*`.
+- **Adaptive sampling (opt-in).** When enabled, an error/slow trace raises the effective head
+  sample rate for the next few entry points and decays back along the happy path; per-process,
+  reset on the Octane/worker boundary. Off by default. `child.sample.adaptive.*`.
+- **"Since the last deploy" snapshot.** A consolidated card on the Errors section: throughput,
+  5xx errors, error-rate and new issues since the first event of the latest release.
+- **Per-project retention.** Projects can retain raw events / aggregates for fewer days than the
+  global window (privacy / cost); the override tightens below the global ceiling. Exposed on the
+  project edit page; applied by `warden:prune`.
+- **SSE transport (opt-in).** A `text/event-stream` upgrade for the dashboard real-time layer,
+  pushing the same cursor-based payload as the polling endpoint. Gated by
+  `dashboard.transport=sse` (404 otherwise); bounded so it always terminates.
+- **Warden Bridge seam.** A no-op-by-default post-ingest extension point (`EventForwarder` +
+  `EventsIngested` event) so a future OTLP forwarder can re-emit persisted events downstream
+  without touching the core. Best-effort + suppressed; zero overhead when unused.
+- **Explicit fleet schema-compat policy.** Ingestion validates the wire schema against a documented
+  `SUPPORTED_SCHEMA_VERSIONS` set and rejects anything outside it with a 422 that names the
+  supported window — a non-fatal mismatch across a fleet on mixed versions.
+
+### Changed
+
+- **API tokens are timing-safe.** `ApiToken` now stores an indexable prefix and compares the full
+  hash with `hash_equals()` (closing the timing channel), uses an explicit `$fillable`, and stamps
+  `last_used_at` at most once per minute on the hot read path.
+- **CSP drops `'unsafe-inline'` for scripts.** The dashboard's inline scripts run under a
+  per-request nonce; `script-src` is now `'self' 'nonce-…'`. (Inline styles still use
+  `'unsafe-inline'` on `style-src`.)
+
 ## [0.3.2] - 2026-06-15
 
 ### Fixed

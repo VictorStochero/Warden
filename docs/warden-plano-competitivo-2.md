@@ -127,19 +127,19 @@ sai como alvo; mantido só como nota comparativa onde ajuda.
 | Traces correlacionados + waterfall de spans | ❌ | ✅ | ✅ | inclui waterfall cross-app de frota (§29) |
 | Detecção de N+1 | ❌ | 🟡 | ✅ | + QueryHealthAnalyzer: duplicadas, SELECT*, sem WHERE, gorda, lentas |
 | Agrupamento de exceções em issues | 🟡 | ✅ | ✅ | fingerprint |
-| **Colaboração em issues** (assignee, status, comentários, mute) | ❌ | ✅ | ✅ | assignee/status/resolve/ignore/reopen/snooze + usuários afetados ✅ (`IssueWorkflow`); falta **só comentários** |
+| **Colaboração em issues** (assignee, status, comentários, mute) | ❌ | ✅ | ✅ | assignee/status/resolve/ignore/reopen/snooze + usuários afetados + **comentários** (`IssueWorkflow`, `wdn_issue_comments`) — paridade completa |
 | **Detecção de regressão** (issue reabre após deploy) | ❌ | ✅ | ✅ | reabertura *deploy-aware*: issue resolvida reabre só em release mais nova que `resolved_release` (`IssueProcessor`) |
-| Dashboard em **tempo real** (live) | 🟡 | ✅ | ✅ | polling coalescido por cursor com `304` pronto (`StreamController` + rotas `/stream`); falta **só o upgrade SSE** opt-in |
+| Dashboard em **tempo real** (live) | 🟡 | ✅ | ✅ | polling `304` por cursor + **SSE opt-in** (`StreamController`, `dashboard.transport`) — ambos os modos prontos |
 | **Motor de regras de alerta** (limiar, janelas, cooldown) | ❌ | ✅ | ✅ | regras gerenciáveis pela UI (Evaluator + AlertRule) |
-| Canais de alerta Slack/Webhook/Mail/DB | ❌ | ✅ | ✅ | Slack, Discord, Webhook, Mail, DB. Falta: **PagerDuty/Opsgenie** (⬜) |
-| **Release/deploy tracking** ("erros desde este deploy") | ❌ | ✅ | 🔄 | marcadores de deploy + correlação de regressão por release ✅; falta a **visão "desde o deploy"** consolidada |
+| Canais de alerta Slack/Webhook/Mail/DB | ❌ | ✅ | ✅ | Slack, Discord, Webhook, Mail, DB, **PagerDuty, Opsgenie** — conjunto completo |
+| **Release/deploy tracking** ("erros desde este deploy") | ❌ | ✅ | ✅ | marcadores de deploy + regressão por release + **card consolidado "desde o último deploy"** (`sinceDeploy`) |
 | Instrumentação custom (`measure()`/`increment()`) | 🟡 | 🟡 | ✅ | API pública no core |
 | Multi-app / frota num painel | 🟡 (só servers) | ✅ (SaaS) | ✅ **(seu moat)** | — |
 | Multi-tenancy + RBAC + SSO/OIDC | ❌ | ✅ | 🔄 | RBAC por-projeto via gates ✅; API read-only + tokens ✅; audit log ✅. Falta SSO/OIDC e multi-tenancy plena |
 | API de leitura + tokens | ❌ | 🟡 | ✅ | read-only, tokens hash SHA-256 (ver correções de segurança §9.5) |
 | Uptime/heartbeat de scheduler | 🟡 | ✅ | ✅ | — |
 | Auditoria de dependências (composer/npm audit) | ❌ | ❌ | ✅ **(além dos 2)** | self-audit do parent agendado |
-| Escala analítica (alto volume) | ❌ | ✅ | 🔄 | RDBMS hoje; bridge OTLP futuro (§2, Fase 5) |
+| Escala analítica (alto volume) | ❌ | ✅ | 🔄 | RDBMS + **rollups multi-resolução** (diário p/ janelas longas) + **amostragem adaptativa**; costura do bridge OTLP plantada (§9.2), exporter futuro (Fase 5) |
 | **Kill-switch global + isolação de recorder** | ❌ | 🟡 | ✅ | `WARDEN_ENABLED` + breaker por-processo (A0.1/A0.2/A0.3) |
 | Compat. **Octane / Horizon / workers long-running** | ✅ | ✅ | 🔄 | reset de Octane wired; **falta prova sob carga real em CI** (A4/A5) |
 | Suíte failure-injection completa + overhead budget em CI | — | — | 🔄 | A0 parcial; **falta A2–A4 + Octane/Horizon real + benchmark** |
@@ -202,7 +202,8 @@ Implementado (`IssueWorkflow` + rotas `warden.issue.*` + `Issue` model):
 - ✅ Snooze/mute por tempo (`snooze` / `snoozed_until`). ✅ Contagem de usuários afetados
   (`users_affected`).
 - ✅ Link direto issue → traces de exemplo (`last_trace_id`).
-- ⬜ **Falta só:** comentários na issue (thread de triagem) e agrupamento explícito por ambiente.
+- ✅ **Comentários na issue** (thread de triagem, `wdn_issue_comments` + `IssueWorkflow::comment()`).
+- ⬜ Falta só: agrupamento explícito por ambiente. **Paridade de colaboração essencialmente fechada.**
 
 ### 5.4. Tempo real & frontend — DECIDIDO ✅
 Hoje o dashboard depende de agregação por cron. Arquitetura escolhida (sem Livewire, sem afogar
@@ -218,28 +219,30 @@ o sistema, dependência só no lado do dashboard — nunca no child):
     endpoint (`StreamController` + rotas `/stream`) devolve os deltas desde um cursor; se nada
     mudou, responde **`304 Not Modified`** com o ETag/cursor, então a leitura pesada nem roda em
     ocioso. Zero-dep, roda em PHP-FPM barato. 1 request com deltas, não N requests com reloads.
-  - ⬜ **FALTA — Upgrade opt-in: SSE (Server-Sent Events).** *Uma* conexão longa por viewer, servidor
+  - ✅ **FEITO — Upgrade opt-in: SSE (Server-Sent Events).** `StreamController::projectSse` emite o
+    mesmo payload por `text/event-stream`, bounded (`max_ticks`), gated por `dashboard.transport=sse`.
+    *Uma* conexão longa por viewer, servidor
     empurra deltas via `EventSource` nativo. Sem servidor de websocket, sem Reverb, sem Pusher.
     Para quem aguenta conexão longa (Octane/processo dedicado). Em FPM, segura 1 worker por
     viewer → cap nas sessões do dashboard e recomendar Octane para muitos viewers.
 - Mesmo frontend para os dois modos e para os dois deploys (pacote e standalone) — só troca o
   `transport` por trás do mesmo código de render. Interface idêntica, garantida.
 - Gráficos: lib pequena vendorizada local (uPlot/Chart.js), nunca CDN (privacidade).
-- ⬜ **Dívida de segurança promovida a roadmap:** com o real-time já implementado, migrar a CSP de
-  `script-src 'unsafe-inline'` para nonces/hashes e remover o `unsafe-inline` de script (§9.5).
+- ✅ **CSP com nonce:** `script-src` agora usa `'self' 'nonce-…'` (per-request, `SecurityHeaders`),
+  sem `unsafe-inline` em script. Dívida de segurança da §9.5 quitada (style-src mantém `unsafe-inline`).
 
 ### 5.5. Alertas de verdade (motor de regras) · 🔄 MAJORITARIAMENTE FEITO
 - ✅ Regras configuráveis pela UI (`SettingsController` + `AlertRule`): error rate, p95, fila,
   heartbeat ausente, nova issue, pico de exceção.
-- ⬜ Detecção de anomalia simples (desvio sobre baseline móvel) além de limiar fixo.
-- Canais: ✅ **Slack, Discord, Webhook, Mail, DB** já entregues; ⬜ falta **PagerDuty/Opsgenie**.
+- ✅ Detecção de anomalia (op `anomaly`: desvio > Nσ sobre baseline móvel dos buckets) além de limiar fixo.
+- Canais: ✅ **Slack, Discord, Webhook, Mail, DB, PagerDuty, Opsgenie** — conjunto completo.
 - ✅ Deduplicação/cooldown por subject; "resolvido automaticamente quando normaliza" via
   `Evaluator`. ⬜ Falta escalonamento.
 
-### 5.6. Release / deploy tracking · 🔄 PARCIAL
+### 5.6. Release / deploy tracking · 🔄 MAJORITARIAMENTE FEITO
 - ✅ Marcadores de deploy nas timelines + **regressão por release** (issue reabre deploy-aware, §5.3).
 - 🔄 Capturar versão/commit/deploy id no child e carimbar nos eventos (base existe via `last_release`).
-- ⬜ Visões consolidadas "erros desde o último deploy" e "regressão de p95 após deploy".
+- ✅ **Visão consolidada "desde o último deploy"** (`sinceDeploy`: throughput/5xx/taxa/p95/novas issues).
 - ⬜ Integração opcional com Envoyer/Forge/GitHub Actions (webhook "deploy aconteceu").
 
 ### 5.7. Produto multi-tenant (para o "app que monitora os outros")
@@ -249,10 +252,12 @@ o sistema, dependência só no lado do dashboard — nunca no child):
 - Isolamento por projeto/tenant; quem vê o quê; tokens de API para automação.
 - Audit log de quem fez o quê no painel.
 
-### 5.8. Escala & dados (ver §2)
-- Amostragem adaptativa (mais amostra quando há erro/lentidão, menos no caminho feliz).
-- Rollups multi-resolução (1m/5m/1h/1d) para o overview ficar barato em qualquer volume.
-- Driver de store plugável já desenhado para um futuro backend colunar opcional.
+### 5.8. Escala & dados (ver §2) · 🔄 MAJORITARIAMENTE FEITO
+- ✅ Amostragem adaptativa (mais amostra quando há erro/lentidão, menos no caminho feliz) —
+  `child.sample.adaptive`, opt-in, per-process (reset no Octane).
+- ✅ Rollups multi-resolução (base + diário) — janelas longas (≥7d) leem o bucket diário,
+  `parent.rollups.*`. Próximos passos opcionais: resoluções intermediárias (5m/1h).
+- ✅ Costura de store plugável para um futuro backend colunar opcional (`EventForwarder`, §9.2).
 
 ### 5.9. Ecossistema & DX
 - Integração explícita com **Horizon** (métricas de fila por supervisor/queue), **Reverb**
@@ -273,18 +278,17 @@ o sistema, dependência só no lado do dashboard — nunca no child):
 - Nome: "Warden" colide com o Warden de dev-env PHP/Magento e o Warden de auth no Rails.
   Considere um nome/namespace mais único antes de investir em marca.
 
-### 5.11. Compatibilidade de schema entre versões da frota — ⬜ *lacuna nova*
-O parent monitora children que podem rodar **versões diferentes** do pacote. Hoje só existe o
-`schema_version: 2` do evento, citado no contexto do Bridge (§9.2). Falta uma **política explícita**:
-como o parent ingere lotes de um child mais novo/antigo, o contrato de compat do payload e a janela
-de versões suportadas. Sem isso, um upgrade desencontrado na frota pode quebrar a ingestão — risco
-direto do pitch "um painel para *N* apps".
+### 5.11. Compatibilidade de schema entre versões da frota — ✅ FEITO
+Política explícita de compat: `IngestController::SUPPORTED_SCHEMA_VERSIONS` (janela documentada,
+hoje `[2]`). Um lote fora da janela recebe `422 unsupported_schema` nomeando o range suportado no
+corpo — troca não-fatal numa frota com versões mistas. Para um upgrade rolante, basta **ampliar** a
+lista (sem remover a versão antiga) durante a transição.
 
-### 5.12. Retenção & custo de storage por projeto — ⬜ *lacuna nova*
-Central no pitch self-hosted/LGPD, mas hoje só aparece como métrica no benchmark (§5.10). Falta
-**retenção configurável por projeto** (janela quente, prune por idade/volume) exposta na UI: o
-operador precisa controlar quanto cada app retém e o custo associado, não apenas uma política
-global de partição/prune.
+### 5.12. Retenção & custo de storage por projeto — ✅ FEITO
+`raw_retention_days` / `aggregate_retention_days` por projeto (nullable = herda o global), exposto
+na edição do projeto e aplicado pelo `warden:prune`. Semântica: o override só **encurta** abaixo do
+teto global (o DROP PARTITION global é por data) — exatamente o caso privacidade/custo (um app
+sensível retém menos). Estende-se para resoluções intermediárias quando necessário.
 
 ---
 
@@ -306,25 +310,23 @@ global de partição/prune.
 ### Fase 1 — "Substitui o Pulse" · ✅ MAJORITARIAMENTE FEITA
 - ✅ Cards/seções equivalentes (slow requests/queries/jobs/outgoing, exceptions, cache, queues,
   host, top users), + Database unificada e QueryHealthAnalyzer (além do Pulse).
-- ✅ Tempo real: polling coalescido por cursor com `304` (`StreamController` + `/stream`); ⬜ falta
-  só o SSE opt-in (§5.4).
+- ✅ Tempo real: polling `304` por cursor **+ SSE opt-in** (`StreamController`, `dashboard.transport`).
 - ⬜ Custom recorders/cards documentados para a comunidade.
-- **Portão:** praticamente alcançável — falta só o SSE opt-in e a doc de extensão de cards/recorders.
+- **Portão:** praticamente alcançável — falta só a doc de extensão de cards/recorders.
 
 ### Fase 2 — ⛔ "Substitui o Telescope" · REMOVIDA DO ESCOPO
 Era a paridade de debugger de dev. **Saiu do escopo** (ver §5.2). O esforço aqui foi redirecionado
 para o moat (Fase 3/4). O que já existe nos recorders permanece; não construímos os watchers de
 dev nem o modo ephemeral.
 
-### Fase 3 — "APM de produção nível Nightwatch (no seu segmento)" · 🔄 PARCIAL
+### Fase 3 — "APM de produção nível Nightwatch (no seu segmento)" · 🔄 MAJORITARIAMENTE FEITA
 - ✅ Issues com colaboração (§5.3): fingerprint + assignee/status/resolve/ignore/reopen/snooze +
-  usuários afetados; ⬜ falta só comentários.
-- ✅ Motor de regras de alerta gerenciável (Evaluator + AlertRule) + canais Slack/Discord/Webhook/Mail/DB.
-  ✅ Detecção de regressão por release (deploy-aware). ⬜ Falta PagerDuty/Opsgenie e anomalia sobre baseline.
-- 🔄 Release/deploy tracking (§5.6): marcadores de deploy + regressão por release ✅; ⬜ falta a visão
-  consolidada "desde o deploy".
+  usuários afetados + **comentários** — paridade completa.
+- ✅ Motor de regras gerenciável (Evaluator + AlertRule) + canais Slack/Discord/Webhook/Mail/DB
+  **+ PagerDuty + Opsgenie**. ✅ Regressão por release (deploy-aware) **+ detecção de anomalia** (op `anomaly`).
+- ✅ Release/deploy tracking (§5.6): marcadores + regressão por release + **card "desde o deploy"**.
 - ✅ Instrumentação custom (`measure()`/`increment()`). ✅ Waterfall cross-app de frota.
-- ⬜ Amostragem adaptativa + rollups multi-resolução (§5.8).
+- ✅ Amostragem adaptativa + rollups multi-resolução (§5.8).
 - 🔄 Octane reset wired; ⬜ falta a prova sob carga (volta pra Fase 0).
 - **Portão:** uma equipe roda Warden como APM primário numa frota real por 30 dias.
 
@@ -374,22 +376,23 @@ dev nem o modo ephemeral.
 
 - **Escopo enxugado:** alvo agora é **Pulse + Nightwatch self-hosted para frota**. Telescope
   (debug de dev) saiu — o que já existe fica, mas não é mais perseguido.
-- **Já feito (até 0.3.2):** captura com isolação+breaker, kill-switch, traces+waterfall de frota,
-  N+1+QueryHealthAnalyzer, motor de alertas + UI de regras (Slack/Discord/Webhook/Mail/DB),
-  colaboração em issues (assign/status/reopen/snooze) + regressão por release deploy-aware, tempo
-  real por polling `304`, RBAC por-projeto, API read-only+tokens, audit log, marcadores de deploy,
+- **Já feito (até 0.3.2 + leva pós-0.3.2):** captura com isolação+breaker, kill-switch,
+  traces+waterfall de frota, N+1+QueryHealthAnalyzer, motor de alertas + UI de regras
+  (Slack/Discord/Webhook/Mail/DB/**PagerDuty/Opsgenie**) + **detecção de anomalia**, colaboração em
+  issues completa (assign/status/reopen/snooze/**comentários**) + regressão por release deploy-aware
+  + **card "desde o deploy"**, tempo real por polling `304` **+ SSE opt-in**, **amostragem adaptativa**,
+  **rollups multi-resolução**, **retenção por projeto**, **compat de schema da frota**, **costura do
+  Bridge**, **API timing-safe**, **CSP com nonce**, RBAC por-projeto, API read-only+tokens, audit log,
   `measure()`/`increment()`, command palette (⌘K).
-- **Falta no APM (Fase 3):** comentários em issues, SSE opt-in, PagerDuty/Opsgenie, anomalia sobre
-  baseline, amostragem adaptativa + rollups multi-resolução.
+- **Falta no APM (Fase 3):** essencialmente fechado nesta leva; resta a prova de Octane/Horizon sob
+  carga (cai na Fase 0) e doc de extensão de recorders/cards.
 - **Falta provar (Fase 0, inegociável):** failure-injection completa (parent offline, backpressure,
   filas, daemon) + Octane/Horizon sob carga real em CI + overhead budget + demo pública.
 - **Falta produto (Fase 4):** app standalone (template, sem Docker) + SSO/OIDC + multi-tenancy plena.
-- **Corrigir já (segurança, §9.5):** token API timing-safe (`hash_equals`), throttle do
-  `last_used_at`, `$fillable` no `ApiToken`.
-- **Decidido:** RDBMS + bridge OTLP futuro; dois modos de deploy; nome mantido; Alpine+SSE/polling;
-  **OSS puro**.
-- **Sobra moat:** frota self-hosted + zero-dep + LGPD — invista tudo nisso. O risco agora não é
-  falta de features, é a **Fase 0 ficar para trás** enquanto as Fases 1/3/4 avançam.
+- **Decidido:** RDBMS + bridge OTLP futuro (costura plantada); dois modos de deploy; nome mantido;
+  Alpine+SSE/polling; **OSS puro**.
+- **Sobra moat:** frota self-hosted + zero-dep + LGPD — invista tudo nisso. Com a leva pós-0.3.2 o
+  APM ficou robusto; **o risco agora é a Fase 0 (confiabilidade provada) e a Fase 4 (produto/GTM).**
 
 ---
 
@@ -415,10 +418,12 @@ Passos:
 > Custo de manutenção: baixo. É uma casca que depende do pacote via Composer. Toda feature nova
 > entra no pacote e o template herda sem mudança.
 
-### 9.2. Costura do Warden Bridge — fazer JÁ (não o bridge, só o gancho) · ⬜ AINDA NÃO PLANTADA
+### 9.2. Costura do Warden Bridge — fazer JÁ (não o bridge, só o gancho) · ✅ PLANTADA
 
-> **Status atual:** confirmado que **não existe** ainda `EventForwarder`/evento `EventsIngested`
-> no core — a costura segue como pendência a plantar (não o bridge em si).
+> **Status atual:** **feito.** `Contracts\EventForwarder` + `Bridge\NullEventForwarder` (no-op
+> default, zero-dep) + evento `Events\EventsIngested`, disparados best-effort/suprimidos após o
+> parent persistir o lote. Config `warden.bridge.forwarder`. O bridge em si (exporter OTLP) segue
+> Fase 5; a costura já está pronta para um pacote satélite assinar sem tocar no core.
 
 O bridge em si é Fase 5, mas o **ponto de extensão** custa quase nada e evita reescrita depois.
 Faça isto enquanto mexe na ingestão (Fase 3):
@@ -466,12 +471,12 @@ Faça isto enquanto mexe na ingestão (Fase 3):
 - **GTM coerente com OSS puro:** invista o "marketing" em **prova pública** — demo, benchmark,
   docs, transparência de overhead. Numa estratégia OSS pura, confiança e DX *são* o crescimento.
 
-### 9.5. Correções da revisão de código (0.3.2) — acionáveis agora
+### 9.5. Correções da revisão de código (0.3.2) — ✅ FEITAS
 
-Da revisão do estado atual do `main`, três itens de **segurança/robustez** para corrigir antes
-de divulgar a API (**confirmados ainda pendentes no código pós-0.3.2** — `ApiToken` segue com
-`$guarded = []`, `findByPlaintext()` compara o hash inteiro no banco, e `last_used_at` grava em
-toda request):
+Os três itens de **segurança/robustez** da revisão do `main` **foram corrigidos**: `ApiToken` agora
+guarda um **prefixo indexável** e compara o hash com `hash_equals()`, usa **`$fillable` explícito**, e
+o `AuthorizeApiToken` grava `last_used_at` **no máximo 1×/min** no caminho quente. Texto original
+preservado abaixo como histórico:
 
 1. **Token de API timing-safe (prioridade alta).** `ApiToken::findByPlaintext()` compara o hash
    inteiro via `where(...)` no banco. Padrão correto (estilo Sanctum): guardar um **prefixo curto
@@ -482,9 +487,8 @@ toda request):
 3. **`$guarded = []` no `ApiToken`** → trocar por `$fillable` explícito (higiene anti
    mass-assignment; custo zero).
 
-Dívida registrada (não bloqueia): CSP do dashboard usa `script-src 'unsafe-inline'`; ao migrar
-para Alpine vendorizado (decisão de real-time), trocar por nonces/hashes e remover o
-`unsafe-inline` de script.
+Dívida registrada: ✅ **resolvida** — o CSP do dashboard agora usa `script-src 'self' 'nonce-…'`
+(nonce per-request via `SecurityHeaders`), sem `unsafe-inline` em script (`style-src` mantém
+`unsafe-inline`).
 
-> Estes três já estão prontos para virar um `TASK.md` pronto-pra-agente no mesmo formato dos
-> demais, se quiser.
+> Os três itens de segurança e a dívida de CSP foram **implementados** (ver CHANGELOG `[Unreleased]`).
