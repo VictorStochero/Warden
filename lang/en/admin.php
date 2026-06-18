@@ -45,6 +45,15 @@ return [
         'deleted' => ':name and all its data were deleted.',
         'cannot_delete_self' => "The parent's self-monitoring project can't be deleted.",
 
+        // Per-type data purge (reclaim space a disabled metric already used)
+        'purge_title' => 'Clear stored data by type',
+        'purge_help' => 'Permanently delete every stored event and rollup of one type for this project. Useful right after disabling a metric to reclaim the space it already used. Other types and incident history are kept.',
+        'purge_select_label' => 'Metric type',
+        'btn_purge_type' => 'Clear data',
+        'confirm_purge' => 'Permanently delete ALL stored :type data (events + rollups) for this project? This cannot be undone.',
+        'purged' => ':count rows cleared for :type.',
+        'purge_unknown_type' => 'Unknown metric type.',
+
         'no_projects' => 'No projects yet.',
 
         'modal_add_title' => 'Add project',

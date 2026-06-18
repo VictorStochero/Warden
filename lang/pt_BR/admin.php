@@ -45,6 +45,15 @@ return [
         'deleted' => ':name e todos os seus dados foram excluídos.',
         'cannot_delete_self' => 'O projeto de automonitoramento do parent não pode ser excluído.',
 
+        // Purge de dados por tipo (recupera espaço que uma métrica desligada já usou)
+        'purge_title' => 'Limpar dados gravados por tipo',
+        'purge_help' => 'Exclui permanentemente todos os eventos e rollups de um tipo neste projeto. Útil logo após desligar uma métrica, para recuperar o espaço que ela já consumiu. Outros tipos e o histórico de incidentes são mantidos.',
+        'purge_select_label' => 'Tipo de métrica',
+        'btn_purge_type' => 'Limpar dados',
+        'confirm_purge' => 'Excluir permanentemente TODOS os dados de :type (eventos + rollups) deste projeto? Isso não pode ser desfeito.',
+        'purged' => ':count linhas removidas de :type.',
+        'purge_unknown_type' => 'Tipo de métrica desconhecido.',
+
         'no_projects' => 'Nenhum projeto ainda.',
 
         'modal_add_title' => 'Adicionar projeto',

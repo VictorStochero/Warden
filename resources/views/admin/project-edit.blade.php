@@ -269,6 +269,32 @@
         </div>
 
         @php
+            // Per-project type gate: every rendered type posts a value (hidden 0
+            // + checkbox 1) so the controller can rebuild a sparse type_gate.
+            // A type is enabled unless its stored value is explicitly false.
+            $gatedTypes = array_keys((array) config('warden.child.sample.type_gate', []));
+            $cfgTypeGate = is_array($cfg['sample']['type_gate'] ?? null) ? $cfg['sample']['type_gate'] : [];
+        @endphp
+        @if($gatedTypes !== [])
+            <div class="rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10 p-6 space-y-5">
+                <div>
+                    <h3 class="text-sm font-semibold text-white">{{ __('warden::project.behaviour.metrics') }}</h3>
+                    <p class="mt-1 text-xs text-slate-500">{{ __('warden::project.behaviour.metrics_help') }}</p>
+                </div>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    @foreach($gatedTypes as $type)
+                        @php $enabled = ($cfgTypeGate[$type] ?? true) !== false; @endphp
+                        <label class="flex items-center gap-2">
+                            <input type="hidden" name="config[sample][type_gate][{{ $type }}]" value="0">
+                            <x-warden::checkbox name="config[sample][type_gate][{{ $type }}]" value="1" :checked="$enabled" />
+                            <span class="text-sm text-slate-200">{{ $type }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        @php
             $cfgCapture = is_array($cfg['capture'] ?? null) ? $cfg['capture'] : [];
             $envOverrides = (array) $project->env_overrides;
             $piiLocked = in_array('capture.pii', $envOverrides, true);
@@ -324,6 +350,30 @@
         </div>
     </form>
 
+    {{-- Per-type data purge — its own form (HTML forms can't nest). --}}
+    @if($gatedTypes !== [])
+        <form method="POST" action="{{ route('warden.admin.projects.purge-type', $project) }}" id="wdn-purge-form"
+            class="mt-6 rounded-2xl border border-rose-900/40 bg-ink-900 shadow-lg shadow-black/10 p-6 space-y-4">
+            @csrf
+            <div>
+                <h3 class="text-sm font-semibold text-rose-300">{{ __('warden::admin.projects.purge_title') }}</h3>
+                <p class="mt-1 text-xs text-slate-500">{{ __('warden::admin.projects.purge_help') }}</p>
+            </div>
+            <div class="flex flex-wrap items-end gap-3">
+                <div class="max-w-xs">
+                    <label for="wdn-purge-type" class="block text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('warden::admin.projects.purge_select_label') }}</label>
+                    <select name="type" id="wdn-purge-type"
+                        class="mt-1.5 w-full rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-white outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500/30">
+                        @foreach($gatedTypes as $type)
+                            <option value="{{ $type }}">{{ $type }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <x-warden::button type="submit" variant="danger">{{ __('warden::admin.projects.btn_purge_type') }}</x-warden::button>
+            </div>
+        </form>
+    @endif
+
     <script nonce="{{ $wardenCspNonce ?? '' }}">
     (function () {
         var freq = document.getElementById('wdn-audit-frequency');
@@ -358,6 +408,19 @@
         pii.addEventListener('change', function () {
             if (pii.checked && !window.confirm(@js(__('warden::project.behaviour.capture_pii_confirm')))) {
                 pii.checked = false;
+            }
+        });
+    })();
+
+    // Confirm the destructive per-type purge before submitting.
+    (function () {
+        var form = document.getElementById('wdn-purge-form');
+        if (!form) { return; }
+        form.addEventListener('submit', function (e) {
+            var sel = document.getElementById('wdn-purge-type');
+            var msg = @js(__('warden::admin.projects.confirm_purge', ['type' => ':type']));
+            if (!window.confirm(msg.replace(':type', sel ? sel.value : ''))) {
+                e.preventDefault();
             }
         });
     })();

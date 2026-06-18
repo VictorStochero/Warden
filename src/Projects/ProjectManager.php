@@ -217,6 +217,30 @@ class ProjectManager
     }
 
     /**
+     * Drop every stored row of a single event type for a project — raw events
+     * and their rollups. Reclaims the space a now-disabled metric already used;
+     * the type gate alone only stops new data. Issues/incidents are left intact
+     * so historical exception grouping survives. The project row is untouched.
+     *
+     * @return array<string, int> rows deleted, keyed by table
+     */
+    public function purgeType(Project $project, string $type): array
+    {
+        $connection = $project->getConnection();
+
+        $deleted = [];
+
+        foreach (['wdn_events', 'wdn_aggregates'] as $table) {
+            $deleted[$table] = $connection->table($table)
+                ->where('project_id', $project->id)
+                ->where('type', $type)
+                ->delete();
+        }
+
+        return $deleted;
+    }
+
+    /**
      * Permanently remove a project and everything scoped to it — raw events,
      * rollups, issues, incidents, heartbeats, cursors and tag links — then the
      * project row itself. Shared groups are left untouched.

@@ -295,6 +295,10 @@ return [
         'recorders' => 'Recorders',
         'recorders_hint' => "Check the recorders to enable for this project. Leave all unchecked to inherit the child's own list.",
 
+        // Captured metrics (per-project type gate)
+        'metrics' => 'Captured metrics',
+        'metrics_help' => "Uncheck a metric to stop saving it for this project. The child stops capturing it on its next delivery, and the parent drops it on ingest either way — so it can't bloat the database. Already-stored data ages out with retention, or clear it now below.",
+
         // Privacy & capture
         'capture' => 'Privacy & capture',
         'capture_help' => 'Control how much potentially sensitive data the child captures for this project. Off by default.',

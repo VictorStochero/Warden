@@ -69,6 +69,7 @@ Route::middleware([Authorize::class.':manageWarden', AuditManageActions::class])
     Route::post('/admin/projects/{project}/delete', [ProjectAdminController::class, 'destroy'])->name('warden.admin.projects.delete');
     Route::post('/admin/projects/{project}/toggle', [ProjectAdminController::class, 'toggle'])->name('warden.admin.projects.toggle');
     Route::post('/admin/projects/{project}/reset', [ProjectAdminController::class, 'reset'])->name('warden.admin.projects.reset');
+    Route::post('/admin/projects/{project}/purge-type', [ProjectAdminController::class, 'purgeType'])->name('warden.admin.projects.purge-type');
     Route::post('/admin/projects/{project}/audit-now', [ProjectAdminController::class, 'auditNow'])->name('warden.admin.projects.audit-now');
 
     Route::get('/admin/maintenance', [MaintenanceController::class, 'index'])->name('warden.admin.maintenance');

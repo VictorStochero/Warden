@@ -60,10 +60,17 @@ class DatabaseIngestor implements Ingestor
                     continue; // duplicate delivery — already ingested
                 }
 
-                $this->insertEvents(Cast::int($projectModel->id), $events, $now);
+                // Defense-in-depth type gate: drop events whose type is disabled
+                // for this project before they ever reach wdn_events, so a stale
+                // child can't bloat the parent DB (RNF-1/§per-project metrics).
+                // accepted still counts the received events — the drop is parent
+                // policy, not a rejection, so the child sees a full acceptance.
+                $kept = $this->capturableEvents($projectModel, $events);
+
+                $this->insertEvents(Cast::int($projectModel->id), $kept, $now);
                 $accepted += count($events);
 
-                foreach ($events as $event) {
+                foreach ($kept as $event) {
                     $forwarded[] = $event;
                 }
             }
@@ -110,6 +117,60 @@ class DatabaseIngestor implements Ingestor
         } catch (QueryException) {
             return false;
         }
+    }
+
+    /**
+     * Keep only events whose type is not gated off for this project. A type is
+     * dropped only when its type_gate value is strictly false — fractional
+     * sampling is the child's job and is never re-applied here (decision: drop
+     * only on explicit off).
+     *
+     * @param  array<int, mixed>  $events
+     * @return list<array<array-key, mixed>>
+     */
+    protected function capturableEvents(Project $project, array $events): array
+    {
+        $disabled = $this->disabledTypes($project);
+
+        $out = [];
+        foreach ($events as $event) {
+            if (! is_array($event)) {
+                continue;
+            }
+            if ($disabled !== [] && isset($disabled[Cast::str($event['type'] ?? null, 'unknown')])) {
+                continue;
+            }
+            $out[] = $event;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Event types gated off for this project (type_gate === false). Fail-open:
+     * a missing/malformed config means "nothing disabled", so capture is never
+     * broken by a bad config document (RNF-2).
+     *
+     * @return array<string, true>
+     */
+    protected function disabledTypes(Project $project): array
+    {
+        $config = is_array($project->config) ? $project->config : [];
+        $sample = is_array($config['sample'] ?? null) ? $config['sample'] : [];
+        $gate = $sample['type_gate'] ?? null;
+
+        if (! is_array($gate)) {
+            return [];
+        }
+
+        $disabled = [];
+        foreach ($gate as $type => $on) {
+            if ($on === false) {
+                $disabled[Cast::str($type)] = true;
+            }
+        }
+
+        return $disabled;
     }
 
     /** @param array<int, mixed> $events */

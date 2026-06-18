@@ -295,6 +295,10 @@ return [
         'recorders' => 'Recorders',
         'recorders_hint' => 'Marque os recorders a habilitar para este projeto. Deixe todos desmarcados para herdar a lista do child.',
 
+        // Métricas capturadas (gate de tipo por projeto)
+        'metrics' => 'Métricas capturadas',
+        'metrics_help' => 'Desmarque uma métrica para parar de salvá-la neste projeto. O child para de capturá-la na próxima entrega, e o parent a descarta no ingest de qualquer forma — então ela não incha o banco. Dados já gravados somem com a retenção, ou limpe agora abaixo.',
+
         // Privacidade & captura
         'capture' => 'Privacidade & captura',
         'capture_help' => 'Controla quanto dado potencialmente sensível o child captura para este projeto. Desligado por padrão.',

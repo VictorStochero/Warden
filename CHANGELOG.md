@@ -6,6 +6,34 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-06-18
+
+Per-project control over **which metrics are stored** and for **how long**, to stop the parent
+database from bloating with event types nobody reads. No new runtime dependencies; no build step.
+
+### Added
+
+- **Per-project metric selection.** The project edit page gains a "Captured metrics" section with a
+  toggle per event type (request, query, job, exception, log, mail, notification, cache, command,
+  schedule, http, host, user, custom). Unchecking a type writes a sparse `sample.type_gate` into the
+  project config and bumps `config_version`, so the child stops capturing it on its next delivery.
+- **Defense-in-depth parent gate.** `DatabaseIngestor` now drops events whose type is gated off
+  (`type_gate === false`) for the project **before** the bulk insert into `wdn_events` — authoritative
+  and immediate, independent of whether the child has synced its config. Fractional sampling stays
+  the child's job and is never re-applied on the parent. The accepted count still reflects received
+  events (the drop is parent policy, not a rejection). The self-monitoring parent honours its own
+  type gate through the same path.
+- **On-demand per-type purge.** A `manageWarden`-gated "Clear stored data by type" action
+  (`warden.admin.projects.purge-type` → `ProjectManager::purgeType`) deletes the raw events and
+  rollups of a single type for a project, reclaiming the space a now-disabled metric already used.
+  Issues/incidents history is preserved.
+
+### Notes
+
+- Per-project retention (`raw_retention_days` / `aggregate_retention_days`) already shipped in 0.3.3;
+  disabling a metric stops new data, and already-stored rows age out with retention or can be cleared
+  immediately with the new purge action.
+
 ## [0.3.3] - 2026-06-16
 
 A batch closing the code-actionable gaps from the competitive plan (Pulse + Nightwatch

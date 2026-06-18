@@ -119,6 +119,23 @@ class ProjectAdminController
             $document[Cast::str($key)] = $value;
         }
 
+        // The metrics section submits a value for every rendered type (Laravel
+        // hidden+checkbox), so we rebuild type_gate sparsely here: only the
+        // disabled types are stored; enabled ones are dropped so they keep
+        // inheriting the default. An empty result removes the key entirely.
+        $gate = $this->resolveTypeGate($request);
+        $sample = Cast::arr($document['sample'] ?? null);
+        if ($gate !== []) {
+            $sample['type_gate'] = $gate;
+        } else {
+            unset($sample['type_gate']);
+        }
+        if ($sample !== []) {
+            $document['sample'] = $sample;
+        } else {
+            unset($document['sample']);
+        }
+
         $sanitized = ProjectConfig::sanitize($document);
 
         $current = is_array($project->config) ? $project->config : [];
@@ -129,6 +146,53 @@ class ProjectAdminController
                 'config_version' => Cast::int($project->config_version, 0) + 1,
             ])->save();
         }
+    }
+
+    /**
+     * Build the sparse type-gate from the submitted metrics section. Every
+     * rendered type posts a value (hidden+checkbox), so a falsy value means the
+     * operator disabled that metric. Only the disabled types are returned — an
+     * enabled type stays absent so it inherits the default.
+     *
+     * @return array<string, false>
+     */
+    private function resolveTypeGate(Request $request): array
+    {
+        $submitted = Cast::arr($request->input('config.sample.type_gate'));
+
+        $gate = [];
+        foreach ($submitted as $type => $on) {
+            $name = Cast::str($type);
+            if ($name !== '' && ! Cast::bool($on)) {
+                $gate[$name] = false;
+            }
+        }
+
+        return $gate;
+    }
+
+    /**
+     * Purge every stored row of a single event type for this project — raw
+     * events and their rollups. Used after disabling a metric to reclaim the
+     * space it already consumed (the gate only stops new data). The type is
+     * validated against the known roster so an arbitrary value can't be passed.
+     */
+    public function purgeType(Project $project, Request $request, ProjectManager $manager): RedirectResponse
+    {
+        $type = Cast::str($request->input('type'));
+
+        $roster = array_map(static fn ($k): string => Cast::str($k), array_keys(Cast::arr(config('warden.child.sample.type_gate'))));
+
+        if (! in_array($type, $roster, true)) {
+            return redirect()->route('warden.admin.projects.edit', $project)
+                ->with('warden_error', Cast::str(__('warden::admin.projects.purge_unknown_type')));
+        }
+
+        $deleted = $manager->purgeType($project, $type);
+        $total = array_sum($deleted);
+
+        return redirect()->route('warden.admin.projects.edit', $project)
+            ->with('warden_status', Cast::str(__('warden::admin.projects.purged', ['type' => $type, 'count' => $total])));
     }
 
     /**
