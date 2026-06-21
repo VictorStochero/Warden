@@ -65,6 +65,33 @@
         @endforeach
     </div>
 
+    @isset($versionCheck)
+        <div class="mt-8 rounded-2xl border border-ink-700/70 bg-ink-900 shadow-lg shadow-black/10 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-semibold text-white">{{ __('warden::version.toggle_label') }}</h2>
+                    @if($versionCheck['notice'])
+                        <p class="mt-1 text-xs text-brand-300">{{ __('warden::version.available', ['latest' => $versionCheck['notice']['latest'], 'current' => $versionCheck['notice']['current']]) }}</p>
+                    @else
+                        <p class="mt-1 text-xs text-slate-500">{{ $versionCheck['enabled'] ? '✓' : '—' }}</p>
+                    @endif
+                    @if($versionCheck['env_locked'])
+                        <p class="mt-1 text-[11px] text-amber-200">{{ __('warden::version.env_locked') }}</p>
+                    @endif
+                </div>
+                @unless($versionCheck['env_locked'])
+                    <form method="POST" action="{{ route('warden.admin.version-check.toggle') }}">
+                        @csrf
+                        <input type="hidden" name="enabled" value="{{ $versionCheck['enabled'] ? '0' : '1' }}">
+                        <x-warden::button type="submit" variant="secondary" size="sm">
+                            {{ $versionCheck['enabled'] ? __('warden::version.disable') : __('warden::version.enable') }}
+                        </x-warden::button>
+                    </form>
+                @endunless
+            </div>
+        </div>
+    @endisset
+
     <div class="mt-8">
         <h2 class="mb-3 text-sm font-semibold text-white">{{ __('warden::admin.maintenance.dead_letter_title') }}</h2>
         @if(($deadLetters ?? collect())->isEmpty())

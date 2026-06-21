@@ -31,6 +31,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $alert_min_severity
  * @property array<string, mixed>|null $config
  * @property int $config_version
+ * @property string|null $capture_profile
  * @property array<int, string>|null $env_overrides
  */
 class Project extends WardenModel
@@ -62,6 +63,7 @@ class Project extends WardenModel
         'alert_min_severity' => 'string',
         'config' => 'array',
         'config_version' => 'integer',
+        'capture_profile' => 'string',
         'env_overrides' => 'array',
     ];
 

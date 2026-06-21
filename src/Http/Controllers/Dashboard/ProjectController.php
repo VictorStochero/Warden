@@ -6,6 +6,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View as ViewFactory;
+use VictorStochero\Warden\Dashboard\CaptureStatus;
 use VictorStochero\Warden\Dashboard\DashboardRepository;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
 use VictorStochero\Warden\Support\Cast;
@@ -116,6 +117,7 @@ class ProjectController
             'range' => $range,
             'customWindow' => $window['custom'],
             'customWindowLabel' => $window['label'],
+            'captureStatus' => CaptureStatus::forProject($model),
         ]));
     }
 

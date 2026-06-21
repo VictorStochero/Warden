@@ -201,6 +201,16 @@ return [
             ],
         ],
 
+        // Query capture threshold (ms). When > 0, the query recorder drops any
+        // query faster than this BEFORE it reaches the buffer — the lean default
+        // profile sets 100 so a fresh install only stores slow SQL. null/0 keeps
+        // every query (full capture), which is what N+1 and frequent-query
+        // analysis need. The parent control plane can set it per project; the
+        // child .env (WARDEN_QUERY_MIN_MS) still wins.
+        'query' => [
+            'capture_min_ms' => env('WARDEN_QUERY_MIN_MS'),
+        ],
+
         // Keys whose values are redacted from query bindings, request input,
         // log context, headers and exception messages before anything is
         // buffered (RNF-4). ADDITIVE to a credential floor enforced in
@@ -322,6 +332,21 @@ return [
         'n_plus_one_threshold' => env('WARDEN_N_PLUS_ONE_THRESHOLD', 3),
         'fat_request_queries' => env('WARDEN_FAT_REQUEST_QUERIES', 50),
         'query_health_sample' => env('WARDEN_QUERY_HEALTH_SAMPLE', 2000),
+
+        // New-version notice. The parent checks Packagist for a newer STABLE
+        // release of the package and surfaces a discreet banner in the dashboard.
+        // Toggle lives in the dashboard (wdn_settings); WARDEN_VERSION_CHECK is
+        // the .env override that wins. The check runs on the parent schedule, is
+        // fully best-effort (a network failure leaves no notice and never throws),
+        // and only package names — nothing sensitive — leave the host.
+        'version_check' => [
+            'enabled' => env('WARDEN_VERSION_CHECK', true),
+            'include_prereleases' => env('WARDEN_VERSION_CHECK_PRERELEASES', false),
+            'ttl_hours' => (int) env('WARDEN_VERSION_CHECK_TTL', 24),
+            'timeout' => (int) env('WARDEN_VERSION_CHECK_TIMEOUT', 10),
+            'url' => env('WARDEN_VERSION_CHECK_URL', 'https://repo.packagist.org/p2/victorstochero/warden.json'),
+            'changelog_url' => env('WARDEN_CHANGELOG_URL', 'https://github.com/victorstochero/warden/releases'),
+        ],
     ],
 
     /*

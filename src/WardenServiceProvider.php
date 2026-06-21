@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Psr\Http\Message\RequestInterface;
 use Psr\Log\LoggerInterface;
@@ -39,6 +40,7 @@ use VictorStochero\Warden\Console\PruneCommand;
 use VictorStochero\Warden\Console\ShipCommand;
 use VictorStochero\Warden\Console\SwitchCommand;
 use VictorStochero\Warden\Console\UninstallCommand;
+use VictorStochero\Warden\Console\VersionCheckCommand;
 use VictorStochero\Warden\Contracts\Aggregator;
 use VictorStochero\Warden\Contracts\EventForwarder;
 use VictorStochero\Warden\Contracts\Ingestor;
@@ -67,6 +69,7 @@ use VictorStochero\Warden\Schema\SchemaManager;
 use VictorStochero\Warden\Support\Cast;
 use VictorStochero\Warden\Trace\Propagation;
 use VictorStochero\Warden\Transport\HttpTransport;
+use VictorStochero\Warden\Updates\VersionCheck;
 
 class WardenServiceProvider extends ServiceProvider
 {
@@ -274,6 +277,7 @@ class WardenServiceProvider extends ServiceProvider
         $this->warnIfCsrfDisabled();
         $this->registerAssetRoutes($prefix);
         $this->registerLoginRoutes($prefix);
+        $this->shareVersionNotice();
 
         Route::group([
             'prefix' => $prefix,
@@ -283,6 +287,26 @@ class WardenServiceProvider extends ServiceProvider
             ),
         ], function () {
             $this->loadRoutesFrom(__DIR__.'/../routes/dashboard.php');
+        });
+    }
+
+    /**
+     * Share the new-version notice with the dashboard layout. Best-effort and
+     * read-only (a cached verdict from wdn_settings — no network on render); any
+     * failure (missing table on a fresh parent) leaves the notice absent (RNF-2).
+     */
+    protected function shareVersionNotice(): void
+    {
+        View::composer('warden::layout', function (\Illuminate\Contracts\View\View $view): void {
+            $notice = null;
+
+            try {
+                $notice = $this->app->make(VersionCheck::class)->notice();
+            } catch (\Throwable) {
+                // No notice on any failure.
+            }
+
+            $view->with('versionNotice', $notice);
         });
     }
 
@@ -508,6 +532,12 @@ class WardenServiceProvider extends ServiceProvider
                 $schedule->command('warden:partition')->daily();
                 $schedule->command('warden:prune')->daily();
 
+                // New-version notice: a daily, best-effort Packagist check. The
+                // command self-skips when the toggle (or .env) disables it.
+                if (Cast::bool($config->get('warden.parent.version_check.enabled', true))) {
+                    $schedule->command('warden:version-check')->daily()->withoutOverlapping();
+                }
+
                 // A self-monitoring parent audits itself: it runs warden:audit
                 // only when its own self-project's audit schedule (set in the UI:
                 // off/daily/weekly/monthly, or an instant "run now") says it's due.
@@ -577,6 +607,7 @@ class WardenServiceProvider extends ServiceProvider
             DemoCommand::class,
             AuditCommand::class,
             DoctorCommand::class,
+            VersionCheckCommand::class,
         ]);
     }
 

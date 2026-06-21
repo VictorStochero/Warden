@@ -8,6 +8,8 @@
 @section('content')
     @php $k = $kpis; @endphp
 
+    @include('warden::partials.capture-banner')
+
     {{-- KPI strip --}}
     @php
         $reqUrl = route('warden.project.section', ['project' => $project->slug, 'section' => 'requests', 'range' => $range]);

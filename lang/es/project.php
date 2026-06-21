@@ -292,6 +292,8 @@ return [
         'sample_job_hint' => 'Fracción 0..1 de jobs rastreados.',
         'slower_ms' => 'Conservar siempre más lento que (ms)',
         'slower_ms_hint' => 'Fuerza mantener traces por encima de esta latencia, ignorando el muestreo.',
+        'query_min_ms' => 'Capturar consultas más lentas que (ms)',
+        'query_min_ms_hint' => '0 captura todas las consultas. Un valor positivo descarta las más rápidas (y desactiva el análisis de N+1 / consultas frecuentes).',
         'recorders' => 'Recorders',
         'recorders_hint' => 'Marca los recorders a habilitar para este proyecto. Deja todos sin marcar para heredar la lista del child.',
 

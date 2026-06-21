@@ -61,6 +61,32 @@ class ProjectManagerTest extends TestCase
         $this->assertSame('Parent', $project->name);
     }
 
+    public function test_create_seeds_the_lean_capture_profile(): void
+    {
+        $project = (new ProjectManager)->create('My App')['project'];
+
+        $this->assertSame('lean', $project->capture_profile);
+        $this->assertSame(1, $project->config_version);
+        $this->assertSame(100, $project->config['query']['capture_min_ms']);
+        $this->assertSame(0.2, $project->config['sample']['traces']['request']);
+        $this->assertFalse($project->config['sample']['type_gate']['cache']);
+    }
+
+    public function test_ensure_self_project_seeds_lean_on_first_create_only(): void
+    {
+        $manager = new ProjectManager;
+
+        $first = $manager->ensureSelfProject('parent');
+        $this->assertSame('lean', $first->capture_profile);
+
+        // Simulate an operator who later widened capture; a second ensure (e.g.
+        // on the next boot) must not clobber that back to lean.
+        $first->forceFill(['capture_profile' => 'full', 'config' => null])->save();
+
+        $again = $manager->ensureSelfProject('parent');
+        $this->assertSame('full', $again->fresh()->capture_profile);
+    }
+
     public function test_install_command_includes_flags(): void
     {
         $cmd = (new ProjectManager)->installCommand('my-app', 'tok', 'sec', 'https://apm.example.com', 'daemon');

@@ -3,6 +3,7 @@
 namespace VictorStochero\Warden\Projects;
 
 use Illuminate\Support\Str;
+use VictorStochero\Warden\Config\CaptureProfiles;
 use VictorStochero\Warden\Facades\Warden;
 use VictorStochero\Warden\Models\Group;
 use VictorStochero\Warden\Models\Project;
@@ -35,6 +36,9 @@ class ProjectManager
         // The mint writes the secret to the DB; suppress so a self-monitoring
         // parent never records the credential INSERT (§18.3) — defense-in-depth
         // on top of the column-correlated binding scrub.
+        // A fresh project is born on the lean capture profile (seeded as DB
+        // config, pushed to the child on its next sync) so a new install doesn't
+        // bloat the host database. The operator widens capture from the dashboard.
         /** @var Project $project */
         $project = Warden::withoutRecording(fn () => Project::create([
             'name' => $name,
@@ -42,6 +46,9 @@ class ProjectManager
             'token' => $token,
             'secret' => $secret,
             'active' => true,
+            'config' => CaptureProfiles::lean(),
+            'config_version' => 1,
+            'capture_profile' => CaptureProfiles::LEAN,
         ]));
 
         return ['project' => $project, 'token' => $token, 'secret' => $secret];
@@ -69,6 +76,12 @@ class ProjectManager
                 'token' => Str::random(40),
                 'secret' => Str::random(64),
                 'active' => true,
+                // Only applied on first creation (firstOrCreate) — an existing
+                // self-project is never clobbered, so an upgraded parent keeps
+                // its current capture and instead gets the lean opt-in notice.
+                'config' => CaptureProfiles::lean(),
+                'config_version' => 1,
+                'capture_profile' => CaptureProfiles::LEAN,
             ],
         ));
 

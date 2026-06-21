@@ -6,7 +6,9 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View as ViewFactory;
+use VictorStochero\Warden\Config\CaptureProfiles;
 use VictorStochero\Warden\Config\ProjectConfig;
+use VictorStochero\Warden\Dashboard\CaptureStatus;
 use VictorStochero\Warden\Http\Controllers\Dashboard\Concerns\ResolvesContext;
 use VictorStochero\Warden\Models\Group;
 use VictorStochero\Warden\Models\Project;
@@ -144,8 +146,41 @@ class ProjectAdminController
             $project->forceFill([
                 'config' => $sanitized === [] ? null : $sanitized,
                 'config_version' => Cast::int($project->config_version, 0) + 1,
+                // Record the resulting posture so the dashboard knows whether to
+                // show the lean opt-in (null), the reduced banner (lean/custom) or
+                // nothing (full). Editing by hand is "custom" unless it happens to
+                // match the canonical lean/full shapes exactly.
+                'capture_profile' => $this->profileFor($sanitized),
             ])->save();
         }
+    }
+
+    /** @param array<string, mixed> $sanitized */
+    private function profileFor(array $sanitized): string
+    {
+        if ($sanitized === CaptureProfiles::lean()) {
+            return CaptureProfiles::LEAN;
+        }
+
+        return $sanitized === [] ? CaptureProfiles::FULL : CaptureProfiles::CUSTOM;
+    }
+
+    /** Opt-in migration: apply the lean profile to an existing project (1-click). */
+    public function migrateCapture(Project $project): RedirectResponse
+    {
+        CaptureStatus::migrateToLean($project);
+
+        return redirect()->route('warden.project', $project->slug)
+            ->with('warden_status', Cast::str(__('warden::capture.migrated', ['name' => $project->name])));
+    }
+
+    /** Dismiss the lean opt-in: the operator keeps full capture. */
+    public function dismissCapture(Project $project): RedirectResponse
+    {
+        $project->forceFill(['capture_profile' => CaptureProfiles::FULL])->save();
+
+        return redirect()->route('warden.project', $project->slug)
+            ->with('warden_status', Cast::str(__('warden::capture.kept_full', ['name' => $project->name])));
     }
 
     /**

@@ -22,6 +22,7 @@ final class KnobMap
             'sample.always_keep.on_exception' => null,
             'sample.always_keep.slower_than_ms' => 'WARDEN_ALWAYS_KEEP_MS',
             'sample.type_gate' => null,
+            'query.capture_min_ms' => 'WARDEN_QUERY_MIN_MS',
             'scrub' => null,
             'capture.pii' => 'WARDEN_CAPTURE_PII',
             'capture.mail_body' => 'WARDEN_CAPTURE_MAIL_BODY',

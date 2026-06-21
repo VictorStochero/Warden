@@ -83,6 +83,14 @@ final class ProjectConfig
             $out['host_interval'] = max(1, Cast::int($input['host_interval']));
         }
 
+        // Query capture threshold (ms). 0 means "capture every query" (full); a
+        // positive value drops queries faster than it on the child. Stored under
+        // query.capture_min_ms so it maps straight onto the KnobMap path.
+        $query = Cast::arr($input['query'] ?? null);
+        if (array_key_exists('capture_min_ms', $query)) {
+            $out['query'] = ['capture_min_ms' => max(0, Cast::int($query['capture_min_ms']))];
+        }
+
         if (is_array($input['capture'] ?? null)) {
             /** @var array<string, bool> $outCapture */
             $outCapture = [];

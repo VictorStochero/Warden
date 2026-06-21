@@ -292,6 +292,8 @@ return [
         'sample_job_hint' => '0..1 fraction of jobs traced.',
         'slower_ms' => 'Always keep slower than (ms)',
         'slower_ms_hint' => 'Force-keep traces above this latency, overriding sampling.',
+        'query_min_ms' => 'Capture queries slower than (ms)',
+        'query_min_ms_hint' => '0 captures every query. A positive value drops faster queries (and disables N+1 / frequent-query analysis).',
         'recorders' => 'Recorders',
         'recorders_hint' => "Check the recorders to enable for this project. Leave all unchecked to inherit the child's own list.",
 

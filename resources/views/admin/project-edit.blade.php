@@ -203,7 +203,11 @@
             $cfgTraceJob = $cfg['sample']['traces']['job'] ?? null;
             $cfgSlowerMs = $cfg['sample']['always_keep']['slower_than_ms'] ?? null;
             $cfgRecorders = $cfg['recorders'] ?? null; // null = inherit, [] = explicitly none
-            $availableRecorders = (array) config('warden.child.recorders', []);
+            $cfgQueryMin = $cfg['query']['capture_min_ms'] ?? null;
+            // The full recorder universe — NOT the runtime config, which on a lean
+            // self-monitoring parent would only list the enabled subset and make it
+            // impossible to re-enable the rest from the form.
+            $availableRecorders = \VictorStochero\Warden\Dashboard\CaptureStatus::ALL_RECORDERS;
             $defHostInterval = config('warden.child.host_interval');
             $defTraceRequest = config('warden.child.sample.traces.request');
             $defTraceJob = config('warden.child.sample.traces.job');
@@ -241,13 +245,21 @@
                 </x-warden::field>
             </div>
 
-            <div class="max-w-xs">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <x-warden::field :label="__('warden::project.behaviour.slower_ms')" for="wdn-cfg-slower-ms"
                     :hint="__('warden::project.behaviour.slower_ms_hint')">
                     <x-warden::input type="number" min="0" step="1" id="wdn-cfg-slower-ms"
                         name="config[sample][always_keep][slower_than_ms]" class="mt-1.5"
                         value="{{ old('config.sample.always_keep.slower_than_ms', $cfgSlowerMs) }}"
                         placeholder="{{ $defSlowerMs }}" />
+                </x-warden::field>
+
+                <x-warden::field :label="__('warden::project.behaviour.query_min_ms')" for="wdn-cfg-query-min"
+                    :hint="__('warden::project.behaviour.query_min_ms_hint')">
+                    <x-warden::input type="number" min="0" step="1" id="wdn-cfg-query-min"
+                        name="config[query][capture_min_ms]" class="mt-1.5"
+                        value="{{ old('config.query.capture_min_ms', $cfgQueryMin) }}"
+                        placeholder="0" />
                 </x-warden::field>
             </div>
 

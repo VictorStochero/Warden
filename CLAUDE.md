@@ -50,6 +50,7 @@ Every entry point opens a `Trace\TraceContext` (`trace_id`); each unit of work i
 - **Head-based** (`child.sample.traces`): one decision per entry point, carried to downstream jobs (no orphan events).
 - **Type gate** (`child.sample.type_gate`): enable/disable or fractionally keep a whole event category.
 - **Always-keep / tail bias** (`child.sample.always_keep`): traces that errored or ran slow are force-kept before flush, overriding sampling.
+- **Lean default** (`Config\CaptureProfiles::lean()`): a new project (and a fresh self-monitoring parent) is seeded with a sparse config that gates off the noisy types via `sample.type_gate`, samples requests to 20%, and captures only queries `>= child.query.capture_min_ms` (a new knob in `KnobMap`; `0`/null = full). `wdn_projects.capture_profile` (`lean`/`full`/`custom`/null) drives the dashboard's reduced-capture banner, lean badge and opt-in notice (`Dashboard\CaptureStatus`); existing projects stay null/full and get the opt-in. The query threshold drops fast queries before buffering, so N+1/frequent-query analysis needs it at 0.
 
 ## Parent-side pipeline (commands)
 
@@ -62,6 +63,8 @@ Raw events flow through cursor-based stages (bookmarks in `wdn_cursors`, so step
 The parent's maintenance schedule and the child's `warden:ship --once` are **auto-registered** in `WardenServiceProvider::registerSchedule()` (gated by `parent.schedule.enabled` / `child.schedule.enabled` and `child.delivery`). The host only needs the Laravel scheduler cron running.
 
 A **self-monitoring parent** (`parent.self_monitor`, default on) runs the same recorders but routes `flush()` through `Ingestion\SelfDelivery` (writes straight to local `wdn_events`, no HTTP/outbox).
+
+`warden:version-check` (`Updates\VersionCheck` + `Support\PackageVersion`, parent-only, daily) caches the latest stable Packagist release into the `wdn_settings` key/value table (`Models\Setting`) for the dashboard's dismissible new-version banner. Best-effort/network-dependent; the page render never makes a network call. `wdn_settings` holds parent-global UI state that isn't per-project (never pushed to children).
 
 ## Conventions
 

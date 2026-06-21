@@ -4,6 +4,7 @@ namespace VictorStochero\Warden\Recording\Recorders;
 
 use Illuminate\Database\Events\QueryExecuted;
 use VictorStochero\Warden\Recording\AbstractRecorder;
+use VictorStochero\Warden\Support\Cast;
 
 class QueryRecorder extends AbstractRecorder
 {
@@ -18,6 +19,15 @@ class QueryRecorder extends AbstractRecorder
             // Never observe the package's own dedicated connection (§18.3).
             $obsConnection = $this->config->get('warden.connection');
             if ($obsConnection !== null && $event->connectionName === $obsConnection) {
+                return;
+            }
+
+            // Lean capture: drop queries faster than the configured threshold
+            // before any scrubbing/buffering. 0/null keeps every query (full).
+            // Trade-off: with a positive threshold the parent's N+1 and
+            // frequent-query analysis won't see the fast queries.
+            $minMs = Cast::float($this->config->get('warden.child.query.capture_min_ms'));
+            if ($minMs > 0 && $event->time < $minMs) {
                 return;
             }
 

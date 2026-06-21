@@ -357,6 +357,26 @@
                         </a>
                     </div>
                 @endif
+                @if(! empty($versionNotice))
+                    <div class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-brand-500/40 bg-brand-600/15 px-4 py-2.5 text-sm text-slate-200">
+                        <span>{{ __('warden::version.available', ['latest' => $versionNotice['latest'], 'current' => $versionNotice['current']]) }}</span>
+                        <span class="flex shrink-0 items-center gap-2">
+                            <a href="{{ config('warden.parent.version_check.changelog_url') }}" target="_blank" rel="noopener noreferrer"
+                               class="rounded-md border border-ink-600 px-3 py-1 text-xs font-medium text-brand-300 transition hover:bg-ink-700">
+                                {{ __('warden::version.changelog') }}
+                            </a>
+                            @can('manageWarden')
+                                <form method="POST" action="{{ route('warden.admin.version-check.dismiss') }}">
+                                    @csrf
+                                    <input type="hidden" name="version" value="{{ $versionNotice['latest'] }}">
+                                    <button type="submit" class="rounded-md px-2 py-1 text-xs text-slate-400 transition hover:text-slate-200">
+                                        {{ __('warden::version.dismiss') }}
+                                    </button>
+                                </form>
+                            @endcan
+                        </span>
+                    </div>
+                @endif
                 @yield('content')
             </main>
 

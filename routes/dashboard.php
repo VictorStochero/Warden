@@ -72,6 +72,15 @@ Route::middleware([Authorize::class.':manageWarden', AuditManageActions::class])
     Route::post('/admin/projects/{project}/purge-type', [ProjectAdminController::class, 'purgeType'])->name('warden.admin.projects.purge-type');
     Route::post('/admin/projects/{project}/audit-now', [ProjectAdminController::class, 'auditNow'])->name('warden.admin.projects.audit-now');
 
+    // Lean capture opt-in (existing projects): migrate to the lean profile in one
+    // click, or dismiss the notice and keep full capture.
+    Route::post('/admin/projects/{project}/capture/migrate', [ProjectAdminController::class, 'migrateCapture'])->name('warden.admin.projects.capture.migrate');
+    Route::post('/admin/projects/{project}/capture/dismiss', [ProjectAdminController::class, 'dismissCapture'])->name('warden.admin.projects.capture.dismiss');
+
+    // New-version notice actions.
+    Route::post('/admin/version-check/dismiss', [MaintenanceController::class, 'dismissVersion'])->name('warden.admin.version-check.dismiss');
+    Route::post('/admin/version-check/toggle', [MaintenanceController::class, 'toggleVersionCheck'])->name('warden.admin.version-check.toggle');
+
     Route::get('/admin/maintenance', [MaintenanceController::class, 'index'])->name('warden.admin.maintenance');
     Route::post('/admin/maintenance/run', [MaintenanceController::class, 'run'])->name('warden.admin.maintenance.run');
 

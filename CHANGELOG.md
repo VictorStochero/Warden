@@ -6,6 +6,31 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Lean capture by default for new projects.** A fresh project (and a fresh self-monitoring
+  parent) is now seeded with a *lean* capture profile — building on the per-project metric
+  selection from 0.3.4 — instead of recording everything: high-signal types stay on (`request`
+  sampled at 20%, `exception`, `job`, `schedule`, `log`, `host`), the noisy ones (`cache`,
+  `http`, `mail`, `notification`, `user`, `command`) start gated off via `sample.type_gate`, and
+  queries are captured only above a latency threshold. Existing projects are **untouched** on
+  upgrade and instead get a one-click "switch to lean" opt-in notice. Profile in
+  `Config\CaptureProfiles`; posture tracked in `wdn_projects.capture_profile`.
+- **Query capture threshold (`child.query.capture_min_ms`).** A new knob — controllable from the
+  dashboard (Project → Behaviour) and overridable via `WARDEN_QUERY_MIN_MS` — that drops queries
+  faster than it before they're buffered. `0`/null captures every query (full). With a positive
+  threshold, N+1 / frequent-query analysis is off (it needs the fast queries); the dashboard
+  banner says so. Added to `Config\KnobMap` so it flows through the control plane.
+- **Reduced-capture banner + overview indicator.** A project page shows what's been turned down
+  (gated types, query threshold, request sampling) with a link to the toggles; the fleet overview
+  marks projects in reduced mode with a "Lean" badge.
+- **New-version notice.** The parent checks Packagist for a newer **stable** release on a daily
+  schedule (`warden:version-check`) and surfaces a discreet, dismissible banner in the dashboard.
+  Best-effort and dependency-free (RNF-3): only the package name leaves the host, the page render
+  never makes a network call (the verdict is cached in the new `wdn_settings` table), and a
+  failure never throws (RNF-2). Toggle it from Maintenance; `WARDEN_VERSION_CHECK` wins as the
+  `.env` override.
+
 ## [0.3.4] - 2026-06-18
 
 Per-project control over **which metrics are stored** and for **how long**, to stop the parent

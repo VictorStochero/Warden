@@ -42,4 +42,23 @@ class ProjectConfigCaptureTest extends TestCase
 
         $this->assertArrayNotHasKey('capture', $out);
     }
+
+    public function test_sanitize_coerces_and_clamps_query_capture_threshold(): void
+    {
+        $this->assertSame(
+            ['query' => ['capture_min_ms' => 100]],
+            ProjectConfig::sanitize(['query' => ['capture_min_ms' => '100']]),
+        );
+
+        // Negative values clamp to 0 (= capture every query / full).
+        $this->assertSame(
+            ['query' => ['capture_min_ms' => 0]],
+            ProjectConfig::sanitize(['query' => ['capture_min_ms' => -5]]),
+        );
+    }
+
+    public function test_sanitize_omits_query_when_threshold_absent(): void
+    {
+        $this->assertArrayNotHasKey('query', ProjectConfig::sanitize(['query' => []]));
+    }
 }
