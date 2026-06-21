@@ -6,6 +6,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-06-21
+
+Lean capture **by default** so a fresh install stays small without configuration, plus a
+dashboard notice when a newer release ships. Builds on the per-project metric selection and
+retention from 0.3.3/0.3.4. No new runtime dependencies; no build step.
+
 ### Added
 
 - **Lean capture by default for new projects.** A fresh project (and a fresh self-monitoring
